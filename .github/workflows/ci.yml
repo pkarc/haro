@@ -51,3 +51,37 @@ jobs:
         run: |
           go test ./core -run TestCorpus -v | tee corpus.txt
           { echo '### Corpus'; echo '```'; tail -n 40 corpus.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+  web:
+    name: Web (build y tests unitarios)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci && npm run build && npm test
+        working-directory: web
+
+  web-e2e:
+    name: Web e2e (Playwright contra haro serve)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci && npm run build
+        working-directory: web
+      - run: make build
+      - run: npx playwright install --with-deps chromium
+        working-directory: web
+      - run: npm run test:e2e
+        working-directory: web

@@ -68,3 +68,30 @@ export interface Op {
 }
 export interface FileChange { file: number; path: string; text: string }
 export interface ApplyResult { files: SourceFile[]; changes: FileChange[] }
+
+// GET /api/v1/knowledge: datos para autocompletado, colores y plantillas.
+export interface SectionInfo { color: string; named: 'required' | 'optional' | 'none'; title: string; description: string }
+export interface DirectiveInfo { sections: string[]; category: string; description?: string }
+export interface SectionTemplate { name?: string; lines: string[] }
+export interface Knowledge {
+  categories: Record<string, string>
+  sections: Record<string, SectionInfo>
+  directives: Record<string, DirectiveInfo>
+  rules: Record<string, string>
+  templates: Record<string, SectionTemplate>
+}
+
+// Resultado de PUT /api/v1/config. Si el servidor rechaza el guardado (422),
+// `error` explica por qué y llega `check` (salida de haproxy -c) o `issue`
+// (error del detector cuando no hay haproxy).
+export interface PutResult {
+  saved: boolean
+  error?: string
+  status?: number
+  check?: CheckResult
+  issue?: Issue
+  path?: string
+}
+
+// Error de POST /api/v1/apply (HTTP 422).
+export interface ApplyErrorInfo { index: number; op: string; message: string }

@@ -1,52 +1,75 @@
-import { useEffect, useMemo, useState } from 'react'
-import { HttpCoreClient } from './core/client'
-import type { Analysis, SourceFile } from './core/types'
-
-// Punto de partida mínimo: un editor por archivo + explicaciones + problemas.
-// Aquí se integrarán CodeMirror 6 (modo código), las tarjetas por sección
-// (modo visual), React Flow (mapa) y el asistente, portando el prototipo.
-
-const core = new HttpCoreClient()
-const SAMPLE = `frontend web\n    bind *:80\n    default_backend app\n\nbackend app\n    balance roundrobin\n    server a1 10.0.0.1:8080 check\n`
-
-// El núcleo devuelve markdown mínimo: **negrita** y `código`.
-function Rich({ text }: { text: string }) {
-  const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g)
-  return <>{parts.map((p, i) => p.startsWith('**') ? <b key={i}>{p.slice(2, -2)}</b> : p.startsWith('`') ? <code key={i}>{p.slice(1, -1)}</code> : p)}</>
-}
+import { useEffect, useState } from 'react'
+import { DialogHost } from './components/dialogs'
+import { Toasts } from './components/Toasts'
+import { TopBar } from './components/TopBar'
+import { useMediaQuery } from './components/useMediaQuery'
+import { CodeView } from './editor/CodeView'
+import { ProblemsButton, ProblemsPanel } from './problems/ProblemsPanel'
+import { useApp } from './store'
+import { VisualView } from './visual/VisualView'
 
 export function App() {
-  const [files, setFiles] = useState<SourceFile[]>([{ path: 'haproxy.cfg', text: SAMPLE }])
-  const [active, setActive] = useState(0)
-  const [analysis, setAnalysis] = useState<Analysis | null>(null)
-  const [error, setError] = useState('')
+  const ready = useApp(s => s.ready)
+  const mode = useApp(s => s.mode)
+  const setMode = useApp(s => s.setMode)
+  const showAssistant = useApp(s => s.showAssistant)
+  const setShowAssistant = useApp(s => s.setShowAssistant)
+  const error = useApp(s => s.analysisError)
+  const mobile = useMediaQuery('(max-width: 899px)')
+  const [problems, setProblems] = useState(false)
 
-  useEffect(() => { core.getConfig().then(f => f && f.length && setFiles(f)).catch(() => {}) }, [])
+  useEffect(() => { void useApp.getState().init() }, [])
+
+  // Ctrl/Cmd+Z fuera de campos de texto (dentro, cada uno gestiona el suyo).
   useEffect(() => {
-    const t = setTimeout(() => core.analyze(files).then(a => { setAnalysis(a); setError('') }).catch(e => setError(e.message)), 200)
-    return () => clearTimeout(t)
-  }, [files])
-  const setText = (text: string) => setFiles(fs => fs.map((f, i) => i === active ? { ...f, text } : f))
-  const text = files[active]?.text ?? ''
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return
+      const t = e.target as HTMLElement | null
+      if (t?.closest('input,textarea,select,[contenteditable="true"],.cm-editor')) return
+      const k = e.key.toLowerCase()
+      if (k === 'z') { e.preventDefault(); if (e.shiftKey) useApp.getState().redo(); else useApp.getState().undo() }
+      else if (k === 'y') { e.preventDefault(); useApp.getState().redo() }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
 
-  const bySection = useMemo(() => analysis?.doc.sections.map((s, i) => ({ s, ex: analysis.explanations.filter(e => e.section === i) })) ?? [], [analysis])
+  if (!ready) return <div id="app"><p className="muted pad">Cargando…</p></div>
 
+  const assistantVisible = mobile && showAssistant
   return (
-    <main style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, padding: 16, fontFamily: 'system-ui' }}>
-      <div>
-        {files.length > 1 && <nav>{files.map((f, i) => <button key={f.path} onClick={() => setActive(i)} disabled={i === active}>{f.path.split('/').pop()}</button>)}</nav>}
-        <textarea value={text} onChange={e => setText(e.target.value)} spellCheck={false} style={{ fontFamily: 'monospace', width: '100%', minHeight: '80vh' }} />
-      </div>
-      <section>
-        {error && <p style={{ color: 'crimson' }}>{error}</p>}
-        {analysis?.issues.map((i, k) => <p key={k}>[{i.severity}] {files[i.file]?.path.split('/').pop()}:{i.line} {i.message}</p>)}
-        {bySection.map(({ s, ex }) => (
-          <article key={`${s.file}:${s.line}`}>
-            <h3>{s.type} {s.name}</h3>
-            {ex.map(e => <p key={`${e.file}:${e.line}`}><code>{e.keyword} {e.args}</code><br /><Rich text={e.explanation.text} /></p>)}
-          </article>
-        ))}
-      </section>
-    </main>
+    <div id="app" className={mobile ? 'mobile' : ''}>
+      <TopBar />
+      {error && <div className="iss sev-error net-error" role="alert"><span>Núcleo</span> {error}</div>}
+      <main className="layout">
+        {!assistantVisible && (
+          <section className="pane main-pane">
+            <div className="pane-head">
+              <div className="seg" role="tablist" aria-label="Modo de edición">
+                <button role="tab" aria-selected={mode === 'code'} className={mode === 'code' ? 'on' : ''} onClick={() => setMode('code')}>Código</button>
+                <button role="tab" aria-selected={mode === 'visual'} className={mode === 'visual' ? 'on' : ''} onClick={() => setMode('visual')}>Visual</button>
+              </div>
+              <ProblemsButton open={problems} onToggle={() => setProblems(p => !p)} />
+            </div>
+            {problems && <ProblemsPanel />}
+            <div className="pane-body">{mode === 'code' ? <CodeView /> : <VisualView />}</div>
+          </section>
+        )}
+        {assistantVisible && (
+          <section className="pane assistant-pane" data-testid="assistant-placeholder">
+            <div className="empty"><div className="spark">✦</div><h3>Asistente</h3><p className="muted">Próximamente.</p></div>
+          </section>
+        )}
+      </main>
+      {mobile && (
+        <nav className="mobile-tabs" role="tablist" aria-label="Secciones">
+          <button role="tab" aria-selected={!showAssistant && mode === 'code'} className={!showAssistant && mode === 'code' ? 'on' : ''} onClick={() => setMode('code')}>‹/› Código</button>
+          <button role="tab" aria-selected={!showAssistant && mode === 'visual'} className={!showAssistant && mode === 'visual' ? 'on' : ''} onClick={() => setMode('visual')}>◫ Visual</button>
+          <button role="tab" aria-selected={showAssistant} className={showAssistant ? 'on' : ''} onClick={() => setShowAssistant(true)}>✦ Asistente</button>
+        </nav>
+      )}
+      <DialogHost />
+      <Toasts />
+    </div>
   )
 }

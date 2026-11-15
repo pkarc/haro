@@ -1,4 +1,4 @@
-import type { Analysis, ApplyResult, Capabilities, CheckResult, DiffOp, Op, SourceFile } from './types'
+import type { Analysis, ApplyResult, Capabilities, CheckResult, DiffOp, Knowledge, Op, PutResult, SourceFile } from './types'
 
 // La interfaz no sabe con qué núcleo habla:
 //  - HttpCoreClient: `haro serve` local (Go nativo).
@@ -12,7 +12,8 @@ export interface CoreClient {
   diff(before: string, after: string): Promise<DiffOp[]>
   check(files: SourceFile[]): Promise<CheckResult>
   getConfig(): Promise<SourceFile[] | null>
-  putFile(path: string, text: string): Promise<{ saved: boolean; error?: string }>
+  putFile(path: string, text: string): Promise<PutResult>
+  knowledge(): Promise<Knowledge>
 }
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -36,8 +37,13 @@ export class HttpCoreClient implements CoreClient {
     try { return (await call<{ files: SourceFile[] }>('GET', '/api/v1/config')).files }
     catch (e) { if ((e as { status?: number }).status === 404) return null; throw e }
   }
-  async putFile(path: string, text: string) {
-    try { return await call<{ saved: boolean }>('PUT', '/api/v1/config', { path, text }) }
-    catch (e) { return { saved: false, error: (e as Error).message } }
+  knowledge() { return call<Knowledge>('GET', '/api/v1/knowledge') }
+  async putFile(path: string, text: string): Promise<PutResult> {
+    try { return await call<PutResult>('PUT', '/api/v1/config', { path, text }) }
+    catch (e) {
+      const err = e as Error & { status?: number; data?: Partial<PutResult> }
+      // El cuerpo del 422 trae check (salida de haproxy -c) o issue (detector).
+      return { ...err.data, saved: false, error: err.message, status: err.status }
+    }
   }
 }

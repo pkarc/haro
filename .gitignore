@@ -5,3 +5,6 @@ web/dist/*
 !web/dist/.keep
 *.bak
 core/testdata/corpus/
+web/test-results/
+web/playwright-report/
+web/tsconfig.tsbuildinfo
