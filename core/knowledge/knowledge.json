@@ -1,98 +1,56 @@
 {
-  "categories": {
-    "net": "Red",
-    "route": "Enrutado",
-    "srv": "Servidores",
-    "health": "Salud",
-    "time": "Timeout",
-    "log": "Logs",
-    "sec": "Seguridad",
-    "tls": "TLS",
-    "perf": "Rendimiento",
-    "proc": "Proceso",
-    "http": "HTTP",
-    "persist": "Persistencia",
-    "stats": "Stats",
-    "misc": "Otros"
-  },
   "sections": {
     "global": {
       "color": "#a78bfa",
-      "named": "none",
-      "title": "Configuración global",
-      "description": "Ajustes de todo el proceso HAProxy: usuario y grupo, logs, límite de conexiones, socket de administración y TLS por defecto."
+      "named": "none"
     },
     "defaults": {
       "color": "#94a3b8",
-      "named": "optional",
-      "title": "Valores por defecto",
-      "description": "Todo lo que pongas aquí lo heredan los frontend, backend y listen que aparecen después (hasta el siguiente defaults)."
+      "named": "optional"
     },
     "frontend": {
       "color": "#38bdf8",
-      "named": "required",
-      "title": "Entrada de tráfico",
-      "description": "Dónde escucha HAProxy (bind) y qué reglas deciden a qué backend va cada petición."
+      "named": "required"
     },
     "backend": {
       "color": "#fbbf24",
-      "named": "required",
-      "title": "Grupo de servidores",
-      "description": "Los servidores destino, cómo se reparte la carga entre ellos y cómo se comprueba su salud."
+      "named": "required"
     },
     "listen": {
       "color": "#4ade80",
-      "named": "required",
-      "title": "Entrada + servidores",
-      "description": "Frontend y backend en una sola sección. Típico para servicios TCP o la página de estadísticas."
+      "named": "required"
     },
     "resolvers": {
       "color": "#f472b6",
-      "named": "required",
-      "title": "Resolución DNS",
-      "description": "Servidores DNS que HAProxy consulta para resolver en caliente los nombres de los servidores."
+      "named": "required"
     },
     "peers": {
       "color": "#fb923c",
-      "named": "required",
-      "title": "Réplicas (peers)",
-      "description": "Otras instancias de HAProxy con las que sincronizar stick-tables (persistencia, rate limits)."
+      "named": "required"
     },
     "userlist": {
       "color": "#e879f9",
-      "named": "required",
-      "title": "Usuarios",
-      "description": "Usuarios y grupos para autenticación HTTP básica."
+      "named": "required"
     },
     "mailers": {
       "color": "#f472b6",
-      "named": "required",
-      "title": "Alertas por email",
-      "description": "Servidores SMTP para avisar de cambios de estado de los servidores."
+      "named": "required"
     },
     "cache": {
       "color": "#2dd4bf",
-      "named": "required",
-      "title": "Caché HTTP",
-      "description": "Caché en memoria para respuestas HTTP pequeñas y frecuentes."
+      "named": "required"
     },
     "http-errors": {
       "color": "#f87171",
-      "named": "required",
-      "title": "Páginas de error",
-      "description": "Conjunto reutilizable de páginas de error personalizadas."
+      "named": "required"
     },
     "ring": {
       "color": "#94a3b8",
-      "named": "required",
-      "title": "Buffer de logs",
-      "description": "Buffer circular en memoria para logs o trazas."
+      "named": "required"
     },
     "program": {
       "color": "#94a3b8",
-      "named": "required",
-      "title": "Programa externo",
-      "description": "Proceso externo que el maestro de HAProxy arranca y supervisa."
+      "named": "required"
     }
   },
   "directives": {
@@ -100,15 +58,13 @@
       "sections": [
         "global"
       ],
-      "category": "proc",
-      "description": "Ejecuta HAProxy en segundo plano (como demonio)."
+      "category": "proc"
     },
     "master-worker": {
       "sections": [
         "global"
       ],
-      "category": "proc",
-      "description": "Modo master-worker: un proceso maestro supervisa a los workers y permite recargas sin cortes."
+      "category": "proc"
     },
     "user": {
       "sections": [
@@ -128,29 +84,25 @@
       "sections": [
         "global"
       ],
-      "category": "proc",
-      "description": "UID numérico con el que corre el proceso."
+      "category": "proc"
     },
     "gid": {
       "sections": [
         "global"
       ],
-      "category": "proc",
-      "description": "GID numérico con el que corre el proceso."
+      "category": "proc"
     },
     "chroot": {
       "sections": [
         "global"
       ],
-      "category": "sec",
-      "description": "Encierra el proceso en un directorio (chroot) para limitar el daño de una intrusión:"
+      "category": "sec"
     },
     "pidfile": {
       "sections": [
         "global"
       ],
-      "category": "proc",
-      "description": "Fichero donde se escribe el PID:"
+      "category": "proc"
     },
     "nbthread": {
       "sections": [
@@ -162,8 +114,7 @@
       "sections": [
         "global"
       ],
-      "category": "perf",
-      "description": "Fija hilos a núcleos de CPU concretos:"
+      "category": "perf"
     },
     "hard-stop-after": {
       "sections": [
@@ -175,29 +126,25 @@
       "sections": [
         "global"
       ],
-      "category": "tls",
-      "description": "Directorio base para las rutas relativas de ficheros CA:"
+      "category": "tls"
     },
     "crt-base": {
       "sections": [
         "global"
       ],
-      "category": "tls",
-      "description": "Directorio base para las rutas relativas de certificados:"
+      "category": "tls"
     },
     "ssl-default-bind-ciphers": {
       "sections": [
         "global"
       ],
-      "category": "tls",
-      "description": "Cifrados para TLS ≤ 1.2 en todos los bind con ssl."
+      "category": "tls"
     },
     "ssl-default-bind-ciphersuites": {
       "sections": [
         "global"
       ],
-      "category": "tls",
-      "description": "Cifrados para TLS 1.3 en todos los bind con ssl."
+      "category": "tls"
     },
     "ssl-default-bind-options": {
       "sections": [
@@ -209,15 +156,13 @@
       "sections": [
         "global"
       ],
-      "category": "tls",
-      "description": "Cifrados para TLS ≤ 1.2 hacia los servidores."
+      "category": "tls"
     },
     "ssl-default-server-ciphersuites": {
       "sections": [
         "global"
       ],
-      "category": "tls",
-      "description": "Cifrados para TLS 1.3 hacia los servidores."
+      "category": "tls"
     },
     "ssl-default-server-options": {
       "sections": [
@@ -229,57 +174,49 @@
       "sections": [
         "global"
       ],
-      "category": "tls",
-      "description": "Fichero de parámetros Diffie-Hellman:"
+      "category": "tls"
     },
     "ssl-server-verify": {
       "sections": [
         "global"
       ],
-      "category": "tls",
-      "description": "Si se verifican por defecto los certificados de los servidores:"
+      "category": "tls"
     },
     "lua-load": {
       "sections": [
         "global"
       ],
-      "category": "misc",
-      "description": "Carga un script Lua al arrancar:"
+      "category": "misc"
     },
     "lua-prepend-path": {
       "sections": [
         "global"
       ],
-      "category": "misc",
-      "description": "Añade una ruta de búsqueda para módulos Lua:"
+      "category": "misc"
     },
     "setenv": {
       "sections": [
         "global"
       ],
-      "category": "proc",
-      "description": "Define una variable de entorno:"
+      "category": "proc"
     },
     "presetenv": {
       "sections": [
         "global"
       ],
-      "category": "proc",
-      "description": "Define una variable de entorno si no existe ya:"
+      "category": "proc"
     },
     "server-state-file": {
       "sections": [
         "global"
       ],
-      "category": "proc",
-      "description": "Fichero donde se guarda el estado de los servidores entre recargas:"
+      "category": "proc"
     },
     "server-state-base": {
       "sections": [
         "global"
       ],
-      "category": "proc",
-      "description": "Directorio base de los ficheros de estado:"
+      "category": "proc"
     },
     "spread-checks": {
       "sections": [
@@ -291,29 +228,25 @@
       "sections": [
         "global"
       ],
-      "category": "sec",
-      "description": "Permite crear procesos hijos (checks externos, Lua). Reduce la seguridad."
+      "category": "sec"
     },
     "localpeer": {
       "sections": [
         "global"
       ],
-      "category": "proc",
-      "description": "Nombre de esta instancia dentro de la sección peers:"
+      "category": "proc"
     },
     "node": {
       "sections": [
         "global"
       ],
-      "category": "proc",
-      "description": "Nombre del nodo que aparece en estadísticas:"
+      "category": "proc"
     },
     "log-send-hostname": {
       "sections": [
         "global"
       ],
-      "category": "log",
-      "description": "Incluye el hostname en los mensajes syslog."
+      "category": "log"
     },
     "log-tag": {
       "sections": [
@@ -323,22 +256,19 @@
         "backend",
         "listen"
       ],
-      "category": "log",
-      "description": "Etiqueta de los mensajes de log:"
+      "category": "log"
     },
     "expose-experimental-directives": {
       "sections": [
         "global"
       ],
-      "category": "misc",
-      "description": "Permite usar directivas experimentales."
+      "category": "misc"
     },
     "h1-case-adjust": {
       "sections": [
         "global"
       ],
-      "category": "http",
-      "description": "Ajusta mayúsculas de una cabecera HTTP/1 concreta:"
+      "category": "http"
     },
     "mode": {
       "sections": [
@@ -401,8 +331,7 @@
         "backend",
         "listen"
       ],
-      "category": "srv",
-      "description": "Límite de carga relativa con hash consistente:"
+      "category": "srv"
     },
     "server": {
       "sections": [
@@ -433,8 +362,7 @@
         "backend",
         "listen"
       ],
-      "category": "srv",
-      "description": "Envía todo el tráfico a una única dirección (modo antiguo):"
+      "category": "srv"
     },
     "fullconn": {
       "sections": [
@@ -442,8 +370,7 @@
         "backend",
         "listen"
       ],
-      "category": "perf",
-      "description": "Conexiones a partir de las cuales los servidores alcanzan su maxconn dinámico:"
+      "category": "perf"
     },
     "maxconn": {
       "sections": [
@@ -460,8 +387,7 @@
         "frontend",
         "listen"
       ],
-      "category": "perf",
-      "description": "Cola del sistema para conexiones pendientes:"
+      "category": "perf"
     },
     "rate-limit": {
       "sections": [
@@ -485,8 +411,7 @@
         "backend",
         "listen"
       ],
-      "category": "health",
-      "description": "Casos en los que se reintenta la petición en otro servidor (reintentos de capa 7):"
+      "category": "health"
     },
     "timeout": {
       "sections": [
@@ -624,8 +549,7 @@
         "backend",
         "listen"
       ],
-      "category": "persist",
-      "description": "Persistencia especial:"
+      "category": "persist"
     },
     "force-persist": {
       "sections": [
@@ -660,8 +584,7 @@
         "frontend",
         "listen"
       ],
-      "category": "log",
-      "description": "Formato personalizado de cada línea de log."
+      "category": "log"
     },
     "log-format-sd": {
       "sections": [
@@ -669,8 +592,7 @@
         "frontend",
         "listen"
       ],
-      "category": "log",
-      "description": "Datos estructurados (RFC 5424) de cada línea de log."
+      "category": "log"
     },
     "error-log-format": {
       "sections": [
@@ -678,8 +600,7 @@
         "frontend",
         "listen"
       ],
-      "category": "log",
-      "description": "Formato de log para errores de conexión."
+      "category": "log"
     },
     "unique-id-format": {
       "sections": [
@@ -687,8 +608,7 @@
         "frontend",
         "listen"
       ],
-      "category": "log",
-      "description": "Formato del identificador único de cada petición:"
+      "category": "log"
     },
     "unique-id-header": {
       "sections": [
@@ -696,8 +616,7 @@
         "frontend",
         "listen"
       ],
-      "category": "log",
-      "description": "Cabecera con la que se envía el identificador único al servidor:"
+      "category": "log"
     },
     "capture": {
       "sections": [
@@ -711,8 +630,7 @@
         "frontend",
         "listen"
       ],
-      "category": "log",
-      "description": "Declara un hueco de captura:"
+      "category": "log"
     },
     "errorfile": {
       "sections": [
@@ -731,8 +649,7 @@
         "backend",
         "listen"
       ],
-      "category": "http",
-      "description": "Usa las páginas de error de una sección http-errors:"
+      "category": "http"
     },
     "errorloc": {
       "sections": [
@@ -741,8 +658,7 @@
         "backend",
         "listen"
       ],
-      "category": "http",
-      "description": "Redirige a otra URL en lugar de mostrar una página de error:"
+      "category": "http"
     },
     "errorloc302": {
       "sections": [
@@ -751,8 +667,7 @@
         "backend",
         "listen"
       ],
-      "category": "http",
-      "description": "Redirige (302) a otra URL en lugar de mostrar una página de error:"
+      "category": "http"
     },
     "errorloc303": {
       "sections": [
@@ -761,8 +676,7 @@
         "backend",
         "listen"
       ],
-      "category": "http",
-      "description": "Redirige (303) a otra URL en lugar de mostrar una página de error:"
+      "category": "http"
     },
     "http-error": {
       "sections": [
@@ -804,16 +718,14 @@
         "frontend",
         "listen"
       ],
-      "category": "health",
-      "description": "Ruta que siempre responde 200 (para sondas de balanceadores externos):"
+      "category": "health"
     },
     "monitor": {
       "sections": [
         "frontend",
         "listen"
       ],
-      "category": "health",
-      "description": "Condición para que monitor-uri responda fallo:"
+      "category": "health"
     },
     "description": {
       "sections": [
@@ -839,8 +751,7 @@
         "backend",
         "listen"
       ],
-      "category": "net",
-      "description": "IP de origen para conectar con los servidores:"
+      "category": "net"
     },
     "email-alert": {
       "sections": [
@@ -848,8 +759,7 @@
         "backend",
         "listen"
       ],
-      "category": "log",
-      "description": "Alertas por email al cambiar el estado de los servidores:"
+      "category": "log"
     },
     "load-server-state-from-file": {
       "sections": [
@@ -857,8 +767,7 @@
         "backend",
         "listen"
       ],
-      "category": "proc",
-      "description": "Carga el estado guardado de los servidores al recargar:"
+      "category": "proc"
     },
     "id": {
       "sections": [
@@ -866,8 +775,7 @@
         "backend",
         "listen"
       ],
-      "category": "misc",
-      "description": "Identificador numérico del proxy:"
+      "category": "misc"
     },
     "disabled": {
       "sections": [
@@ -875,8 +783,7 @@
         "backend",
         "listen"
       ],
-      "category": "misc",
-      "description": "Desactiva esta sección."
+      "category": "misc"
     },
     "enabled": {
       "sections": [
@@ -884,8 +791,7 @@
         "backend",
         "listen"
       ],
-      "category": "misc",
-      "description": "Activa esta sección."
+      "category": "misc"
     },
     "grace": {
       "sections": [
@@ -894,8 +800,7 @@
         "backend",
         "listen"
       ],
-      "category": "proc",
-      "description": "Tiempo de gracia antes de dejar de aceptar conexiones al parar:"
+      "category": "proc"
     },
     "http-send-name-header": {
       "sections": [
@@ -903,8 +808,7 @@
         "backend",
         "listen"
       ],
-      "category": "http",
-      "description": "Envía al servidor una cabecera con el nombre del servidor elegido:"
+      "category": "http"
     },
     "max-keep-alive-queue": {
       "sections": [
@@ -912,8 +816,7 @@
         "backend",
         "listen"
       ],
-      "category": "perf",
-      "description": "Cola máxima para reutilizar conexiones keep-alive:"
+      "category": "perf"
     },
     "nameserver": {
       "sections": [
@@ -925,15 +828,13 @@
       "sections": [
         "resolvers"
       ],
-      "category": "net",
-      "description": "Usa los servidores DNS de /etc/resolv.conf."
+      "category": "net"
     },
     "resolve_retries": {
       "sections": [
         "resolvers"
       ],
-      "category": "net",
-      "description": "Reintentos de cada consulta DNS antes de rendirse:"
+      "category": "net"
     },
     "hold": {
       "sections": [
@@ -945,8 +846,7 @@
       "sections": [
         "resolvers"
       ],
-      "category": "net",
-      "description": "Tamaño máximo de respuesta DNS aceptado (EDNS):"
+      "category": "net"
     },
     "peer": {
       "sections": [
@@ -982,207 +882,32 @@
       "sections": [
         "cache"
       ],
-      "category": "perf",
-      "description": "Tiene en cuenta la cabecera Vary al cachear:"
+      "category": "perf"
     },
     "max-secondary-entries": {
       "sections": [
         "cache"
       ],
-      "category": "perf",
-      "description": "Máximo de variantes por objeto (con Vary):"
+      "category": "perf"
     },
     "format": {
       "sections": [
         "ring"
       ],
-      "category": "log",
-      "description": "Formato de los mensajes del buffer:"
+      "category": "log"
     },
     "size": {
       "sections": [
         "ring"
       ],
-      "category": "log",
-      "description": "Tamaño del buffer circular:"
+      "category": "log"
     },
     "command": {
       "sections": [
         "program"
       ],
-      "category": "proc",
-      "description": "Comando que se ejecuta:"
+      "category": "proc"
     }
-  },
-  "options": {
-    "httplog": "**Logs HTTP** detallados (método, ruta, código, tiempos)",
-    "httpslog": "**Logs HTTP** detallados con datos TLS",
-    "tcplog": "**Logs TCP** detallados (tiempos, bytes, estado)",
-    "dontlognull": "No registra conexiones que no envían datos (sondas, escáneres)",
-    "dontlog": "No registra conexiones normales",
-    "forwardfor": "Añade la cabecera **X-Forwarded-For** con la IP real del cliente",
-    "http-server-close": "Cierra la conexión con el servidor tras cada respuesta (mantiene keep-alive con el cliente)",
-    "httpclose": "Cierra la conexión tras cada petición",
-    "http-keep-alive": "Keep-alive en ambos lados (por defecto)",
-    "redispatch": "Si el servidor elegido por persistencia está caído, reenvía la petición a otro",
-    "ssl-hello-chk": "Health checks con un saludo SSLv3",
-    "tcp-check": "Health checks TCP personalizados (reglas tcp-check)",
-    "abortonclose": "Cancela peticiones en cola si el cliente se va",
-    "log-health-checks": "Registra los cambios de estado de los health checks",
-    "allbackups": "Usa todos los servidores de respaldo a la vez",
-    "splice-auto": "Usa splice del kernel cuando conviene",
-    "http-buffer-request": "Espera el cuerpo de la petición antes de decidir el backend",
-    "tcpka": "TCP keep-alive en ambos lados",
-    "clitcpka": "TCP keep-alive con el cliente",
-    "srvtcpka": "TCP keep-alive con el servidor",
-    "logasap": "Registra la petición sin esperar a que termine",
-    "mysql-check": "Health checks de MySQL",
-    "pgsql-check": "Health checks de PostgreSQL",
-    "redis-check": "Health checks de Redis",
-    "smtpchk": "Health checks SMTP",
-    "ldap-check": "Health checks LDAP",
-    "spop-check": "Health checks SPOP",
-    "log-separate-errors": "Registra los errores con más prioridad",
-    "persist": "Mantiene la persistencia aunque el servidor caiga",
-    "prefer-last-server": "Intenta reutilizar el último servidor usado",
-    "nolinger": "Cierra conexiones sin esperar (sin linger)",
-    "accept-invalid-http-request": "⚠ Acepta peticiones HTTP no conformes",
-    "accept-invalid-http-response": "⚠ Acepta respuestas HTTP no conformes",
-    "originalto": "Añade la cabecera X-Original-To",
-    "socket-stats": "Estadísticas por socket de escucha",
-    "independent-streams": "Timeouts independientes por sentido",
-    "disable-h2-upgrade": "No permite actualizar a HTTP/2 en claro",
-    "h1-case-adjust-bogus-client": "Ajusta mayúsculas de cabeceras para clientes antiguos",
-    "h1-case-adjust-bogus-server": "Ajusta mayúsculas de cabeceras para servidores antiguos",
-    "http-ignore-probes": "Ignora conexiones de pre-conexión del navegador",
-    "http-no-delay": "Minimiza la latencia HTTP",
-    "http-pretend-keepalive": "Simula keep-alive con el servidor",
-    "http-restrict-req-hdr-names": "Restringe los nombres de cabecera válidos",
-    "idle-close-on-response": "Cierra conexiones ociosas al responder",
-    "contstats": "Estadísticas continuas",
-    "checkcache": "Evita cachear respuestas con cookies",
-    "external-check": "Health checks con un comando externo",
-    "transparent": "Conecta a la IP de destino original",
-    "tcp-smart-accept": "Optimiza el accept TCP",
-    "tcp-smart-connect": "Optimiza el connect TCP",
-    "dontlog-normal": "Solo registra errores"
-  },
-  "timeouts": {
-    "connect": "para establecer la conexión TCP con un servidor",
-    "client": "de inactividad del cliente",
-    "server": "esperando datos del servidor",
-    "http-request": "para recibir la petición HTTP completa (protege contra slowloris)",
-    "http-keep-alive": "esperando la siguiente petición en keep-alive",
-    "queue": "que una petición puede esperar en cola",
-    "check": "adicional para completar un health check",
-    "tunnel": "de inactividad en túneles (WebSocket, CONNECT)",
-    "client-fin": "de cierre del lado del cliente",
-    "server-fin": "de cierre del lado del servidor",
-    "tarpit": "que se retiene una petición en tarpit",
-    "resolve": "entre resoluciones DNS",
-    "retry": "antes de reintentar una consulta DNS",
-    "mail": "para enviar un email",
-    "connect_peers": "para conectar con los peers",
-    "peers": "para los peers"
-  },
-  "balance": {
-    "roundrobin": "**turno rotativo** ponderado por pesos (dinámico)",
-    "static-rr": "**turno rotativo estático**",
-    "leastconn": "al servidor con **menos conexiones activas** (ideal para sesiones largas)",
-    "first": "llena el primer servidor hasta su maxconn antes de pasar al siguiente",
-    "source": "**hash de la IP** del cliente: el mismo cliente va siempre al mismo servidor",
-    "uri": "**hash de la URI** (bueno para cachés)",
-    "url_param": "hash de un parámetro de la URL",
-    "random": "**aleatorio** (power of two choices)",
-    "rdp-cookie": "según la cookie RDP",
-    "hash": "hash de una expresión"
-  },
-  "fetches": {
-    "path": "la ruta",
-    "url": "la URL",
-    "base": "Host + ruta",
-    "query": "la query string",
-    "method": "el método HTTP",
-    "req.ver": "la versión HTTP",
-    "req.len": "el tamaño de la petición",
-    "req.body": "el cuerpo de la petición",
-    "src": "la IP de origen",
-    "dst": "la IP de destino",
-    "dst_port": "el puerto de destino",
-    "src_port": "el puerto de origen",
-    "so_id": "el id del socket",
-    "ssl_fc": "la conexión entrante es TLS",
-    "ssl_fc_sni": "el SNI TLS",
-    "req.ssl_sni": "el SNI TLS",
-    "req_ssl_sni": "el SNI TLS",
-    "ssl_c_used": "el cliente presentó certificado",
-    "ssl_c_verify": "el resultado de verificar el certificado cliente",
-    "ssl_fc_protocol": "la versión TLS",
-    "req.ssl_ver": "la versión TLS",
-    "status": "el código de estado",
-    "src_conn_rate": "el ritmo de conexiones de esa IP",
-    "src_conn_cur": "las conexiones abiertas de esa IP",
-    "src_http_req_rate": "el ritmo de peticiones de esa IP",
-    "src_http_err_rate": "el ritmo de errores de esa IP",
-    "sc0_http_req_rate": "el ritmo de peticiones del cliente",
-    "sc1_http_req_rate": "el ritmo de peticiones del cliente (contador 1)",
-    "sc0_conn_cur": "las conexiones abiertas del cliente",
-    "sc0_conn_rate": "el ritmo de conexiones del cliente",
-    "sc0_http_err_rate": "el ritmo de errores del cliente",
-    "sc0_gpc0": "el contador gpc0 del cliente",
-    "fe_conn": "las conexiones del frontend",
-    "always_true": "siempre",
-    "always_false": "nunca",
-    "req.proto_http": "la petición es HTTP",
-    "capture": "la captura"
-  },
-  "matchers": {
-    "": "es",
-    "str": "es",
-    "beg": "empieza por",
-    "end": "termina en",
-    "sub": "contiene",
-    "reg": "cumple la regex",
-    "dom": "contiene el dominio",
-    "dir": "contiene el segmento",
-    "len": "tiene longitud",
-    "found": "existe",
-    "ip": "está en",
-    "int": "vale",
-    "bool": "es verdadero",
-    "cnt": "aparece"
-  },
-  "operators": {
-    "gt": "mayor que",
-    "ge": "mayor o igual que",
-    "lt": "menor que",
-    "le": "menor o igual que",
-    "eq": "igual a"
-  },
-  "store": {
-    "http_req_rate": "ritmo de peticiones",
-    "http_req_cnt": "nº de peticiones",
-    "http_err_rate": "ritmo de errores",
-    "http_err_cnt": "nº de errores",
-    "conn_cur": "conexiones abiertas",
-    "conn_rate": "ritmo de conexiones",
-    "conn_cnt": "nº de conexiones",
-    "sess_rate": "ritmo de sesiones",
-    "sess_cnt": "nº de sesiones",
-    "bytes_in_rate": "tráfico de entrada",
-    "bytes_out_rate": "tráfico de salida",
-    "gpc0": "contador gpc0",
-    "gpc0_rate": "ritmo de gpc0",
-    "gpc": "contadores gpc",
-    "server_id": "servidor asignado",
-    "glitch_rate": "ritmo de anomalías"
-  },
-  "redirectCodes": {
-    "301": "permanente",
-    "302": "temporal",
-    "303": "ver otro",
-    "307": "temporal, conserva el método",
-    "308": "permanente, conserva el método"
   },
   "booleanFetches": [
     "ssl_fc",

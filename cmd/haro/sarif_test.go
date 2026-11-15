@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pkarc/haro/core"
@@ -19,7 +20,7 @@ func TestSARIF(t *testing.T) {
 	srcs := []core.Source{{Path: "a.cfg", Text: "frontend f\n    bind *:80\n    default_backend nope\n"}, {Path: filepath.Join(os.TempDir(), "fuera.cfg"), Text: "global\n"}}
 	issues := core.Lint(core.NewConfig(srcs).Merge())
 	var buf bytes.Buffer
-	if err := writeSARIF(&buf, srcs, issues); err != nil {
+	if err := writeSARIF(&buf, srcs, issues, core.LangES); err != nil {
 		t.Fatal(err)
 	}
 	var log struct {
@@ -75,7 +76,7 @@ func TestSARIF(t *testing.T) {
 	}
 	// Sin problemas, results es [] y no null.
 	buf.Reset()
-	writeSARIF(&buf, srcs[:1], nil)
+	writeSARIF(&buf, srcs[:1], nil, core.LangES)
 	if !bytes.Contains(buf.Bytes(), []byte(`"results": []`)) {
 		t.Errorf("results vacío debe ser []: %s", buf.String())
 	}
@@ -96,5 +97,21 @@ func TestMarkdownSummary(t *testing.T) {
 	writeMarkdown(&buf, srcs, nil)
 	if !bytes.Contains(buf.Bytes(), []byte("Sin problemas")) {
 		t.Errorf("sin problemas: %s", buf.String())
+	}
+}
+
+func TestSARIFLang(t *testing.T) {
+	srcs := []core.Source{{Path: "a.cfg", Text: "frontend f\n    bind *:80\n    default_backend nope\n"}}
+	issues := core.LintLang(core.NewConfig(srcs).Merge(), core.LangEN)
+	var buf bytes.Buffer
+	if err := writeSARIF(&buf, srcs, issues, core.LangEN); err != nil {
+		t.Fatal(err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "Reference to a backend that does not exist") || !strings.Contains(out, "does not exist.") {
+		t.Errorf("SARIF en inglés debe traer reglas y mensajes en inglés:\n%s", out)
+	}
+	if strings.Contains(out, "Referencia a un backend") {
+		t.Error("restos de español en el SARIF en inglés")
 	}
 }

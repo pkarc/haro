@@ -68,6 +68,10 @@ func (c *Config) Serialize(i int) string {
 
 // AnalyzeConfig analiza una configuración de varios archivos. Las líneas de
 // problemas y explicaciones son relativas a su archivo (campo File).
-func AnalyzeConfig(sources []Source) Analysis {
-	return analyzeDoc(NewConfig(sources).Merge())
+// Los textos salen en español; para otro idioma, usa AnalyzeConfigLang.
+func AnalyzeConfig(sources []Source) Analysis { return AnalyzeConfigLang(sources, LangES) }
+
+// AnalyzeConfigLang es AnalyzeConfig con los textos en el idioma pedido.
+func AnalyzeConfigLang(sources []Source, lang Lang) Analysis {
+	return analyzeDoc(NewConfig(sources).Merge(), lang)
 }

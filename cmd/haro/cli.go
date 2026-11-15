@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/pkarc/haro/core"
@@ -75,6 +76,24 @@ func (s style) sev(sev core.Severity) string {
 	}
 }
 
+// ---------- idioma ----------
+
+// langFlag registra --lang en fs. El valor por defecto sale del entorno
+// (LC_ALL, LC_MESSAGES, LANG); resolve lo convierte en core.Lang.
+func langFlag(fs *flag.FlagSet) *string {
+	return fs.String("lang", "", "idioma de las explicaciones y mensajes del detector: es | en (por defecto, según LC_ALL/LANG)")
+}
+
+func resolveLang(v string) (core.Lang, error) {
+	if v == "" {
+		return core.LangFromEnv(), nil
+	}
+	if l, ok := core.ParseLang(v); ok {
+		return l, nil
+	}
+	return "", fmt.Errorf("idioma desconocido %q (usa es o en)", v)
+}
+
 // ---------- lint ----------
 
 func runLint(args []string) error {
@@ -84,16 +103,27 @@ func runLint(args []string) error {
 	strict := fs.Bool("strict", false, "termina con código 1 también si hay avisos")
 	noColor := fs.Bool("no-color", false, "sin colores")
 	listRules := fs.Bool("rules", false, "lista las reglas disponibles y sale")
+	langArg := langFlag(fs)
 	fs.Usage = func() {
 		fmt.Fprintln(fs.Output(), "Uso: haro lint [opciones] [archivo|directorio|-]...")
 		fmt.Fprintln(fs.Output(), "Varios archivos o directorios se analizan juntos, en el orden de carga de haproxy -f.")
 		fs.PrintDefaults()
 	}
 	fs.Parse(args)
+	lang, err := resolveLang(*langArg)
+	if err != nil {
+		return err
+	}
 	st := newStyle(*noColor)
 	if *listRules {
-		for id, d := range core.Rules {
-			fmt.Printf("%-18s %s\n", id, d)
+		rules := core.RulesFor(lang)
+		ids := make([]string, 0, len(rules))
+		for id := range rules {
+			ids = append(ids, id)
+		}
+		sort.Strings(ids)
+		for _, id := range ids {
+			fmt.Printf("%-18s %s\n", id, rules[id])
 		}
 		return nil
 	}
@@ -111,7 +141,7 @@ func runLint(args []string) error {
 		}
 	}
 	var issues []core.Issue
-	for _, i := range core.Lint(core.NewConfig(srcs).Merge()) {
+	for _, i := range core.LintLang(core.NewConfig(srcs).Merge(), lang) {
 		if !off[i.Rule] {
 			issues = append(issues, i)
 		}
@@ -124,7 +154,7 @@ func runLint(args []string) error {
 		counts[i.Severity]++
 	}
 	if *format == "sarif" {
-		if err := writeSARIF(os.Stdout, srcs, issues); err != nil {
+		if err := writeSARIF(os.Stdout, srcs, issues, lang); err != nil {
 			return err
 		}
 	} else if *format == "markdown" {
@@ -179,16 +209,22 @@ func runExplain(args []string) error {
 	noColor := fs.Bool("no-color", false, "sin colores")
 	section := fs.String("section", "", "explica solo la sección con este nombre o tipo")
 	format := fs.String("format", "text", "formato de salida: text | json")
+	langArg := langFlag(fs)
 	fs.Usage = func() {
 		fmt.Fprintln(fs.Output(), "Uso: haro explain [opciones] [archivo|directorio|-]...")
 		fs.PrintDefaults()
 	}
 	fs.Parse(args)
+	lang, err := resolveLang(*langArg)
+	if err != nil {
+		return err
+	}
 	srcs, err := readSources(fs.Args())
 	if err != nil {
 		return err
 	}
-	a := core.AnalyzeConfig(srcs)
+	a := core.AnalyzeConfigLang(srcs, lang)
+	text := core.KB.Text(lang)
 	if *format == "json" {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
@@ -213,7 +249,8 @@ func runExplain(args []string) error {
 		if *section != "" && s.Name != *section && s.Type != *section {
 			continue
 		}
-		info := core.Sections[s.Type]
+		info := core.KB.Sections[s.Type]
+		info.Title, info.Description = text.Sections[s.Type].Title, text.Sections[s.Type].Description
 		head := st.bold(s.Type)
 		if s.Name != "" {
 			head += " " + st.bold(s.Name)
@@ -232,7 +269,7 @@ func runExplain(args []string) error {
 				continue
 			}
 			e := exByLine[key{s.File, l.Line}]
-			cat := core.KB.Categories[e.Explain.Category]
+			cat := text.Categories[e.Explain.Category]
 			fmt.Printf("\n  %s %s %s\n", st.dim(fmt.Sprintf("%4d", l.Line)), st.cyan(l.Keyword), e.Args)
 			fmt.Printf("       %s %s\n", st.dim("["+cat+"]"), st.rich(e.Explain.Text))
 			for _, i := range byLine[key{s.File, l.Line}] {

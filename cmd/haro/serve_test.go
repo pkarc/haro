@@ -298,13 +298,87 @@ func TestRPCContract(t *testing.T) {
 		t.Fatalf("faltan casos: %d", len(cases))
 	}
 	for _, srcs := range cases {
-		a := core.AnalyzeConfig(srcs)
-		out, err := toProto(a, &harov1.Analysis{})
+		for _, lang := range core.Langs {
+			a := core.AnalyzeConfigLang(srcs, lang)
+			out, err := toProto(a, &harov1.Analysis{})
+			if err != nil {
+				t.Fatalf("%s (%s): %v", srcs[0].Path, lang, err)
+			}
+			if len(out.Issues) != len(a.Issues) || len(out.Doc.Sections) != len(a.Doc.Sections) || len(out.Explanations) != len(a.Explanations) {
+				t.Errorf("%s (%s): la conversión perdió datos", srcs[0].Path, lang)
+			}
+		}
+	}
+	for _, lang := range core.Langs {
+		if _, err := toProto(core.KB.PublicFor(lang), &harov1.Knowledge{}); err != nil {
+			t.Errorf("conocimiento (%s): %v", lang, err)
+		}
+	}
+}
+
+func TestAnalyzeLang(t *testing.T) {
+	c := newTestServer(t, &server{})
+	text := "frontend f\n    bind *:80\n    option forwardfor\n    default_backend nope\n"
+	analyze := func(lang string) (*harov1.Analysis, error) {
+		res, err := c.core.Analyze(context.Background(), connect.NewRequest(&harov1.AnalyzeRequest{Text: text, Lang: lang}))
 		if err != nil {
-			t.Fatalf("%s: %v", srcs[0].Path, err)
+			return nil, err
 		}
-		if len(out.Issues) != len(a.Issues) || len(out.Doc.Sections) != len(a.Doc.Sections) || len(out.Explanations) != len(a.Explanations) {
-			t.Errorf("%s: la conversión perdió datos", srcs[0].Path)
+		return res.Msg, nil
+	}
+	find := func(a *harov1.Analysis, kw string) string {
+		for _, e := range a.Explanations {
+			if e.Keyword == kw {
+				return e.Explanation.Text
+			}
 		}
+		return ""
+	}
+	en, err := analyze("en")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := find(en, "option"); !strings.Contains(got, "client's real IP") {
+		t.Errorf("explicación en inglés: %q", got)
+	}
+	foundMsg := false
+	for _, i := range en.Issues {
+		if i.Rule == "backend-missing" && i.Message == "The backend “nope” does not exist." {
+			foundMsg = true
+		}
+	}
+	if !foundMsg {
+		t.Errorf("mensaje del detector en inglés: %+v", en.Issues)
+	}
+	for _, lang := range []string{"", "es"} {
+		es, err := analyze(lang)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := find(es, "option"); !strings.Contains(got, "IP real del cliente") {
+			t.Errorf("lang=%q debe ser español: %q", lang, got)
+		}
+	}
+	for _, bad := range []string{"fr", "klingon", "e"} {
+		if _, err := analyze(bad); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("lang=%q debería ser InvalidArgument, fue %v", bad, err)
+		}
+	}
+	// Conocimiento por idioma.
+	kn := func(lang string) *harov1.Knowledge {
+		res, err := c.core.GetKnowledge(context.Background(), connect.NewRequest(&harov1.GetKnowledgeRequest{Lang: lang}))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return res.Msg
+	}
+	if k := kn("en"); k.Categories["net"] != "Network" || k.Sections["frontend"].Title != "Traffic entry point" || k.Rules["no-bind"] == "" || k.Directives["daemon"].Description == "" {
+		t.Errorf("conocimiento en inglés: %v / %v", k.Categories, k.Sections["frontend"])
+	}
+	if k := kn(""); k.Categories["net"] != "Red" || k.Sections["frontend"].Title != "Entrada de tráfico" {
+		t.Errorf("el conocimiento por defecto debe ser español: %v", k.Categories)
+	}
+	if _, err := c.core.GetKnowledge(context.Background(), connect.NewRequest(&harov1.GetKnowledgeRequest{Lang: "xx"})); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("idioma desconocido en GetKnowledge: %v", err)
 	}
 }

@@ -20,6 +20,7 @@ func runTUI(args []string) error {
 	fs := flag.NewFlagSet("tui", flag.ExitOnError)
 	noColor := fs.Bool("no-color", false, "sin colores (también con NO_COLOR)")
 	noWatch := fs.Bool("no-watch", false, "no recargar al cambiar los archivos")
+	langArg := langFlag(fs)
 	editor := fs.String("editor", "", "editor para la tecla e (por defecto $VISUAL o $EDITOR)")
 	fs.Usage = func() {
 		fmt.Fprintln(fs.Output(), "Uso: haro tui [opciones] [archivo|directorio]...")
@@ -27,6 +28,10 @@ func runTUI(args []string) error {
 		fs.PrintDefaults()
 	}
 	fs.Parse(args)
+	lang, err := resolveLang(*langArg)
+	if err != nil {
+		return err
+	}
 	paths := fs.Args()
 	for _, p := range paths {
 		if p == "-" {
@@ -40,5 +45,5 @@ func runTUI(args []string) error {
 	if _, err := load(); err != nil { // falla antes de abrir la pantalla si no hay nada que leer
 		return fmt.Errorf("no se pudo leer la configuración: %w\nIndica la ruta: haro tui archivo.cfg", err)
 	}
-	return tui.Run(tui.Options{Load: load, Dirs: paths, Editor: *editor, NoColor: *noColor, NoWatch: *noWatch})
+	return tui.Run(tui.Options{Load: load, Dirs: paths, Editor: *editor, Lang: lang, NoColor: *noColor, NoWatch: *noWatch})
 }

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import type { CoreClient } from '../core/client'
-import type { Analysis, Capabilities, Knowledge, Op, PutResult, SourceFile } from '../core/types'
+import { browserLang, type Analysis, type Capabilities, type Knowledge, type Lang, type Op, type PutResult, type SourceFile } from '../core/types'
 import { applyChanges, dirtyIndexes, sameFiles } from './files'
 import { SAMPLE_FILES } from './sample'
 
@@ -31,6 +31,8 @@ export interface AppState {
   /** `rev` de los archivos con los que se calculó `analysis`; si no coincide con `rev`, está atrasado. */
   analysisRev: number
   knowledge: Knowledge | null
+  /** Idioma de las explicaciones y de los mensajes del detector (la interfaz sigue en español). */
+  lang: Lang
   capabilities: Capabilities | null
   ready: boolean
   mode: Mode
@@ -52,6 +54,7 @@ export interface AppState {
   applyOps(ops: Op[]): Promise<boolean>
   undo(): void
   redo(): void
+  setLang(l: Lang): Promise<void>
   setMode(m: Mode): void
   setShowAssistant(v: boolean): void
   saveVersion(label: string): void
@@ -134,6 +137,7 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
       analysisError: '',
       analysisRev: -1,
       knowledge: null,
+      lang: browserLang(),
       capabilities: null,
       ready: false,
       mode: 'visual',
@@ -149,7 +153,7 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
       async init() {
         const [caps, kn, served] = await Promise.all([
           client.capabilities().catch(() => null),
-          client.knowledge().catch(() => null),
+          client.knowledge(get().lang).catch(() => null),
           client.getConfig().catch(() => null),
         ])
         set({ capabilities: caps, knowledge: kn })
@@ -223,6 +227,16 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
         set({ redoStack: s.redoStack.slice(0, -1), undoStack: [...s.undoStack, s.files] })
         commit(next, { record: false })
         set(st => ({ active: Math.min(st.active, st.files.length - 1) }))
+      },
+
+      // Cambia el idioma de los textos del núcleo: recarga el conocimiento y
+      // vuelve a analizar. Si el conocimiento no llega, se conserva el anterior.
+      async setLang(l) {
+        if (get().lang === l) return
+        set({ lang: l })
+        get().refreshAnalysis(true)
+        const kn = await client.knowledge(l).catch(() => null)
+        if (kn && get().lang === l) set({ knowledge: kn })
       },
 
       setMode(m) { set({ mode: m, showAssistant: false }) },
@@ -301,7 +315,7 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
         const run = () => {
           const id = ++requestId
           const { files, rev } = get()
-          client.analyze(files).then(
+          client.analyze(files, get().lang).then(
             a => { if (id === requestId) set({ analysis: a, analysisError: '', analysisRev: rev }) },
             e => { if (id === requestId) set({ analysisError: (e as Error).message }) },
           )
@@ -314,7 +328,7 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
     name: opts.storageKey ?? 'haro.v1',
     version: 1,
     storage: createJSONStorage(() => opts.storage ?? browserStorage()),
-    partialize: s => ({ files: s.files, active: s.active, disk: s.disk, mode: s.mode, versions: s.versions, ui: s.ui }),
+    partialize: s => ({ lang: s.lang, files: s.files, active: s.active, disk: s.disk, mode: s.mode, versions: s.versions, ui: s.ui }),
     // Validar lo guardado: un localStorage corrupto no debe romper la app.
     merge: (persisted, current) => {
       const p = persisted as Partial<AppState> | undefined
@@ -324,6 +338,7 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
         files: p.files,
         active: Math.min(Math.max(p.active ?? 0, 0), p.files.length - 1),
         disk: Array.isArray(p.disk) ? p.disk : null,
+        lang: p.lang === 'en' || p.lang === 'es' ? p.lang : current.lang,
         mode: p.mode === 'code' ? 'code' : 'visual',
         versions: Array.isArray(p.versions) ? p.versions : [],
         ui: { ...current.ui, ...(p.ui ?? {}) },

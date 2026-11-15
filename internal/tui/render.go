@@ -61,13 +61,14 @@ func wrapIndent(prefix, text string, width int) []string {
 // renderDetail devuelve las líneas del panel de detalle de la sección si y la
 // fila de la línea resaltada (-1 si no hay): cabecera, modo efectivo, y cada
 // directiva con su explicación y los problemas de esa línea.
-func renderDetail(a core.Analysis, si int, hl *lineRef, st styles, width int) (rows []string, hlRow int) {
+func renderDetail(a core.Analysis, lang core.Lang, si int, hl *lineRef, st styles, width int) (rows []string, hlRow int) {
 	hlRow = -1
 	if si < 0 || si >= len(a.Doc.Sections) {
 		return nil, hlRow
 	}
 	s := a.Doc.Sections[si]
-	info := core.KB.Sections[s.Type]
+	kt := core.KB.Text(lang)
+	info := kt.Sections[s.Type]
 	head := sectionColor(s.Type).Bold(true).Render(strings.TrimSpace(s.Type + " " + s.Name))
 	if info.Title != "" {
 		head += "  " + st.dim.Render(info.Title)
@@ -116,7 +117,7 @@ func renderDetail(a core.Analysis, si int, hl *lineRef, st styles, width int) (r
 		}
 		rows = append(rows, wrap(line, width)...)
 		if e, ok := ex[k]; ok {
-			label := core.KB.Categories[e.Explain.Category]
+			label := kt.Categories[e.Explain.Category]
 			prefix := "       "
 			if label != "" {
 				prefix += st.tag.Render("[" + label + "] ")

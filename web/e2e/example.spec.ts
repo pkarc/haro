@@ -102,3 +102,21 @@ test('añadir sección desde plantilla', async ({ page }) => {
   await page.getByRole('dialog').getByRole('button', { name: 'Añadir' }).click()
   await expect(page.getByTestId('section')).toHaveCount(9)
 })
+
+test('idioma: cambiar a English reanaliza y las explicaciones salen en inglés', async ({ page }) => {
+  const maxconn = page.getByTestId('directive').filter({ hasText: 'maxconn 4096' }).first()
+  await expect(maxconn).toContainText('Máximo de conexiones simultáneas')
+  await page.getByRole('button', { name: 'Ajustes' }).click()
+  await page.getByLabel('Idioma de las explicaciones').selectOption('en')
+  await page.getByRole('dialog').getByRole('button', { name: 'Cerrar', exact: true }).first().click()
+  await expect(maxconn).toContainText('Maximum simultaneous connections for the whole process')
+  await expect(maxconn).not.toContainText('Máximo')
+  // También los mensajes del detector y el texto de las secciones (conocimiento recargado).
+  await page.getByTestId('problems-button').click()
+  await expect(page.getByTestId('problem')).toContainText('looks like a placeholder')
+  await expect(page.getByTestId('section').first()).toContainText('Process-wide HAProxy settings')
+  // La interfaz sigue en español y la elección sobrevive a una recarga.
+  await expect(page.getByRole('button', { name: 'Exportar' })).toBeVisible()
+  await page.reload()
+  await expect(page.getByTestId('directive').filter({ hasText: 'maxconn 4096' }).first()).toContainText('Maximum simultaneous connections')
+})

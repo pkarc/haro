@@ -1,0 +1,1387 @@
+{
+  "issues": [
+    {
+      "rule": "misplaced",
+      "file": 0,
+      "severity": "warn",
+      "line": 19,
+      "section": 0,
+      "message": "«description» no es válida en una sección global."
+    },
+    {
+      "rule": "backend-missing",
+      "file": 0,
+      "severity": "error",
+      "line": 142,
+      "section": 6,
+      "message": "El backend «api_be» no existe."
+    },
+    {
+      "rule": "tls-no-verify",
+      "file": 0,
+      "severity": "info",
+      "line": 161,
+      "section": 7,
+      "message": "El servidor «a2» usa TLS sin verificar el certificado."
+    },
+    {
+      "rule": "weak-stats-auth",
+      "file": 0,
+      "severity": "info",
+      "line": 188,
+      "section": 8,
+      "message": "La contraseña de la página de estadísticas parece de ejemplo. Cámbiala."
+    },
+    {
+      "rule": "misplaced",
+      "file": 0,
+      "severity": "warn",
+      "line": 193,
+      "section": 8,
+      "message": "«user» no es válida en una sección listen."
+    }
+  ],
+  "explanations": [
+    {
+      "line": 3,
+      "keyword": "log",
+      "args": "stdout format raw local0 info",
+      "text": "Envía logs a la salida estándar · facility `local0` · solo nivel `info` o más grave",
+      "known": true
+    },
+    {
+      "line": 4,
+      "keyword": "log",
+      "args": "ring@buf local1",
+      "text": "Envía logs al buffer `buf` · facility `local1`",
+      "known": true
+    },
+    {
+      "line": 5,
+      "keyword": "log",
+      "args": "10.0.0.5:514 local2",
+      "text": "Envía logs al syslog `10.0.0.5:514` · facility `local2`",
+      "known": true
+    },
+    {
+      "line": 6,
+      "keyword": "log",
+      "args": "stderr local3",
+      "text": "Envía logs a la salida de error · facility `local3`",
+      "known": true
+    },
+    {
+      "line": 7,
+      "keyword": "maxconn",
+      "args": "20000",
+      "text": "Máximo de conexiones simultáneas de todo el proceso: **20000**",
+      "known": true
+    },
+    {
+      "line": 8,
+      "keyword": "nbthread",
+      "args": "4",
+      "text": "Usa **4** hilos de trabajo",
+      "known": true
+    },
+    {
+      "line": 9,
+      "keyword": "hard-stop-after",
+      "args": "30s",
+      "text": "Al recargar, corta las conexiones antiguas tras **30 s** como máximo",
+      "known": true
+    },
+    {
+      "line": 10,
+      "keyword": "stats",
+      "args": "socket /run/haproxy.sock mode 660 level admin expose-fd listeners",
+      "text": "Socket de administración en socket Unix `/run/haproxy.sock`, permisos de fichero `660` con **permisos de administrador**, permite recargas sin cortes",
+      "known": true
+    },
+    {
+      "line": 11,
+      "keyword": "stats",
+      "args": "socket ipv4@127.0.0.1:9999 level user",
+      "text": "Socket de administración en `127.0.0.1`, puerto `9999` (nivel `user`)",
+      "known": true
+    },
+    {
+      "line": 12,
+      "keyword": "stats",
+      "args": "timeout 1m",
+      "text": "Timeout del socket de estadísticas: **1 min**",
+      "known": true
+    },
+    {
+      "line": 13,
+      "keyword": "ssl-default-bind-options",
+      "args": "ssl-min-ver TLSv1.2 no-sslv3 force-tlsv13 prefer-client-ciphers weird-opt",
+      "text": "Opciones TLS por defecto en los bind: TLS mínimo `TLSv1.2`, sin SSLv3, solo TLS 1.3, prefiere los cifrados del cliente, `weird-opt`",
+      "known": true
+    },
+    {
+      "line": 14,
+      "keyword": "ssl-default-server-options",
+      "args": "ssl-max-ver TLSv1.3 no-tlsv10",
+      "text": "Opciones TLS por defecto hacia servidores: TLS máximo `TLSv1.3`, sin TLS 1.0",
+      "known": true
+    },
+    {
+      "line": 15,
+      "keyword": "ssl-default-bind-ciphers",
+      "args": "ECDHE-RSA-AES128-GCM-SHA256",
+      "text": "Cifrados para TLS ≤ 1.2 en todos los bind con ssl.",
+      "known": true
+    },
+    {
+      "line": 16,
+      "keyword": "tune.ssl.cachesize",
+      "args": "100000",
+      "text": "Ajuste fino interno de rendimiento (`ssl.cachesize` = `100000`)",
+      "known": true
+    },
+    {
+      "line": 17,
+      "keyword": "ssl-engine",
+      "args": "rdrand",
+      "text": "Ajuste global `ssl-engine`",
+      "known": true
+    },
+    {
+      "line": 18,
+      "keyword": "lua-load",
+      "args": "/etc/haproxy/x.lua",
+      "text": "Carga un script Lua al arrancar: `/etc/haproxy/x.lua`",
+      "known": true
+    },
+    {
+      "line": 19,
+      "keyword": "description",
+      "args": "Coverage case",
+      "text": "Descripción: Coverage case",
+      "known": true
+    },
+    {
+      "line": 20,
+      "keyword": "mystery-global",
+      "args": "1",
+      "text": "Directiva que haro no reconoce (puede ser válida en tu versión; revisa la documentación).",
+      "known": false
+    },
+    {
+      "line": 23,
+      "keyword": "group",
+      "args": "admins users alice",
+      "text": "Grupo **admins** con los usuarios `alice`",
+      "known": true
+    },
+    {
+      "line": 24,
+      "keyword": "user",
+      "args": "alice password •••••• groups admins",
+      "text": "Usuario **alice** · contraseña cifrada · grupos `admins`",
+      "known": true
+    },
+    {
+      "line": 25,
+      "keyword": "user",
+      "args": "bob insecure-password ••••••",
+      "text": "Usuario **bob** · ⚠ contraseña en texto plano",
+      "known": true
+    },
+    {
+      "line": 28,
+      "keyword": "nameserver",
+      "args": "ns1 8.8.8.8:53",
+      "text": "Servidor DNS **ns1** en `8.8.8.8:53`",
+      "known": true
+    },
+    {
+      "line": 29,
+      "keyword": "parse-resolv-conf",
+      "args": "",
+      "text": "Usa los servidores DNS de /etc/resolv.conf.",
+      "known": true
+    },
+    {
+      "line": 32,
+      "keyword": "bind",
+      "args": ":10000",
+      "text": "Esta instancia peer escucha en todas las interfaces, puerto `10000`",
+      "known": true
+    },
+    {
+      "line": 33,
+      "keyword": "server",
+      "args": "peer1 10.0.0.1:10000",
+      "text": "Peer **peer1** en `10.0.0.1:10000`",
+      "known": true
+    },
+    {
+      "line": 36,
+      "keyword": "mode",
+      "args": "http",
+      "text": "**Modo HTTP** (capa 7): HAProxy interpreta peticiones, cabeceras y rutas, y puede aplicar reglas sobre ellas.",
+      "known": true
+    },
+    {
+      "line": 37,
+      "keyword": "maxconn",
+      "args": "3000",
+      "text": "Máximo de conexiones simultáneas por defecto en cada entrada: **3000**",
+      "known": true
+    },
+    {
+      "line": 38,
+      "keyword": "retries",
+      "args": "3",
+      "text": "Reintentos de conexión a un servidor antes de fallar: **3**",
+      "known": true
+    },
+    {
+      "line": 39,
+      "keyword": "log",
+      "args": "global",
+      "text": "Usa los destinos de log definidos en `global`",
+      "known": true
+    },
+    {
+      "line": 40,
+      "keyword": "option",
+      "args": "httplog",
+      "text": "**Logs HTTP** detallados (método, ruta, código, tiempos)",
+      "known": true
+    },
+    {
+      "line": 41,
+      "keyword": "option",
+      "args": "dontlognull",
+      "text": "No registra conexiones que no envían datos (sondas, escáneres)",
+      "known": true
+    },
+    {
+      "line": 42,
+      "keyword": "no",
+      "args": "option httpclose",
+      "text": "**Desactiva:** Cierra la conexión tras cada petición",
+      "known": true
+    },
+    {
+      "line": 43,
+      "keyword": "no",
+      "args": "option unknownopt",
+      "text": "**Desactiva:** `unknownopt`",
+      "known": false
+    },
+    {
+      "line": 44,
+      "keyword": "no",
+      "args": "frobnicate",
+      "text": "Desactiva `frobnicate`",
+      "known": false
+    },
+    {
+      "line": 45,
+      "keyword": "option",
+      "args": "customthing arg",
+      "text": "Opción `customthing arg`",
+      "known": false
+    },
+    {
+      "line": 46,
+      "keyword": "option",
+      "args": "httpchk GET /health",
+      "text": "Health checks **HTTP**: envía `GET /health` a cada servidor en lugar de solo abrir TCP",
+      "known": true
+    },
+    {
+      "line": 47,
+      "keyword": "timeout",
+      "args": "connect 5s",
+      "text": "Tiempo máximo para establecer la conexión TCP con un servidor: **5 s**",
+      "known": true
+    },
+    {
+      "line": 48,
+      "keyword": "timeout",
+      "args": "client 30s",
+      "text": "Tiempo máximo de inactividad del cliente: **30 s**",
+      "known": true
+    },
+    {
+      "line": 49,
+      "keyword": "timeout",
+      "args": "server 1m",
+      "text": "Tiempo máximo esperando datos del servidor: **1 min**",
+      "known": true
+    },
+    {
+      "line": 50,
+      "keyword": "timeout",
+      "args": "http-request 10s",
+      "text": "Tiempo máximo para recibir la petición HTTP completa (protege contra slowloris): **10 s**",
+      "known": true
+    },
+    {
+      "line": 51,
+      "keyword": "timeout",
+      "args": "made-up 2s",
+      "text": "Tiempo máximo `made-up`: **2 s**",
+      "known": false
+    },
+    {
+      "line": 52,
+      "keyword": "default-server",
+      "args": "inter 3s fall 3 rise 2 maxconn 100",
+      "text": "Opciones por defecto para todos los `server`: check cada **3 s** · se marca caído tras **3** fallos · vuelve a estar sano tras **2** checks OK · máx. **100** conexiones",
+      "known": true
+    },
+    {
+      "line": 53,
+      "keyword": "errorfile",
+      "args": "503 /etc/haproxy/errors/503.http",
+      "text": "Página personalizada para el error **503** desde `/etc/haproxy/errors/503.http`",
+      "known": true
+    },
+    {
+      "line": 54,
+      "keyword": "hash-type",
+      "args": "consistent",
+      "text": "**Hash consistente**: al quitar o añadir un servidor solo se reasignan sus clientes",
+      "known": true
+    },
+    {
+      "line": 57,
+      "keyword": "total-max-size",
+      "args": "64",
+      "text": "Directiva que haro no reconoce (puede ser válida en tu versión; revisa la documentación).",
+      "known": false
+    },
+    {
+      "line": 58,
+      "keyword": "process-vary",
+      "args": "on",
+      "text": "Tiene en cuenta la cabecera Vary al cachear: `on`",
+      "known": true
+    },
+    {
+      "line": 61,
+      "keyword": "bind",
+      "args": ":80",
+      "text": "Escucha en todas las interfaces, puerto `80`",
+      "known": true
+    },
+    {
+      "line": 62,
+      "keyword": "bind",
+      "args": ":::443 v4v6 ssl crt /etc/ssl/a.pem crt-list /etc/ssl/list alpn h2,http/1.1 ssl-min-ver TLSv1.2 strict-sni verify required ca-file /etc/ssl/ca.pem accept-proxy name https",
+      "text": "Escucha en todas las interfaces (IPv4 + IPv6), puerto `443` · IPv4 e IPv6 · **TLS / HTTPS** · certificado `/etc/ssl/a.pem` · lista de certificados `/etc/ssl/list` · ALPN `h2,http/1.1` (habilita HTTP/2) · TLS mínimo `TLSv1.2` · rechaza SNI sin certificado · **exige certificado de cliente** (mTLS) · CA de clientes `/etc/ssl/ca.pem` · acepta protocolo PROXY · nombre `https`",
+      "known": true
+    },
+    {
+      "line": 63,
+      "keyword": "bind",
+      "args": "quic4@:443 ssl crt /etc/ssl/a.pem alpn h3",
+      "text": "Escucha en todas las interfaces, puerto `443` (QUIC / HTTP/3) · **TLS / HTTPS** · certificado `/etc/ssl/a.pem` · ALPN `h3`",
+      "known": true
+    },
+    {
+      "line": 64,
+      "keyword": "bind",
+      "args": "unix@/run/web.sock mode 600 user haproxy",
+      "text": "Escucha en socket Unix `/run/web.sock` · permisos `600` · `user haproxy`",
+      "known": true
+    },
+    {
+      "line": 65,
+      "keyword": "bind",
+      "args": "abns@web level admin",
+      "text": "Escucha en socket abstracto `web` · nivel `admin`",
+      "known": true
+    },
+    {
+      "line": 66,
+      "keyword": "bind",
+      "args": "fd@3 v6only transparent verify optional interface eth0 level user",
+      "text": "Escucha en descriptor `3` · solo IPv6 · modo transparente · certificado de cliente opcional · solo en la interfaz `eth0` · nivel `user`",
+      "known": true
+    },
+    {
+      "line": 67,
+      "keyword": "bind",
+      "args": "",
+      "text": "Escucha en (sin dirección)",
+      "known": true
+    },
+    {
+      "line": 68,
+      "keyword": "stick-table",
+      "args": "type ip size 100k expire 30s store http_req_rate(10s),conn_cur,gpc0,unknownstore peers mypeers",
+      "text": "Tabla de seguimiento: clave `ip`, 100k entradas, caducan a los **30 s** · guarda ritmo de peticiones (10s), conexiones abiertas, contador gpc0, unknownstore · replicada con `mypeers`",
+      "known": true
+    },
+    {
+      "line": 69,
+      "keyword": "acl",
+      "args": "is_api path_beg /api",
+      "text": "Define la condición `is_api`: la ruta empieza por `/api`",
+      "known": true
+    },
+    {
+      "line": 70,
+      "keyword": "acl",
+      "args": "is_static path_end .css .js",
+      "text": "Define la condición `is_static`: la ruta termina en `.css` o `.js`",
+      "known": true
+    },
+    {
+      "line": 71,
+      "keyword": "acl",
+      "args": "is_host hdr(host) -i example.com",
+      "text": "Define la condición `is_host`: el Host es `example.com` (sin distinguir mayúsculas)",
+      "known": true
+    },
+    {
+      "line": 72,
+      "keyword": "acl",
+      "args": "is_dom hdr_dom(host) example.com",
+      "text": "Define la condición `is_dom`: el Host contiene el dominio `example.com`",
+      "known": true
+    },
+    {
+      "line": 73,
+      "keyword": "acl",
+      "args": "has_cookie cook(session) -m found",
+      "text": "Define la condición `has_cookie`: la cookie `session` existe",
+      "known": true
+    },
+    {
+      "line": 74,
+      "keyword": "acl",
+      "args": "has_param urlp(id) -m found",
+      "text": "Define la condición `has_param`: el parámetro `id` de la URL existe",
+      "known": true
+    },
+    {
+      "line": 75,
+      "keyword": "acl",
+      "args": "big_body req.len gt 1000",
+      "text": "Define la condición `big_body`: el tamaño de la petición es mayor que **1000**",
+      "known": true
+    },
+    {
+      "line": 76,
+      "keyword": "acl",
+      "args": "many sc_conn_cur(1) ge 10",
+      "text": "Define la condición `many`: las conexiones abiertas del cliente (contador 1) es mayor o igual que **10**",
+      "known": true
+    },
+    {
+      "line": 77,
+      "keyword": "acl",
+      "args": "lowrate src_http_req_rate lt 5",
+      "text": "Define la condición `lowrate`: el ritmo de peticiones de esa IP es menor que **5**",
+      "known": true
+    },
+    {
+      "line": 78,
+      "keyword": "acl",
+      "args": "local src -f /etc/haproxy/allow.lst",
+      "text": "Define la condición `local`: la IP de origen está en la lista del fichero `/etc/haproxy/allow.lst`",
+      "known": true
+    },
+    {
+      "line": 79,
+      "keyword": "acl",
+      "args": "bymap hdr(host) -M /etc/haproxy/hosts.map",
+      "text": "Define la condición `bymap`: el Host está en el mapa `/etc/haproxy/hosts.map`",
+      "known": true
+    },
+    {
+      "line": 80,
+      "keyword": "acl",
+      "args": "bylist path -f /etc/haproxy/paths.lst",
+      "text": "Define la condición `bylist`: la ruta coincide con la lista del fichero `/etc/haproxy/paths.lst`",
+      "known": true
+    },
+    {
+      "line": 81,
+      "keyword": "acl",
+      "args": "regex path_reg ^/v[0-9]+/",
+      "text": "Define la condición `regex`: la ruta cumple la regex `^/v[0-9]+/`",
+      "known": true
+    },
+    {
+      "line": 82,
+      "keyword": "acl",
+      "args": "tls ssl_fc",
+      "text": "Define la condición `tls`: la conexión entrante es TLS",
+      "known": true
+    },
+    {
+      "line": 83,
+      "keyword": "acl",
+      "args": "alwaystrue always_true",
+      "text": "Define la condición `alwaystrue`: siempre",
+      "known": true
+    },
+    {
+      "line": 84,
+      "keyword": "acl",
+      "args": "lenacl path_len gt 100",
+      "text": "Define la condición `lenacl`: la ruta es mayor que **100**",
+      "known": true
+    },
+    {
+      "line": 85,
+      "keyword": "acl",
+      "args": "ver req.ver -m str 1.1",
+      "text": "Define la condición `ver`: la versión HTTP es `1.1`",
+      "known": true
+    },
+    {
+      "line": 86,
+      "keyword": "acl",
+      "args": "resp res.hdr(content-type) -m sub json",
+      "text": "Define la condición `resp`: la cabecera de respuesta `content-type` contiene `json`",
+      "known": true
+    },
+    {
+      "line": 87,
+      "keyword": "acl",
+      "args": "weirdfetch my_custom_fetch(a) -m beg x",
+      "text": "Define la condición `weirdfetch`: `my_custom_fetch(a)` empieza por `x`",
+      "known": true
+    },
+    {
+      "line": 88,
+      "keyword": "acl",
+      "args": "weirdnofetch my_other",
+      "text": "Define la condición `weirdnofetch`: `my_other`",
+      "known": true
+    },
+    {
+      "line": 89,
+      "keyword": "acl",
+      "args": "hasvar var(txn.x) -m found",
+      "text": "Define la condición `hasvar`: la variable `txn.x` existe",
+      "known": true
+    },
+    {
+      "line": 90,
+      "keyword": "acl",
+      "args": "envacl env(HOME) -m str /root",
+      "text": "Define la condición `envacl`: la variable de entorno `HOME` es `/root`",
+      "known": true
+    },
+    {
+      "line": 91,
+      "keyword": "acl",
+      "args": "servers_up nbsrv(web_be) lt 1",
+      "text": "Define la condición `servers_up`: el nº de servidores activos en `web_be` es menor que **1**",
+      "known": true
+    },
+    {
+      "line": 92,
+      "keyword": "acl",
+      "args": "authed http_auth(team)",
+      "text": "Define la condición `authed`: hay credenciales válidas de `team`",
+      "known": true
+    },
+    {
+      "line": 93,
+      "keyword": "acl",
+      "args": "conns be_conn(web_be) gt 10",
+      "text": "Define la condición `conns`: las conexiones del backend `web_be` es mayor que **10**",
+      "known": true
+    },
+    {
+      "line": 94,
+      "keyword": "acl",
+      "args": "fhdr req.fhdr(x-a) -m str 1",
+      "text": "Define la condición `fhdr`: la cabecera `x-a` es `1`",
+      "known": true
+    },
+    {
+      "line": 95,
+      "keyword": "http-request",
+      "args": "track-sc0 src table web",
+      "text": "Petición: Cuenta al cliente en la stick-table (contador 0) usando `src` de `web`",
+      "known": true
+    },
+    {
+      "line": 96,
+      "keyword": "http-request",
+      "args": "track-sc1 hdr(x-id)",
+      "text": "Petición: Cuenta al cliente en la stick-table (contador 1) usando `hdr(x-id)`",
+      "known": true
+    },
+    {
+      "line": 97,
+      "keyword": "http-request",
+      "args": "deny deny_status 429 if many !local",
+      "text": "Petición: **Rechaza** la petición (429) — si `many` y **no** `local`",
+      "known": true
+    },
+    {
+      "line": 98,
+      "keyword": "http-request",
+      "args": "deny if { src_http_req_rate gt 10 } || { path_beg /admin }",
+      "text": "Petición: **Rechaza** la petición (403) — si «el ritmo de peticiones de esa IP es mayor que **10**» o «la ruta empieza por `/admin`»",
+      "known": true
+    },
+    {
+      "line": 99,
+      "keyword": "http-request",
+      "args": "deny unless authed",
+      "text": "Petición: **Rechaza** la petición (403) — salvo si `authed`",
+      "known": true
+    },
+    {
+      "line": 100,
+      "keyword": "http-request",
+      "args": "allow if local",
+      "text": "Petición: Permite y deja de evaluar reglas — si `local`",
+      "known": true
+    },
+    {
+      "line": 101,
+      "keyword": "http-request",
+      "args": "auth realm \"Restricted\" unless authed",
+      "text": "Petición: Pide usuario y contraseña (HTTP Basic) · realm `Restricted` — salvo si `authed`",
+      "known": true
+    },
+    {
+      "line": 102,
+      "keyword": "http-request",
+      "args": "tarpit",
+      "text": "Petición: Retiene y luego rechaza (tarpit, frena abusos)",
+      "known": true
+    },
+    {
+      "line": 103,
+      "keyword": "http-request",
+      "args": "reject",
+      "text": "Petición: **Corta** la conexión sin responder",
+      "known": true
+    },
+    {
+      "line": 104,
+      "keyword": "http-request",
+      "args": "silent-drop",
+      "text": "Petición: Descarta la conexión en silencio",
+      "known": true
+    },
+    {
+      "line": 105,
+      "keyword": "http-request",
+      "args": "set-header X-Forwarded-Proto https if tls",
+      "text": "Petición: Fija la cabecera `X-Forwarded-Proto` = `https` — si `tls`",
+      "known": true
+    },
+    {
+      "line": 106,
+      "keyword": "http-request",
+      "args": "add-header X-Test 1",
+      "text": "Petición: Añade la cabecera `X-Test`: `1`",
+      "known": true
+    },
+    {
+      "line": 107,
+      "keyword": "http-request",
+      "args": "del-header X-Powered-By",
+      "text": "Petición: Elimina la cabecera `X-Powered-By`",
+      "known": true
+    },
+    {
+      "line": 108,
+      "keyword": "http-request",
+      "args": "replace-header Cookie a=(.*) b=\\1",
+      "text": "Petición: Reescribe la cabecera `Cookie` (`a=(.*)` → `b=1`)",
+      "known": true
+    },
+    {
+      "line": 109,
+      "keyword": "http-request",
+      "args": "set-path /new",
+      "text": "Petición: Cambia la ruta a `/new`",
+      "known": true
+    },
+    {
+      "line": 110,
+      "keyword": "http-request",
+      "args": "replace-path ^/old/(.*) /new/\\1",
+      "text": "Petición: Reescribe la ruta (`^/old/(.*)` → `/new/1`)",
+      "known": true
+    },
+    {
+      "line": 111,
+      "keyword": "http-request",
+      "args": "set-uri /u",
+      "text": "Petición: Cambia la URI a `/u`",
+      "known": true
+    },
+    {
+      "line": 112,
+      "keyword": "http-request",
+      "args": "set-query a=b",
+      "text": "Petición: Cambia la query string a `a=b`",
+      "known": true
+    },
+    {
+      "line": 113,
+      "keyword": "http-request",
+      "args": "set-method GET",
+      "text": "Petición: Cambia el método a `GET`",
+      "known": true
+    },
+    {
+      "line": 114,
+      "keyword": "http-request",
+      "args": "set-var(txn.host) hdr(host),lower",
+      "text": "Petición: Guarda en la variable `txn.host` `hdr(host),lower`",
+      "known": true
+    },
+    {
+      "line": 115,
+      "keyword": "http-request",
+      "args": "unset-var(txn.host)",
+      "text": "Petición: Borra la variable `txn.host`",
+      "known": true
+    },
+    {
+      "line": 116,
+      "keyword": "http-request",
+      "args": "cache-use assets",
+      "text": "Petición: Sirve desde la caché `assets` si la tiene",
+      "known": true
+    },
+    {
+      "line": 117,
+      "keyword": "http-request",
+      "args": "capture req.hdr(host) len 20",
+      "text": "Petición: Captura `req.hdr(host)` para los logs",
+      "known": true
+    },
+    {
+      "line": 118,
+      "keyword": "http-request",
+      "args": "set-log-level silent",
+      "text": "Petición: Cambia el nivel de log a `silent`",
+      "known": true
+    },
+    {
+      "line": 119,
+      "keyword": "http-request",
+      "args": "use-service prometheus-exporter if { path /metrics }",
+      "text": "Petición: Responde con el servicio `prometheus-exporter` — si «la ruta es `/metrics`»",
+      "known": true
+    },
+    {
+      "line": 120,
+      "keyword": "http-request",
+      "args": "wait-for-body time 5s",
+      "text": "Petición: Espera a recibir el cuerpo de la petición",
+      "known": true
+    },
+    {
+      "line": 121,
+      "keyword": "http-request",
+      "args": "set-timeout client 30s",
+      "text": "Petición: Ajusta el timeout `client` a **30 s**",
+      "known": true
+    },
+    {
+      "line": 122,
+      "keyword": "http-request",
+      "args": "set-src hdr(x-forwarded-for)",
+      "text": "Petición: Usa como IP de origen `hdr(x-forwarded-for)`",
+      "known": true
+    },
+    {
+      "line": 123,
+      "keyword": "http-request",
+      "args": "disable-l7-retry",
+      "text": "Petición: Desactiva los reintentos de capa 7",
+      "known": true
+    },
+    {
+      "line": 124,
+      "keyword": "http-request",
+      "args": "return status 200 content-type text/plain string ok",
+      "text": "Petición: Responde directamente con estado **200**",
+      "known": true
+    },
+    {
+      "line": 125,
+      "keyword": "http-request",
+      "args": "lua.myaction",
+      "text": "Petición: Ejecuta la acción Lua `myaction`",
+      "known": true
+    },
+    {
+      "line": 126,
+      "keyword": "http-request",
+      "args": "accept",
+      "text": "Petición: Acepta",
+      "known": true
+    },
+    {
+      "line": 127,
+      "keyword": "http-request",
+      "args": "do-weird thing",
+      "text": "Petición: Acción `do-weird` `thing`",
+      "known": true
+    },
+    {
+      "line": 128,
+      "keyword": "http-request",
+      "args": "do-other",
+      "text": "Petición: Acción `do-other`",
+      "known": true
+    },
+    {
+      "line": 129,
+      "keyword": "http-response",
+      "args": "set-status 200",
+      "text": "Respuesta: Cambia el código de estado a **200**",
+      "known": true
+    },
+    {
+      "line": 130,
+      "keyword": "http-response",
+      "args": "cache-store assets",
+      "text": "Respuesta: Guarda la respuesta en la caché `assets`",
+      "known": true
+    },
+    {
+      "line": 131,
+      "keyword": "http-response",
+      "args": "set-header Strict-Transport-Security max-age=31536000",
+      "text": "Respuesta: Fija la cabecera `Strict-Transport-Security` = `max-age=31536000`",
+      "known": true
+    },
+    {
+      "line": 132,
+      "keyword": "http-after-response",
+      "args": "set-header X-Done 1",
+      "text": "Respuesta final: Fija la cabecera `X-Done` = `1`",
+      "known": true
+    },
+    {
+      "line": 133,
+      "keyword": "tcp-request",
+      "args": "inspect-delay 5s",
+      "text": "Espera hasta **5 s** para poder inspeccionar el contenido TCP",
+      "known": true
+    },
+    {
+      "line": 134,
+      "keyword": "tcp-request",
+      "args": "content accept if { req.ssl_ver gt 2 }",
+      "text": "Contenido TCP: Acepta — si «la versión TLS es mayor que **2**»",
+      "known": true
+    },
+    {
+      "line": 135,
+      "keyword": "tcp-request",
+      "args": "connection reject if { src -f /etc/haproxy/bad.lst }",
+      "text": "Conexión TCP: **Corta** la conexión sin responder — si «la IP de origen está en la lista del fichero `/etc/haproxy/bad.lst`»",
+      "known": true
+    },
+    {
+      "line": 136,
+      "keyword": "tcp-request",
+      "args": "session expect-proxy",
+      "text": "Sesión TCP: Espera el protocolo PROXY",
+      "known": true
+    },
+    {
+      "line": 137,
+      "keyword": "tcp-request",
+      "args": "other",
+      "text": "TCP: Acción ``",
+      "known": true
+    },
+    {
+      "line": 138,
+      "keyword": "redirect",
+      "args": "scheme https code 301 unless tls",
+      "text": "Redirige a **HTTPS** (301 permanente) — salvo si `tls`",
+      "known": true
+    },
+    {
+      "line": 139,
+      "keyword": "redirect",
+      "args": "location https://example.com/ code 307 drop-query",
+      "text": "Redirige a `https://example.com/` (307 temporal, conserva el método), sin la query string",
+      "known": true
+    },
+    {
+      "line": 140,
+      "keyword": "redirect",
+      "args": "prefix https://www.example.com code 999",
+      "text": "Redirige anteponiendo `https://www.example.com` (999)",
+      "known": true
+    },
+    {
+      "line": 141,
+      "keyword": "redirect",
+      "args": "other",
+      "text": "Redirige",
+      "known": true
+    },
+    {
+      "line": 142,
+      "keyword": "use_backend",
+      "args": "api_be if is_api",
+      "text": "Envía al backend **api_be** — si `is_api`",
+      "known": true
+    },
+    {
+      "line": 143,
+      "keyword": "use_backend",
+      "args": "%[req.hdr(host),lower,map(/etc/haproxy/hosts.map,def)]",
+      "text": "Envía al backend que resulte de evaluar `%[req.hdr(host),lower,map(/etc/haproxy/hosts.map,def)]` (enrutado dinámico)",
+      "known": true
+    },
+    {
+      "line": 144,
+      "keyword": "default_backend",
+      "args": "web_be",
+      "text": "Backend por defecto: **web_be** — recibe todo lo que no coincide con ninguna regla `use_backend`",
+      "known": true
+    },
+    {
+      "line": 145,
+      "keyword": "capture",
+      "args": "request header Host len 32",
+      "text": "Directiva que haro no reconoce (puede ser válida en tu versión; revisa la documentación).",
+      "known": false
+    },
+    {
+      "line": 146,
+      "keyword": "monitor-uri",
+      "args": "/healthz",
+      "text": "Ruta que siempre responde 200 (para sondas de balanceadores externos): `/healthz`",
+      "known": true
+    },
+    {
+      "line": 147,
+      "keyword": "option",
+      "args": "forwardfor",
+      "text": "Añade la cabecera **X-Forwarded-For** con la IP real del cliente",
+      "known": true
+    },
+    {
+      "line": 148,
+      "keyword": "option",
+      "args": "abortonclose",
+      "text": "Cancela peticiones en cola si el cliente se va",
+      "known": true
+    },
+    {
+      "line": 149,
+      "keyword": "log-format",
+      "args": "\"%ci:%cp\"",
+      "text": "Formato personalizado de cada línea de log.",
+      "known": true
+    },
+    {
+      "line": 150,
+      "keyword": "unique-id-format",
+      "args": "%{+X}o\\ %ci",
+      "text": "Formato del identificador único de cada petición: `%{+X}o %ci`",
+      "known": true
+    },
+    {
+      "line": 153,
+      "keyword": "balance",
+      "args": "roundrobin",
+      "text": "Reparto de carga: **turno rotativo** ponderado por pesos (dinámico)",
+      "known": true
+    },
+    {
+      "line": 154,
+      "keyword": "balance",
+      "args": "leastconn",
+      "text": "Reparto de carga: al servidor con **menos conexiones activas** (ideal para sesiones largas)",
+      "known": true
+    },
+    {
+      "line": 155,
+      "keyword": "balance",
+      "args": "hdr(X-User)",
+      "text": "Reparto: **hash de la cabecera** `X-User`",
+      "known": true
+    },
+    {
+      "line": 156,
+      "keyword": "balance",
+      "args": "url_param userid",
+      "text": "Reparto: hash del parámetro de URL `userid`",
+      "known": true
+    },
+    {
+      "line": 157,
+      "keyword": "balance",
+      "args": "weird",
+      "text": "Reparto de carga: `weird`",
+      "known": false
+    },
+    {
+      "line": 158,
+      "keyword": "balance",
+      "args": "source",
+      "text": "Reparto de carga: **hash de la IP** del cliente: el mismo cliente va siempre al mismo servidor",
+      "known": true
+    },
+    {
+      "line": 159,
+      "keyword": "cookie",
+      "args": "SERVERID insert indirect nocache httponly secure rewrite prefix",
+      "text": "Persistencia por cookie **SERVERID** · HAProxy la crea · reescribe la del servidor · prefija la del servidor · no se reenvía al servidor · evita que se cachee · HttpOnly · Secure — el cliente vuelve siempre al mismo servidor",
+      "known": true
+    },
+    {
+      "line": 160,
+      "keyword": "server",
+      "args": "a1 10.0.0.1:80 check inter 2s fastinter 1s downinter 5s rise 2 fall 3 weight 10 backup maxconn 50 maxqueue 10",
+      "text": "Servidor **a1** en `10.0.0.1:80` · health checks activos · check cada **2 s** · check cada **1 s** mientras cambia de estado · check cada **5 s** si está caído · vuelve a estar sano tras **2** checks OK · se marca caído tras **3** fallos · peso **10** · **respaldo**: solo recibe tráfico si caen los demás · máx. **50** conexiones · cola máx. **10**",
+      "known": true
+    },
+    {
+      "line": 161,
+      "keyword": "server",
+      "args": "a2 10.0.0.2:443 ssl verify none ca-file /etc/ssl/ca.pem sni str(example.com) cookie a2 send-proxy disabled",
+      "text": "Servidor **a2** en `10.0.0.2:443` · conexión **TLS** hacia el servidor · ⚠ sin verificar su certificado · CA `/etc/ssl/ca.pem` · SNI `str(example.com)` · valor de cookie `a2` · envía protocolo PROXY (IP real del cliente) · **deshabilitado**",
+      "known": true
+    },
+    {
+      "line": 162,
+      "keyword": "server",
+      "args": "a3 10.0.0.3:443 ssl verify required resolvers dns init-addr last,libc slowstart 30s port 8081 addr 10.0.1.1 check-ssl agent-check on-marked-down shutdown-sessions proto h2 alpn h2 track other/s1 non-stick no-check weirdopt 5",
+      "text": "Servidor **a3** en `10.0.0.3:443` · conexión **TLS** hacia el servidor · verificación TLS `required` · resuelve su nombre por DNS con `dns` · resolución al arrancar: `last,libc` · arranque progresivo durante **30 s** · checks al puerto `8081` · checks a `10.0.1.1` · checks por TLS · agent-check activo · al caer: `shutdown-sessions` · protocolo `h2` · ALPN `h2` · copia el estado de `other/s1` · excluido de la persistencia · sin health checks · `weirdopt` · `5`",
+      "known": true
+    },
+    {
+      "line": 163,
+      "keyword": "server-template",
+      "args": "srv 1-3 app.local:8080 check",
+      "text": "Genera **3** servidores `srv1`…`srv3` a partir de `app.local:8080` · health checks activos",
+      "known": true
+    },
+    {
+      "line": 164,
+      "keyword": "server-template",
+      "args": "one 2 app.local:8080",
+      "text": "Genera **2** servidores `one1`…`one2` a partir de `app.local:8080`",
+      "known": true
+    },
+    {
+      "line": 165,
+      "keyword": "http-check",
+      "args": "connect",
+      "text": "El check abre una conexión",
+      "known": true
+    },
+    {
+      "line": 166,
+      "keyword": "http-check",
+      "args": "send meth GET uri /health",
+      "text": "El check envía `GET /health`",
+      "known": true
+    },
+    {
+      "line": 167,
+      "keyword": "http-check",
+      "args": "expect status 200",
+      "text": "El check es correcto si responde con estado **200**",
+      "known": true
+    },
+    {
+      "line": 168,
+      "keyword": "http-check",
+      "args": "expect !rstatus ^5",
+      "text": "El check es correcto si **no** el estado cumple `^5`",
+      "known": true
+    },
+    {
+      "line": 169,
+      "keyword": "http-check",
+      "args": "expect string OK",
+      "text": "El check es correcto si el cuerpo contiene `OK`",
+      "known": true
+    },
+    {
+      "line": 170,
+      "keyword": "http-check",
+      "args": "expect rstring up",
+      "text": "El check es correcto si el cuerpo cumple `up`",
+      "known": true
+    },
+    {
+      "line": 171,
+      "keyword": "http-check",
+      "args": "expect weird",
+      "text": "El check es correcto si `weird`",
+      "known": true
+    },
+    {
+      "line": 172,
+      "keyword": "http-check",
+      "args": "disable-on-404",
+      "text": "Si el check recibe 404, el servidor pasa a modo drenaje (no recibe nuevos clientes)",
+      "known": true
+    },
+    {
+      "line": 173,
+      "keyword": "http-check",
+      "args": "other",
+      "text": "Check HTTP: `other`",
+      "known": true
+    },
+    {
+      "line": 174,
+      "keyword": "stick-table",
+      "args": "type string len 32 size 1m expire 1d",
+      "text": "Tabla de seguimiento: clave `string`, 1m entradas, caducan a los **1 días**",
+      "known": true
+    },
+    {
+      "line": 175,
+      "keyword": "option",
+      "args": "httpchk",
+      "text": "Health checks **HTTP**: envía `OPTIONS /` a cada servidor en lugar de solo abrir TCP",
+      "known": true
+    },
+    {
+      "line": 176,
+      "keyword": "option",
+      "args": "httpchk HEAD /ping",
+      "text": "Health checks **HTTP**: envía `HEAD /ping` a cada servidor en lugar de solo abrir TCP",
+      "known": true
+    },
+    {
+      "line": 177,
+      "keyword": "option",
+      "args": "httpchk GET /x HTTP/1.1",
+      "text": "Health checks **HTTP**: envía `GET /x` a cada servidor en lugar de solo abrir TCP",
+      "known": true
+    },
+    {
+      "line": 178,
+      "keyword": "retry-on",
+      "args": "all-retryable-errors",
+      "text": "Casos en los que se reintenta la petición en otro servidor (reintentos de capa 7): `all-retryable-errors`",
+      "known": true
+    },
+    {
+      "line": 179,
+      "keyword": "source",
+      "args": "10.0.0.9",
+      "text": "IP de origen para conectar con los servidores: `10.0.0.9`",
+      "known": true
+    },
+    {
+      "line": 180,
+      "keyword": "dispatch",
+      "args": "10.0.0.10:80",
+      "text": "Envía todo el tráfico a una única dirección (modo antiguo): `10.0.0.10:80`",
+      "known": true
+    },
+    {
+      "line": 183,
+      "keyword": "bind",
+      "args": ":8404",
+      "text": "Escucha en todas las interfaces, puerto `8404`",
+      "known": true
+    },
+    {
+      "line": 184,
+      "keyword": "mode",
+      "args": "http",
+      "text": "**Modo HTTP** (capa 7): HAProxy interpreta peticiones, cabeceras y rutas, y puede aplicar reglas sobre ellas.",
+      "known": true
+    },
+    {
+      "line": 185,
+      "keyword": "stats",
+      "args": "enable",
+      "text": "Activa la **página web de estadísticas**",
+      "known": true
+    },
+    {
+      "line": 186,
+      "keyword": "stats",
+      "args": "uri /stats",
+      "text": "Página de estadísticas en la ruta `/stats`",
+      "known": true
+    },
+    {
+      "line": 187,
+      "keyword": "stats",
+      "args": "realm \"Haro Stats\"",
+      "text": "Texto del diálogo de login: `Haro Stats`",
+      "known": true
+    },
+    {
+      "line": 188,
+      "keyword": "stats",
+      "args": "auth admin:••••••",
+      "text": "Protegida con el usuario **admin** y contraseña",
+      "known": true
+    },
+    {
+      "line": 189,
+      "keyword": "stats",
+      "args": "refresh 10s",
+      "text": "La página se recarga cada **10 s**",
+      "known": true
+    },
+    {
+      "line": 190,
+      "keyword": "stats",
+      "args": "admin if LOCALHOST",
+      "text": "Permite acciones de administración desde la web — si `LOCALHOST`",
+      "known": true
+    },
+    {
+      "line": 191,
+      "keyword": "stats",
+      "args": "hide-version",
+      "text": "Oculta la versión de HAProxy en la página",
+      "known": true
+    },
+    {
+      "line": 192,
+      "keyword": "stats",
+      "args": "unknown-sub x",
+      "text": "Estadísticas: `unknown-sub x`",
+      "known": false
+    },
+    {
+      "line": 193,
+      "keyword": "user",
+      "args": "haproxy",
+      "text": "Ejecuta HAProxy como el usuario **haproxy**",
+      "known": true
+    }
+  ],
+  "topology": {
+    "entries": [
+      {
+        "section": 6,
+        "type": "frontend",
+        "name": "web",
+        "binds": [
+          {
+            "address": ":80",
+            "tls": false
+          },
+          {
+            "address": ":::443",
+            "tls": true
+          },
+          {
+            "address": "quic4@:443",
+            "tls": true
+          },
+          {
+            "address": "unix@/run/web.sock",
+            "tls": false
+          },
+          {
+            "address": "abns@web",
+            "tls": false
+          },
+          {
+            "address": "fd@3",
+            "tls": false
+          },
+          {
+            "address": "",
+            "tls": false
+          }
+        ]
+      },
+      {
+        "section": 8,
+        "type": "listen",
+        "name": "stats",
+        "binds": [
+          {
+            "address": ":8404",
+            "tls": false
+          }
+        ]
+      }
+    ],
+    "backends": [
+      {
+        "section": 7,
+        "name": "web_be",
+        "balance": "source",
+        "servers": [
+          {
+            "name": "a1",
+            "address": "10.0.0.1:80",
+            "backup": true,
+            "check": true
+          },
+          {
+            "name": "a2",
+            "address": "10.0.0.2:443",
+            "disabled": true
+          },
+          {
+            "name": "a3",
+            "address": "10.0.0.3:443"
+          },
+          {
+            "name": "srv×1-3",
+            "address": "app.local:8080",
+            "check": true,
+            "template": true
+          },
+          {
+            "name": "one×2",
+            "address": "app.local:8080",
+            "template": true
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "file": 0,
+        "from": 6,
+        "to": -1,
+        "toName": "api_be",
+        "default": false,
+        "condition": "is_api",
+        "line": 142
+      },
+      {
+        "file": 0,
+        "from": 6,
+        "to": -1,
+        "toName": "%[req.hdr(host),lower,map(/etc/haproxy/hosts.map,def)]",
+        "default": false,
+        "line": 143
+      },
+      {
+        "file": 0,
+        "from": 6,
+        "to": 7,
+        "toName": "web_be",
+        "default": true,
+        "line": 144
+      }
+    ],
+    "missing": [
+      "api_be",
+      "%[req.hdr(host),lower,map(/etc/haproxy/hosts.map,def)]"
+    ]
+  }
+}

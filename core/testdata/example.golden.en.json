@@ -1,0 +1,449 @@
+{
+  "issues": [
+    {
+      "rule": "weak-stats-auth",
+      "file": 0,
+      "severity": "info",
+      "line": 62,
+      "section": 7,
+      "message": "The statistics page password looks like a placeholder. Change it."
+    }
+  ],
+  "explanations": [
+    {
+      "line": 4,
+      "keyword": "log",
+      "args": "/dev/log local0",
+      "text": "Sends logs to the local syslog (`/dev/log`) · facility `local0`",
+      "known": true
+    },
+    {
+      "line": 5,
+      "keyword": "log",
+      "args": "/dev/log local1 notice",
+      "text": "Sends logs to the local syslog (`/dev/log`) · facility `local1` · only level `notice` or more severe",
+      "known": true
+    },
+    {
+      "line": 6,
+      "keyword": "chroot",
+      "args": "/var/lib/haproxy",
+      "text": "Confines the process to a directory (chroot) to limit the damage of a break-in: `/var/lib/haproxy`",
+      "known": true
+    },
+    {
+      "line": 7,
+      "keyword": "stats",
+      "args": "socket /run/haproxy/admin.sock mode 660 level admin",
+      "text": "Admin socket: Unix socket `/run/haproxy/admin.sock`, file permissions `660` with **administrator permissions**",
+      "known": true
+    },
+    {
+      "line": 8,
+      "keyword": "stats",
+      "args": "timeout 30s",
+      "text": "Statistics socket timeout: **30 s**",
+      "known": true
+    },
+    {
+      "line": 9,
+      "keyword": "user",
+      "args": "haproxy",
+      "text": "Runs HAProxy as the user **haproxy**",
+      "known": true
+    },
+    {
+      "line": 10,
+      "keyword": "group",
+      "args": "haproxy",
+      "text": "Runs HAProxy with the group **haproxy**",
+      "known": true
+    },
+    {
+      "line": 11,
+      "keyword": "daemon",
+      "args": "",
+      "text": "Runs HAProxy in the background (as a daemon).",
+      "known": true
+    },
+    {
+      "line": 12,
+      "keyword": "maxconn",
+      "args": "4096",
+      "text": "Maximum simultaneous connections for the whole process: **4096**",
+      "known": true
+    },
+    {
+      "line": 13,
+      "keyword": "ssl-default-bind-options",
+      "args": "ssl-min-ver TLSv1.2 no-tls-tickets",
+      "text": "Default TLS options on binds: minimum TLS `TLSv1.2`, no TLS tickets",
+      "known": true
+    },
+    {
+      "line": 16,
+      "keyword": "log",
+      "args": "global",
+      "text": "Uses the log destinations defined in `global`",
+      "known": true
+    },
+    {
+      "line": 17,
+      "keyword": "mode",
+      "args": "http",
+      "text": "**HTTP mode** (layer 7): HAProxy parses requests, headers and paths, and can apply rules to them.",
+      "known": true
+    },
+    {
+      "line": 18,
+      "keyword": "option",
+      "args": "httplog",
+      "text": "Detailed **HTTP logs** (method, path, status code, timings)",
+      "known": true
+    },
+    {
+      "line": 19,
+      "keyword": "option",
+      "args": "dontlognull",
+      "text": "Does not log connections that send no data (probes, scanners)",
+      "known": true
+    },
+    {
+      "line": 20,
+      "keyword": "option",
+      "args": "forwardfor",
+      "text": "Adds the **X-Forwarded-For** header with the client's real IP",
+      "known": true
+    },
+    {
+      "line": 21,
+      "keyword": "timeout",
+      "args": "connect 5s",
+      "text": "Maximum time to establish the TCP connection to a server: **5 s**",
+      "known": true
+    },
+    {
+      "line": 22,
+      "keyword": "timeout",
+      "args": "client 30s",
+      "text": "Maximum time of client inactivity: **30 s**",
+      "known": true
+    },
+    {
+      "line": 23,
+      "keyword": "timeout",
+      "args": "server 30s",
+      "text": "Maximum time waiting for data from the server: **30 s**",
+      "known": true
+    },
+    {
+      "line": 24,
+      "keyword": "timeout",
+      "args": "http-request 10s",
+      "text": "Maximum time to receive the complete HTTP request (protects against slowloris): **10 s**",
+      "known": true
+    },
+    {
+      "line": 25,
+      "keyword": "retries",
+      "args": "3",
+      "text": "Connection retries to a server before failing: **3**",
+      "known": true
+    },
+    {
+      "line": 28,
+      "keyword": "bind",
+      "args": "*:80",
+      "text": "Listens on all interfaces, port `80`",
+      "known": true
+    },
+    {
+      "line": 29,
+      "keyword": "http-request",
+      "args": "redirect scheme https code 301",
+      "text": "Request: Redirects to **HTTPS** (301 permanent)",
+      "known": true
+    },
+    {
+      "line": 32,
+      "keyword": "bind",
+      "args": "*:443 ssl crt /etc/haproxy/certs/sitio.pem alpn h2,http/1.1",
+      "text": "Listens on all interfaces, port `443` · **TLS / HTTPS** · certificate `/etc/haproxy/certs/sitio.pem` · ALPN `h2,http/1.1` (enables HTTP/2)",
+      "known": true
+    },
+    {
+      "line": 33,
+      "keyword": "http-request",
+      "args": "set-header X-Forwarded-Proto https",
+      "text": "Request: Sets the header `X-Forwarded-Proto` = `https`",
+      "known": true
+    },
+    {
+      "line": 34,
+      "keyword": "acl",
+      "args": "is_api path_beg /api",
+      "text": "Defines the condition `is_api`: the path starts with `/api`",
+      "known": true
+    },
+    {
+      "line": 35,
+      "keyword": "acl",
+      "args": "is_static path_end .css .js .png .jpg .svg",
+      "text": "Defines the condition `is_static`: the path ends with `.css` or `.js` or `.png` or `.jpg` or `.svg`",
+      "known": true
+    },
+    {
+      "line": 36,
+      "keyword": "use_backend",
+      "args": "api_servers if is_api",
+      "text": "Sends to the backend **api_servers** — if `is_api`",
+      "known": true
+    },
+    {
+      "line": 37,
+      "keyword": "use_backend",
+      "args": "static_servers if is_static",
+      "text": "Sends to the backend **static_servers** — if `is_static`",
+      "known": true
+    },
+    {
+      "line": 38,
+      "keyword": "default_backend",
+      "args": "web_servers",
+      "text": "Default backend: **web_servers** — receives everything that matches no `use_backend` rule",
+      "known": true
+    },
+    {
+      "line": 41,
+      "keyword": "balance",
+      "args": "roundrobin",
+      "text": "Load balancing: **round robin** weighted by server weights (dynamic)",
+      "known": true
+    },
+    {
+      "line": 42,
+      "keyword": "option",
+      "args": "httpchk GET /health",
+      "text": "**HTTP** health checks: sends `GET /health` to each server instead of just opening a TCP connection",
+      "known": true
+    },
+    {
+      "line": 43,
+      "keyword": "http-check",
+      "args": "expect status 200",
+      "text": "The check passes if the response status is **200**",
+      "known": true
+    },
+    {
+      "line": 44,
+      "keyword": "cookie",
+      "args": "SERVERID insert indirect nocache",
+      "text": "Cookie-based persistence **SERVERID** · HAProxy creates it · not forwarded to the server · prevents caching — the client always goes back to the same server",
+      "known": true
+    },
+    {
+      "line": 45,
+      "keyword": "server",
+      "args": "web1 10.0.0.11:8080 check cookie web1",
+      "text": "Server **web1** at `10.0.0.11:8080` · active health checks · cookie value `web1`",
+      "known": true
+    },
+    {
+      "line": 46,
+      "keyword": "server",
+      "args": "web2 10.0.0.12:8080 check cookie web2",
+      "text": "Server **web2** at `10.0.0.12:8080` · active health checks · cookie value `web2`",
+      "known": true
+    },
+    {
+      "line": 49,
+      "keyword": "balance",
+      "args": "leastconn",
+      "text": "Load balancing: picks the server with the **fewest active connections** (ideal for long sessions)",
+      "known": true
+    },
+    {
+      "line": 50,
+      "keyword": "server",
+      "args": "api1 10.0.0.21:9000 check inter 2s fall 3 rise 2",
+      "text": "Server **api1** at `10.0.0.21:9000` · active health checks · check every **2 s** · marked down after **3** failures · healthy again after **2** successful checks",
+      "known": true
+    },
+    {
+      "line": 51,
+      "keyword": "server",
+      "args": "api2 10.0.0.22:9000 check inter 2s fall 3 rise 2",
+      "text": "Server **api2** at `10.0.0.22:9000` · active health checks · check every **2 s** · marked down after **3** failures · healthy again after **2** successful checks",
+      "known": true
+    },
+    {
+      "line": 52,
+      "keyword": "server",
+      "args": "api3 10.0.0.23:9000 check backup",
+      "text": "Server **api3** at `10.0.0.23:9000` · active health checks · **backup**: only receives traffic if the others go down",
+      "known": true
+    },
+    {
+      "line": 55,
+      "keyword": "server",
+      "args": "cdn1 10.0.0.31:80 check",
+      "text": "Server **cdn1** at `10.0.0.31:80` · active health checks",
+      "known": true
+    },
+    {
+      "line": 58,
+      "keyword": "bind",
+      "args": "*:8404",
+      "text": "Listens on all interfaces, port `8404`",
+      "known": true
+    },
+    {
+      "line": 59,
+      "keyword": "stats",
+      "args": "enable",
+      "text": "Enables the **statistics web page**",
+      "known": true
+    },
+    {
+      "line": 60,
+      "keyword": "stats",
+      "args": "uri /stats",
+      "text": "Statistics page at the path `/stats`",
+      "known": true
+    },
+    {
+      "line": 61,
+      "keyword": "stats",
+      "args": "refresh 10s",
+      "text": "The page reloads every **10 s**",
+      "known": true
+    },
+    {
+      "line": 62,
+      "keyword": "stats",
+      "args": "auth admin:••••••",
+      "text": "Protected with the user **admin** and a password",
+      "known": true
+    }
+  ],
+  "topology": {
+    "entries": [
+      {
+        "section": 2,
+        "type": "frontend",
+        "name": "http_in",
+        "binds": [
+          {
+            "address": "*:80",
+            "tls": false
+          }
+        ]
+      },
+      {
+        "section": 3,
+        "type": "frontend",
+        "name": "https_in",
+        "binds": [
+          {
+            "address": "*:443",
+            "tls": true
+          }
+        ]
+      },
+      {
+        "section": 7,
+        "type": "listen",
+        "name": "stats",
+        "binds": [
+          {
+            "address": "*:8404",
+            "tls": false
+          }
+        ]
+      }
+    ],
+    "backends": [
+      {
+        "section": 4,
+        "name": "web_servers",
+        "balance": "roundrobin",
+        "servers": [
+          {
+            "name": "web1",
+            "address": "10.0.0.11:8080",
+            "check": true
+          },
+          {
+            "name": "web2",
+            "address": "10.0.0.12:8080",
+            "check": true
+          }
+        ]
+      },
+      {
+        "section": 5,
+        "name": "api_servers",
+        "balance": "leastconn",
+        "servers": [
+          {
+            "name": "api1",
+            "address": "10.0.0.21:9000",
+            "check": true
+          },
+          {
+            "name": "api2",
+            "address": "10.0.0.22:9000",
+            "check": true
+          },
+          {
+            "name": "api3",
+            "address": "10.0.0.23:9000",
+            "backup": true,
+            "check": true
+          }
+        ]
+      },
+      {
+        "section": 6,
+        "name": "static_servers",
+        "balance": "roundrobin",
+        "servers": [
+          {
+            "name": "cdn1",
+            "address": "10.0.0.31:80",
+            "check": true
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "file": 0,
+        "from": 3,
+        "to": 5,
+        "toName": "api_servers",
+        "default": false,
+        "condition": "is_api",
+        "line": 36
+      },
+      {
+        "file": 0,
+        "from": 3,
+        "to": 6,
+        "toName": "static_servers",
+        "default": false,
+        "condition": "is_static",
+        "line": 37
+      },
+      {
+        "file": 0,
+        "from": 3,
+        "to": 4,
+        "toName": "web_servers",
+        "default": true,
+        "line": 38
+      }
+    ],
+    "missing": []
+  }
+}

@@ -329,3 +329,20 @@ func TestCorpusRenders(t *testing.T) {
 		}
 	}
 }
+
+func TestDetailInEnglish(t *testing.T) {
+	m := New(Options{Load: loader(problems), NoWatch: true, Editor: "vi", Lang: core.LangEN})
+	var tm tea.Model = m
+	tm, _ = tm.Update(tea.WindowSizeMsg{Width: 100, Height: 30})
+	tm, _ = tm.Update(m.load())
+	tm = press(t, tm.(Model), "j")
+	out := tm.View()
+	for _, want := range []string{"The backend “nope” does not exist.", "Traffic entry point", "Default backend"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("falta %q en el detalle en inglés:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "no existe") {
+		t.Errorf("restos de español:\n%s", out)
+	}
+}

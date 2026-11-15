@@ -38,6 +38,22 @@ type mcpTools struct {
 	roots      []string // directorios permitidos (resueltos); vacío = sin restricción
 	allowWrite bool
 	haproxyBin string
+	lang       core.Lang // idioma por defecto de las herramientas de lectura
+}
+
+// langOf resuelve el argumento lang de una herramienta (vacío = el de --lang).
+func (t *mcpTools) langOf(v string) (core.Lang, error) {
+	if v == "" {
+		if t.lang == "" {
+			return core.LangES, nil
+		}
+		return t.lang, nil
+	}
+	l, ok := core.ParseLang(v)
+	if !ok {
+		return "", fmt.Errorf("idioma desconocido %q (usa es o en)", v)
+	}
+	return l, nil
 }
 
 func runMCP(args []string) error {
@@ -46,14 +62,19 @@ func runMCP(args []string) error {
 	fs.Var(&roots, "root", "directorio fuera del cual no se leerá ni escribirá; repítelo para varios (recomendado)")
 	allowWrite := fs.Bool("allow-write", false, "permite que haro_apply escriba en disco (siempre valida antes y crea copia .bak)")
 	bin := fs.String("haproxy", "haproxy", "binario de haproxy para validar con -c")
+	langArg := langFlag(fs)
 	fs.Usage = func() {
 		fmt.Fprintln(fs.Output(), "Uso: haro mcp [opciones]")
 		fmt.Fprintln(fs.Output(), "Servidor MCP por stdio. Regístralo con: claude mcp add haro -- haro mcp --root /etc/haproxy")
 		fs.PrintDefaults()
 	}
 	fs.Parse(args)
+	lang, err := resolveLang(*langArg)
+	if err != nil {
+		return err
+	}
 
-	t := &mcpTools{allowWrite: *allowWrite}
+	t := &mcpTools{allowWrite: *allowWrite, lang: lang}
 	if p, err := exec.LookPath(*bin); err == nil {
 		t.haproxyBin = p
 	}
@@ -80,7 +101,7 @@ func runMCP(args []string) error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
-	err := t.server().Serve(ctx, os.Stdin, os.Stdout)
+	err = t.server().Serve(ctx, os.Stdin, os.Stdout)
 	if errors.Is(err, context.Canceled) {
 		return nil
 	}
@@ -95,9 +116,9 @@ func (t *mcpTools) server() *mcp.Server {
 		Tools:        t.tools(),
 		Resources: []mcp.Resource{
 			{URI: "haro://knowledge", Name: "Base de conocimiento", Description: "Secciones, categorías, directivas por sección y plantillas que conoce haro", MIMEType: "application/json",
-				Read: func() (string, error) { return jsonString(core.KB.Public()) }},
+				Read: func() (string, error) { return jsonString(core.KB.PublicFor(t.lang)) }},
 			{URI: "haro://rules", Name: "Reglas del detector", Description: "Identificadores estables de las reglas de haro_lint y su descripción", MIMEType: "application/json",
-				Read: func() (string, error) { return jsonString(core.Rules) }},
+				Read: func() (string, error) { return jsonString(core.RulesFor(t.lang)) }},
 		},
 	}
 }
@@ -166,6 +187,7 @@ func (t *mcpTools) resolve(paths []string) ([]string, error) {
 type input struct {
 	Paths []string `json:"paths"`
 	Text  string   `json:"text"`
+	Lang  string   `json:"lang"`
 }
 
 // sources lee la configuración de los argumentos: text (un único archivo) o
@@ -199,6 +221,7 @@ var (
 	pathsProp = map[string]any{"type": "array", "items": map[string]any{"type": "string"},
 		"description": "Archivos o directorios de configuración, en orden de carga como haproxy -f (de cada directorio, los .cfg no ocultos en orden lexicográfico). Por defecto /etc/haproxy/haproxy.cfg."}
 	textProp = map[string]any{"type": "string", "description": "Contenido de un haproxy.cfg, en lugar de paths."}
+	langProp = map[string]any{"type": "string", "enum": []string{"es", "en"}, "description": "Idioma de las explicaciones y de los mensajes del detector. Por defecto, el de --lang de haro mcp (o el del entorno)."}
 )
 
 func schema(props map[string]any, required ...string) map[string]any {
@@ -214,21 +237,21 @@ func (t *mcpTools) tools() []mcp.Tool {
 		{
 			Name: "haro_lint", Title: "Detectar problemas", ReadOnly: true,
 			Description: "Detecta problemas en una configuración de HAProxy (backends inexistentes, ACLs sin definir, timeouts que faltan, modos http/tcp incompatibles…). Devuelve cada problema con archivo, línea, gravedad y regla. Es orientativo: valida con haro_check.",
-			InputSchema: schema(map[string]any{"paths": pathsProp, "text": textProp,
+			InputSchema: schema(map[string]any{"paths": pathsProp, "text": textProp, "lang": langProp,
 				"disable": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Identificadores de reglas a ignorar (ver el recurso haro://rules)."}}),
 			Handler: t.lint,
 		},
 		{
 			Name: "haro_explain", Title: "Explicar la configuración", ReadOnly: true,
 			Description: "Explica en lenguaje humano cada sección y directiva (incluida la herencia de defaults), con archivo y línea. Las explicaciones usan markdown mínimo (**negrita**, `código`).",
-			InputSchema: schema(map[string]any{"paths": pathsProp, "text": textProp,
+			InputSchema: schema(map[string]any{"paths": pathsProp, "text": textProp, "lang": langProp,
 				"section": map[string]any{"type": "string", "description": "Solo la sección con este nombre o tipo (p. ej. «api_servers» o «frontend»)."}}),
 			Handler: t.explain,
 		},
 		{
 			Name: "haro_analyze", Title: "Análisis completo", ReadOnly: true,
 			Description: "Análisis completo en JSON: árbol de secciones y líneas, problemas, explicaciones, modo y timeouts heredados y topología (entradas → backends → servidores). Úsalo cuando necesites los datos estructurados; para leer, haro_lint y haro_explain son más compactos.",
-			InputSchema: schema(map[string]any{"paths": pathsProp, "text": textProp}),
+			InputSchema: schema(map[string]any{"paths": pathsProp, "text": textProp, "lang": langProp}),
 			Handler:     t.analyze,
 		},
 		{
@@ -248,7 +271,7 @@ func (t *mcpTools) tools() []mcp.Tool {
 		{
 			Name: "haro_apply", Title: "Aplicar ediciones", Destructive: true,
 			Description: "Aplica ediciones estructuradas con cambios mínimos en el texto. Sin write, solo calcula el resultado (diff y problemas resultantes) y no toca nada. Con write=true y el servidor iniciado con --allow-write, valida la configuración completa (haproxy -c o el detector) y guarda de forma atómica con copia .bak, todo o nada. Las operaciones se aplican en orden; los índices de sección son los de la vista unificada de todos los archivos (los que muestra haro_analyze) y lineIndex es la posición dentro de las líneas de la sección (incluye comentarios y blancos).",
-			InputSchema: schema(map[string]any{"paths": pathsProp, "text": textProp,
+			InputSchema: schema(map[string]any{"paths": pathsProp, "text": textProp, "lang": langProp,
 				"ops":   map[string]any{"type": "array", "minItems": 1, "items": opSchema()},
 				"write": map[string]any{"type": "boolean", "description": "Guardar en disco (requiere paths y --allow-write). Por defecto false: solo simula."}}, "ops"),
 			Handler: t.apply,
@@ -330,6 +353,10 @@ func (t *mcpTools) lint(_ context.Context, raw json.RawMessage) (mcp.Result, err
 	if err := decodeArgs(raw, &in); err != nil {
 		return mcp.Result{}, err
 	}
+	lang, err := t.langOf(in.Lang)
+	if err != nil {
+		return mcp.Result{}, err
+	}
 	srcs, err := t.sources(in.input)
 	if err != nil {
 		return mcp.Result{}, err
@@ -338,7 +365,7 @@ func (t *mcpTools) lint(_ context.Context, raw json.RawMessage) (mcp.Result, err
 	for _, r := range in.Disable {
 		off[r] = true
 	}
-	issues := issuesOut(srcs, core.Lint(core.NewConfig(srcs).Merge()), off)
+	issues := issuesOut(srcs, core.LintLang(core.NewConfig(srcs).Merge(), lang), off)
 	counts := map[string]int{"error": 0, "warn": 0, "info": 0}
 	for _, i := range issues {
 		counts[i.Severity]++
@@ -377,11 +404,16 @@ func (t *mcpTools) explain(_ context.Context, raw json.RawMessage) (mcp.Result, 
 	if err := decodeArgs(raw, &in); err != nil {
 		return mcp.Result{}, err
 	}
+	lang, err := t.langOf(in.Lang)
+	if err != nil {
+		return mcp.Result{}, err
+	}
 	srcs, err := t.sources(in.input)
 	if err != nil {
 		return mcp.Result{}, err
 	}
-	a := core.AnalyzeConfig(srcs)
+	a := core.AnalyzeConfigLang(srcs, lang)
+	text := core.KB.Text(lang)
 	all := issuesOut(srcs, a.Issues, nil)
 	type key struct {
 		path string
@@ -402,7 +434,7 @@ func (t *mcpTools) explain(_ context.Context, raw json.RawMessage) (mcp.Result, 
 			continue
 		}
 		path := srcs[s.File].Path
-		so := sectionOut{Path: path, Index: si, Type: s.Type, Name: s.Name, Line: s.Line, Title: core.Sections[s.Type].Title, Issues: byLine[key{path, s.Line}], Directives: []directiveOut{}}
+		so := sectionOut{Path: path, Index: si, Type: s.Type, Name: s.Name, Line: s.Line, Title: text.Sections[s.Type].Title, Issues: byLine[key{path, s.Line}], Directives: []directiveOut{}}
 		if s.Type == "frontend" || s.Type == "backend" || s.Type == "listen" || s.Type == "defaults" {
 			so.Mode, so.ModeFrom = a.Effective[si].Mode, a.Effective[si].ModeFrom
 		}
@@ -419,7 +451,7 @@ func (t *mcpTools) explain(_ context.Context, raw json.RawMessage) (mcp.Result, 
 				continue
 			}
 			e := ex[key{path, l.Line}]
-			d := directiveOut{Line: l.Line, Keyword: l.Keyword, Args: e.Args, Category: core.KB.Categories[e.Explain.Category], Explanation: e.Explain.Text, Known: e.Explain.Known, Issues: byLine[key{path, l.Line}]}
+			d := directiveOut{Line: l.Line, Keyword: l.Keyword, Args: e.Args, Category: text.Categories[e.Explain.Category], Explanation: e.Explain.Text, Known: e.Explain.Known, Issues: byLine[key{path, l.Line}]}
 			so.Directives = append(so.Directives, d)
 			fmt.Fprintf(&sb, "  %s:%d %s %s\n    %s\n", path, l.Line, l.Keyword, e.Args, e.Explain.Text)
 			for _, i := range d.Issues {
@@ -440,11 +472,15 @@ func (t *mcpTools) analyze(_ context.Context, raw json.RawMessage) (mcp.Result, 
 	if err := decodeArgs(raw, &in); err != nil {
 		return mcp.Result{}, err
 	}
+	lang, err := t.langOf(in.Lang)
+	if err != nil {
+		return mcp.Result{}, err
+	}
 	srcs, err := t.sources(in)
 	if err != nil {
 		return mcp.Result{}, err
 	}
-	return mcp.Result{Structured: core.AnalyzeConfig(srcs)}, nil
+	return mcp.Result{Structured: core.AnalyzeConfigLang(srcs, lang)}, nil
 }
 
 func (t *mcpTools) diff(_ context.Context, raw json.RawMessage) (mcp.Result, error) {
@@ -505,6 +541,10 @@ func (t *mcpTools) apply(ctx context.Context, raw json.RawMessage) (mcp.Result, 
 	if in.Write && in.Text != "" {
 		return mcp.Result{}, errors.New("write requiere paths: con text solo se puede simular")
 	}
+	lang, err := t.langOf(in.Lang)
+	if err != nil {
+		return mcp.Result{}, err
+	}
 	srcs, err := t.sources(in.input)
 	if err != nil {
 		return mcp.Result{}, err
@@ -535,7 +575,7 @@ func (t *mcpTools) apply(ctx context.Context, raw json.RawMessage) (mcp.Result, 
 	if len(changes) == 0 {
 		sb.WriteString("Las operaciones no cambian el texto.\n")
 	}
-	issues := issuesOut(newSrcs, core.Lint(out.Merge()), nil)
+	issues := issuesOut(newSrcs, core.LintLang(out.Merge(), lang), nil)
 	structured := map[string]any{"changes": changed, "issues": issues, "written": false}
 
 	if in.Write {

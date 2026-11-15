@@ -17,6 +17,18 @@ export type Plain<T> = T extends Message
 
 export type Severity = 'error' | 'warn' | 'info'
 
+/** Idioma de los textos que produce el núcleo (explicaciones y mensajes del detector). */
+export type Lang = 'es' | 'en'
+export const LANGS: { value: Lang; label: string }[] = [{ value: 'es', label: 'Español' }, { value: 'en', label: 'English' }]
+
+/** Idioma por defecto: el del navegador si es inglés; si no, español (la interfaz está en español). */
+export function browserLang(): Lang {
+  try {
+    if (typeof navigator !== 'undefined' && /^en\b/i.test(navigator.language || '')) return 'en'
+  } catch { /* sin navigator */ }
+  return 'es'
+}
+
 export type SourceFile = Plain<pb.SourceFile>
 export type Line = Omit<Plain<pb.Line>, 'kind'> & { kind: 'blank' | 'comment' | 'directive' }
 export type Section = Omit<Plain<pb.Section>, 'lines'> & { lines: Line[] }

@@ -9,6 +9,11 @@ import (
 
 // Las explicaciones usan un markdown mínimo: **negrita** y `código`.
 // La web lo convierte a HTML y la TUI a estilos de terminal.
+//
+// El idioma viaja con la llamada (tipo tr), nunca en una variable global: el
+// servidor atiende peticiones concurrentes con idiomas distintos. Cada frase
+// se escribe completa en los dos idiomas; cuando el orden de las palabras
+// cambia, se usan dos plantillas (fmt.Sprintf) en lugar de concatenar.
 
 // Explanation es la explicación legible de una directiva.
 type Explanation struct {
@@ -20,9 +25,21 @@ type Explanation struct {
 func b(s string) string { return "**" + s + "**" }
 func c(s string) string { return "`" + s + "`" }
 
+// tr es el contexto de idioma de una explicación.
+type tr struct{ lang Lang }
+
+// t elige el texto según el idioma.
+func (x tr) t(es, en string) string { return x.lang.t(es, en) }
+
+// f es t seguido de fmt.Sprintf: dos plantillas completas, una por idioma.
+func (x tr) f(es, en string, a ...any) string { return fmt.Sprintf(x.t(es, en), a...) }
+
+// kb devuelve los textos de la base de conocimiento del idioma.
+func (x tr) kb() *KnowledgeText { return KB.Text(x.lang) }
+
 var reDuration = regexp.MustCompile(`^(\d+(?:\.\d+)?)(us|ms|s|m|h|d)?$`)
 
-func dur(v, defUnit string) string {
+func (x tr) dur(v, defUnit string) string {
 	m := reDuration.FindStringSubmatch(v)
 	if m == nil {
 		return c(v)
@@ -34,30 +51,30 @@ func dur(v, defUnit string) string {
 		}
 		unit = defUnit
 	}
-	names := map[string]string{"us": "µs", "ms": "ms", "s": "s", "m": "min", "h": "h", "d": "días"}
+	names := map[string]string{"us": "µs", "ms": "ms", "s": "s", "m": "min", "h": "h", "d": x.t("días", "days")}
 	return b(m[1] + " " + names[unit])
 }
 
-func addr(s string) string {
+func (x tr) addr(s string) string {
 	if s == "" {
-		return "(sin dirección)"
+		return x.t("(sin dirección)", "(no address)")
 	}
-	x, pre := s, ""
-	if i := strings.Index(x, "@"); i > 0 && regexp.MustCompile(`^[A-Za-z0-9]+$`).MatchString(x[:i]) {
-		pre, x = strings.ToLower(x[:i]), x[i+1:]
+	a, pre := s, ""
+	if i := strings.Index(a, "@"); i > 0 && regexp.MustCompile(`^[A-Za-z0-9]+$`).MatchString(a[:i]) {
+		pre, a = strings.ToLower(a[:i]), a[i+1:]
 		switch pre {
 		case "unix":
-			return "socket Unix " + c(x)
+			return x.t("socket Unix ", "Unix socket ") + c(a)
 		case "abns", "abnsz":
-			return "socket abstracto " + c(x)
+			return x.t("socket abstracto ", "abstract socket ") + c(a)
 		case "fd":
-			return "descriptor " + c(x)
+			return x.t("descriptor ", "file descriptor ") + c(a)
 		case "sockpair":
-			return "socketpair " + c(x)
+			return "socketpair " + c(a)
 		}
 	}
-	if strings.HasPrefix(x, "/") {
-		return "socket Unix " + c(x)
+	if strings.HasPrefix(a, "/") {
+		return x.t("socket Unix ", "Unix socket ") + c(a)
 	}
 	proto := ""
 	if strings.HasPrefix(pre, "quic") {
@@ -65,39 +82,39 @@ func addr(s string) string {
 	} else if strings.HasPrefix(pre, "udp") {
 		proto = " (UDP)"
 	}
-	host, port := x, ""
-	if strings.HasPrefix(x, "[") {
-		if e := strings.Index(x, "]"); e > 0 {
-			host = x[1:e]
-			if len(x) > e+2 {
-				port = x[e+2:]
+	host, port := a, ""
+	if strings.HasPrefix(a, "[") {
+		if e := strings.Index(a, "]"); e > 0 {
+			host = a[1:e]
+			if len(a) > e+2 {
+				port = a[e+2:]
 			}
 		}
-	} else if i := strings.LastIndex(x, ":"); i >= 0 {
-		host, port = x[:i], x[i+1:]
+	} else if i := strings.LastIndex(a, ":"); i >= 0 {
+		host, port = a[:i], a[i+1:]
 	}
 	var h string
 	switch host {
 	case "", "*", "0.0.0.0":
-		h = "todas las interfaces"
+		h = x.t("todas las interfaces", "all interfaces")
 	case "::":
-		h = "todas las interfaces (IPv4 + IPv6)"
+		h = x.t("todas las interfaces (IPv4 + IPv6)", "all interfaces (IPv4 + IPv6)")
 	default:
 		h = c(host)
 	}
 	if port != "" {
-		return h + ", puerto " + c(port) + proto
+		return h + x.t(", puerto ", ", port ") + c(port) + proto
 	}
 	return h + proto
 }
 
-func addrList(s string) string {
+func (x tr) addrList(s string) string {
 	parts := strings.Split(s, ",")
 	out := make([]string, len(parts))
 	for i, p := range parts {
-		out[i] = addr(p)
+		out[i] = x.addr(p)
 	}
-	return strings.Join(out, " y ")
+	return strings.Join(out, x.t(" y ", " and "))
 }
 
 var valued = toSet(strings.Fields(`crt crt-list ca-file crl-file alpn npn ciphers ciphersuites curves ecdhe inter fastinter downinter rise fall weight maxconn maxqueue minconn cookie port addr check-sni sni resolvers init-addr resolve-prefer resolve-opts slowstart on-marked-down on-marked-up on-error verify ssl-min-ver ssl-max-ver name id process thread interface user group mode level uid gid source track agent-port agent-inter agent-addr agent-send proto check-proto check-alpn pool-max-conn pool-purge-delay pool-low-conn max-reuse ws observe error-limit namespace tcp-ut nice backlog mss shards quic-cc-algo severity-output tcp-md5sig redir log-proto ca-sign-file tls-ticket-keys crt-ignore-err ca-ignore-err sigalgs client-sigalgs label hash-key guid`))
@@ -125,74 +142,74 @@ func rawOpt(o opt) string {
 	return c(o.k)
 }
 
-func serverOpts(args []string) []string {
+func (x tr) serverOpts(args []string) []string {
 	var p []string
 	for _, o := range parseOpts(args) {
 		switch o.k {
 		case "check":
-			p = append(p, "health checks activos")
+			p = append(p, x.t("health checks activos", "active health checks"))
 		case "no-check":
-			p = append(p, "sin health checks")
+			p = append(p, x.t("sin health checks", "no health checks"))
 		case "inter":
-			p = append(p, "check cada "+dur(o.v, "ms"))
+			p = append(p, x.t("check cada ", "check every ")+x.dur(o.v, "ms"))
 		case "fastinter":
-			p = append(p, "check cada "+dur(o.v, "ms")+" mientras cambia de estado")
+			p = append(p, x.t("check cada "+x.dur(o.v, "ms")+" mientras cambia de estado", "check every "+x.dur(o.v, "ms")+" while changing state"))
 		case "downinter":
-			p = append(p, "check cada "+dur(o.v, "ms")+" si está caído")
+			p = append(p, x.t("check cada "+x.dur(o.v, "ms")+" si está caído", "check every "+x.dur(o.v, "ms")+" when down"))
 		case "rise":
-			p = append(p, "vuelve a estar sano tras "+b(o.v)+" checks OK")
+			p = append(p, x.t("vuelve a estar sano tras "+b(o.v)+" checks OK", "healthy again after "+b(o.v)+" successful checks"))
 		case "fall":
-			p = append(p, "se marca caído tras "+b(o.v)+" fallos")
+			p = append(p, x.t("se marca caído tras "+b(o.v)+" fallos", "marked down after "+b(o.v)+" failures"))
 		case "weight":
-			p = append(p, "peso "+b(o.v))
+			p = append(p, x.t("peso ", "weight ")+b(o.v))
 		case "backup":
-			p = append(p, b("respaldo")+": solo recibe tráfico si caen los demás")
+			p = append(p, x.t(b("respaldo")+": solo recibe tráfico si caen los demás", b("backup")+": only receives traffic if the others go down"))
 		case "maxconn":
-			p = append(p, "máx. "+b(o.v)+" conexiones")
+			p = append(p, x.t("máx. "+b(o.v)+" conexiones", "max "+b(o.v)+" connections"))
 		case "maxqueue":
-			p = append(p, "cola máx. "+b(o.v))
+			p = append(p, x.t("cola máx. ", "max queue ")+b(o.v))
 		case "ssl":
-			p = append(p, "conexión "+b("TLS")+" hacia el servidor")
+			p = append(p, x.t("conexión "+b("TLS")+" hacia el servidor", b("TLS")+" connection to the server"))
 		case "verify":
 			if o.v == "none" {
-				p = append(p, "⚠ sin verificar su certificado")
+				p = append(p, x.t("⚠ sin verificar su certificado", "⚠ certificate not verified"))
 			} else {
-				p = append(p, "verificación TLS "+c(o.v))
+				p = append(p, x.t("verificación TLS ", "TLS verification ")+c(o.v))
 			}
 		case "ca-file":
 			p = append(p, "CA "+c(o.v))
 		case "sni":
 			p = append(p, "SNI "+c(o.v))
 		case "cookie":
-			p = append(p, "valor de cookie "+c(o.v))
+			p = append(p, x.t("valor de cookie ", "cookie value ")+c(o.v))
 		case "send-proxy", "send-proxy-v2", "send-proxy-v2-ssl":
-			p = append(p, "envía protocolo PROXY (IP real del cliente)")
+			p = append(p, x.t("envía protocolo PROXY (IP real del cliente)", "sends the PROXY protocol (real client IP)"))
 		case "disabled":
-			p = append(p, b("deshabilitado"))
+			p = append(p, b(x.t("deshabilitado", "disabled")))
 		case "resolvers":
-			p = append(p, "resuelve su nombre por DNS con "+c(o.v))
+			p = append(p, x.t("resuelve su nombre por DNS con ", "resolves its name via DNS using ")+c(o.v))
 		case "init-addr":
-			p = append(p, "resolución al arrancar: "+c(o.v))
+			p = append(p, x.t("resolución al arrancar: ", "resolution at startup: ")+c(o.v))
 		case "slowstart":
-			p = append(p, "arranque progresivo durante "+dur(o.v, "ms"))
+			p = append(p, x.t("arranque progresivo durante ", "gradual ramp-up over ")+x.dur(o.v, "ms"))
 		case "port":
-			p = append(p, "checks al puerto "+c(o.v))
+			p = append(p, x.t("checks al puerto ", "checks sent to port ")+c(o.v))
 		case "addr":
-			p = append(p, "checks a "+c(o.v))
+			p = append(p, x.t("checks a ", "checks sent to ")+c(o.v))
 		case "check-ssl":
-			p = append(p, "checks por TLS")
+			p = append(p, x.t("checks por TLS", "checks over TLS"))
 		case "agent-check":
-			p = append(p, "agent-check activo")
+			p = append(p, x.t("agent-check activo", "agent-check enabled"))
 		case "on-marked-down":
-			p = append(p, "al caer: "+c(o.v))
+			p = append(p, x.t("al caer: ", "when marked down: ")+c(o.v))
 		case "proto":
-			p = append(p, "protocolo "+c(o.v))
+			p = append(p, x.t("protocolo ", "protocol ")+c(o.v))
 		case "alpn":
 			p = append(p, "ALPN "+c(o.v))
 		case "track":
-			p = append(p, "copia el estado de "+c(o.v))
+			p = append(p, x.t("copia el estado de ", "mirrors the state of ")+c(o.v))
 		case "non-stick":
-			p = append(p, "excluido de la persistencia")
+			p = append(p, x.t("excluido de la persistencia", "excluded from persistence"))
 		default:
 			p = append(p, rawOpt(o))
 		}
@@ -200,53 +217,53 @@ func serverOpts(args []string) []string {
 	return p
 }
 
-func describeBind(a []string) string {
-	p := []string{"Escucha en " + addrList(arg(a, 0))}
+func (x tr) describeBind(a []string) string {
+	p := []string{x.t("Escucha en ", "Listens on ") + x.addrList(arg(a, 0))}
 	for _, o := range parseOpts(rest(a, 1)) {
 		switch o.k {
 		case "ssl":
 			p = append(p, b("TLS / HTTPS"))
 		case "crt":
-			p = append(p, "certificado "+c(o.v))
+			p = append(p, x.t("certificado ", "certificate ")+c(o.v))
 		case "crt-list":
-			p = append(p, "lista de certificados "+c(o.v))
+			p = append(p, x.t("lista de certificados ", "certificate list ")+c(o.v))
 		case "alpn":
 			s := "ALPN " + c(o.v)
 			if regexp.MustCompile(`\bh2\b`).MatchString(o.v) {
-				s += " (habilita HTTP/2)"
+				s += x.t(" (habilita HTTP/2)", " (enables HTTP/2)")
 			}
 			p = append(p, s)
 		case "accept-proxy":
-			p = append(p, "acepta protocolo PROXY")
+			p = append(p, x.t("acepta protocolo PROXY", "accepts the PROXY protocol"))
 		case "v4v6":
-			p = append(p, "IPv4 e IPv6")
+			p = append(p, x.t("IPv4 e IPv6", "IPv4 and IPv6"))
 		case "v6only":
-			p = append(p, "solo IPv6")
+			p = append(p, x.t("solo IPv6", "IPv6 only"))
 		case "transparent":
-			p = append(p, "modo transparente")
+			p = append(p, x.t("modo transparente", "transparent mode"))
 		case "ssl-min-ver":
-			p = append(p, "TLS mínimo "+c(o.v))
+			p = append(p, x.t("TLS mínimo ", "minimum TLS ")+c(o.v))
 		case "strict-sni":
-			p = append(p, "rechaza SNI sin certificado")
+			p = append(p, x.t("rechaza SNI sin certificado", "rejects SNI without a certificate"))
 		case "verify":
 			switch o.v {
 			case "required":
-				p = append(p, b("exige certificado de cliente")+" (mTLS)")
+				p = append(p, x.t(b("exige certificado de cliente")+" (mTLS)", b("requires a client certificate")+" (mTLS)"))
 			case "optional":
-				p = append(p, "certificado de cliente opcional")
+				p = append(p, x.t("certificado de cliente opcional", "optional client certificate"))
 			default:
 				p = append(p, "verify "+c(o.v))
 			}
 		case "ca-file":
-			p = append(p, "CA de clientes "+c(o.v))
+			p = append(p, x.t("CA de clientes ", "client CA ")+c(o.v))
 		case "name":
-			p = append(p, "nombre "+c(o.v))
+			p = append(p, x.t("nombre ", "name ")+c(o.v))
 		case "interface":
-			p = append(p, "solo en la interfaz "+c(o.v))
+			p = append(p, x.t("solo en la interfaz ", "only on interface ")+c(o.v))
 		case "mode":
-			p = append(p, "permisos "+c(o.v))
+			p = append(p, x.t("permisos ", "permissions ")+c(o.v))
 		case "level":
-			p = append(p, "nivel "+c(o.v))
+			p = append(p, x.t("nivel ", "level ")+c(o.v))
 		default:
 			p = append(p, rawOpt(o))
 		}
@@ -258,48 +275,54 @@ var reFetch = regexp.MustCompile(`^([\w.\-]+)\(([^)]*)\)(.*)$`)
 var reMatchSuffix = regexp.MustCompile(`^(.*?)_(beg|end|sub|reg|dom|dir|len|found|str|ip|int|bool|cnt)$`)
 var reScFetch = regexp.MustCompile(`^sc_(http_req_rate|conn_cur|conn_rate|http_err_rate)$`)
 
-func fetchSubject(fn, a string) (string, bool) {
+func (x tr) fetchSubject(fn, a string) (string, bool) {
 	host := strings.EqualFold(a, "host")
 	switch fn {
 	case "hdr", "req.hdr":
 		if host {
-			return "el Host", true
+			return x.t("el Host", "the Host header"), true
 		}
-		return "la cabecera " + c(a), true
+		return x.t("la cabecera ", "the header ") + c(a), true
 	case "req.fhdr":
-		return "la cabecera " + c(a), true
+		return x.t("la cabecera ", "the header ") + c(a), true
 	case "res.hdr", "shdr":
-		return "la cabecera de respuesta " + c(a), true
+		return x.t("la cabecera de respuesta ", "the response header ") + c(a), true
 	case "urlp", "url_param":
-		return "el parámetro " + c(a) + " de la URL", true
+		return x.t("el parámetro "+c(a)+" de la URL", "the URL parameter "+c(a)), true
 	case "cook", "req.cook":
-		return "la cookie " + c(a), true
+		return x.t("la cookie ", "the cookie ") + c(a), true
 	case "nbsrv":
-		return "el nº de servidores activos en " + c(a), true
+		return x.t("el nº de servidores activos en ", "the number of active servers in ") + c(a), true
 	case "http_auth":
-		return "hay credenciales válidas de " + c(a), true
+		return x.t("hay credenciales válidas de ", "there are valid credentials for ") + c(a), true
 	case "be_conn":
-		return "las conexiones del backend " + c(a), true
+		return x.t("las conexiones del backend ", "the number of connections of backend ") + c(a), true
 	case "var":
-		return "la variable " + c(a), true
+		return x.t("la variable ", "the variable ") + c(a), true
 	case "env":
-		return "la variable de entorno " + c(a), true
+		return x.t("la variable de entorno ", "the environment variable ") + c(a), true
 	}
 	if m := reScFetch.FindStringSubmatch(fn); m != nil {
 		if a == "" {
 			a = "0"
 		}
-		names := map[string]string{"http_req_rate": "el ritmo de peticiones", "conn_cur": "las conexiones abiertas", "conn_rate": "el ritmo de conexiones", "http_err_rate": "el ritmo de errores"}
-		return names[m[1]] + " del cliente (contador " + a + ")", true
+		es := map[string]string{"http_req_rate": "el ritmo de peticiones", "conn_cur": "las conexiones abiertas", "conn_rate": "el ritmo de conexiones", "http_err_rate": "el ritmo de errores"}
+		en := map[string]string{"http_req_rate": "request rate", "conn_cur": "number of open connections", "conn_rate": "connection rate", "http_err_rate": "error rate"}
+		return x.t(es[m[1]]+" del cliente (contador "+a+")", "the client's "+en[m[1]]+" (counter "+a+")"), true
 	}
-	if s, ok := KB.Fetches[fn]; ok {
+	if s, ok := x.kb().Fetches[fn]; ok {
 		return s, true
 	}
 	return "", false
 }
 
-// ACLPhrase explica el criterio de una ACL: `path_beg -i /api /v2`.
-func ACLPhrase(t []string) string {
+// ACLPhrase explica el criterio de una ACL, en español: `path_beg -i /api /v2`.
+func ACLPhrase(t []string) string { return ACLPhraseLang(t, LangES) }
+
+// ACLPhraseLang es ACLPhrase en el idioma pedido.
+func ACLPhraseLang(t []string, lang Lang) string { return tr{lang}.aclPhrase(t) }
+
+func (x tr) aclPhrase(t []string) string {
 	if len(t) == 0 {
 		return ""
 	}
@@ -328,9 +351,9 @@ func ACLPhrase(t []string) string {
 		fn, conv = crit[:ci], crit[ci:]
 	}
 	match := flags["-m"]
-	if _, known := fetchSubject(fn, a); !known {
+	if _, known := x.fetchSubject(fn, a); !known {
 		if m := reMatchSuffix.FindStringSubmatch(fn); m != nil {
-			if _, ok := fetchSubject(m[1], a); ok {
+			if _, ok := x.fetchSubject(m[1], a); ok {
 				fn = m[1]
 				if match == "" {
 					match = m[2]
@@ -338,7 +361,7 @@ func ACLPhrase(t []string) string {
 			}
 		}
 	}
-	subject, known := fetchSubject(fn, a)
+	subject, known := x.fetchSubject(fn, a)
 	if !known {
 		if hasParen {
 			subject = c(fn + "(" + a + ")")
@@ -349,59 +372,65 @@ func ACLPhrase(t []string) string {
 	if conv != "" {
 		subject += " " + c(conv)
 	}
+	text := x.kb()
 	ipish := fn == "src" || fn == "dst"
 	var out string
 	switch {
 	case flags["-f"] != "":
-		verb := KB.Matchers[match]
+		verb := text.Matchers[match]
 		if match == "" {
-			verb = "coincide con"
+			verb = x.t("coincide con", "matches")
 			if ipish {
-				verb = "está en"
+				verb = x.t("está en", "is in")
 			}
 		}
-		out = subject + " " + verb + " la lista del fichero " + c(flags["-f"])
+		out = subject + " " + verb + x.t(" la lista del fichero ", " the list in file ") + c(flags["-f"])
 	case flags["-M"] != "":
-		out = subject + " está en el mapa " + c(flags["-M"])
-	case len(vals) > 0 && KB.Operators[vals[0]] != "":
-		out = subject + " es " + KB.Operators[vals[0]] + " " + b(arg(vals, 1))
+		out = subject + x.t(" está en el mapa ", " is in the map ") + c(flags["-M"])
+	case len(vals) > 0 && text.Operators[vals[0]] != "":
+		out = subject + x.t(" es ", " is ") + text.Operators[vals[0]] + " " + b(arg(vals, 1))
 	case len(vals) == 0:
 		if match == "found" {
-			out = subject + " existe"
+			out = subject + x.t(" existe", " exists")
 		} else if KB.booleanFetches[fn] || !known {
 			out = subject
 		} else {
-			out = subject + " existe"
+			out = subject + x.t(" existe", " exists")
 		}
 	default:
-		verb, ok := KB.Matchers[match]
+		verb, ok := text.Matchers[match]
 		if !ok {
-			verb = "coincide (" + match + ") con"
+			verb = x.t("coincide ("+match+") con", "matches ("+match+")")
 		}
 		if match == "" && ipish {
-			verb = "está en"
+			verb = x.t("está en", "is in")
 		}
 		cv := make([]string, len(vals))
 		for k, v := range vals {
 			cv[k] = c(v)
 		}
-		out = subject + " " + verb + " " + strings.Join(cv, " o ")
+		out = subject + " " + verb + " " + strings.Join(cv, x.t(" o ", " or "))
 	}
 	if flags["-i"] != "" {
-		out += " (sin distinguir mayúsculas)"
+		out += x.t(" (sin distinguir mayúsculas)", " (case-insensitive)")
 	}
 	return out
 }
 
-// CondPhrase explica una condición completa.
-func CondPhrase(cd *Cond) string {
+// CondPhrase explica una condición completa, en español.
+func CondPhrase(cd *Cond) string { return CondPhraseLang(cd, LangES) }
+
+// CondPhraseLang es CondPhrase en el idioma pedido.
+func CondPhraseLang(cd *Cond, lang Lang) string { return tr{lang}.condPhrase(cd) }
+
+func (x tr) condPhrase(cd *Cond) string {
 	var out []string
 	prevTerm := false
 	t := cd.Tokens
 	for i := 0; i < len(t); i++ {
 		tok := t[i]
 		if tok == "||" || strings.EqualFold(tok, "or") {
-			out = append(out, "o")
+			out = append(out, x.t("o", "or"))
 			prevTerm = false
 			continue
 		}
@@ -428,15 +457,15 @@ func CondPhrase(cd *Cond) string {
 				inner = append(inner, t[i])
 				i++
 			}
-			term = "«" + ACLPhrase(inner) + "»"
+			term = x.t("«"+x.aclPhrase(inner)+"»", "“"+x.aclPhrase(inner)+"”")
 		} else {
 			term = c(tok)
 		}
 		if prevTerm {
-			out = append(out, "y")
+			out = append(out, x.t("y", "and"))
 		}
 		if neg {
-			term = b("no") + " " + term
+			term = b(x.t("no", "not")) + " " + term
 		}
 		out = append(out, term)
 		prevTerm = true
@@ -444,14 +473,14 @@ func CondPhrase(cd *Cond) string {
 	return strings.Join(out, " ")
 }
 
-func condSuffix(cd *Cond) string {
+func (x tr) condSuffix(cd *Cond) string {
 	if cd == nil {
 		return ""
 	}
 	if cd.Negated {
-		return " — salvo si " + CondPhrase(cd)
+		return x.t(" — salvo si ", " — unless ") + x.condPhrase(cd)
 	}
-	return " — si " + CondPhrase(cd)
+	return x.t(" — si ", " — if ") + x.condPhrase(cd)
 }
 
 func kv(a []string, k string) string {
@@ -463,7 +492,7 @@ func kv(a []string, k string) string {
 	return ""
 }
 
-func redirectPhrase(r []string) string {
+func (x tr) redirectPhrase(r []string) string {
 	o := map[string]string{}
 	for i := 0; i < len(r); i++ {
 		switch r[i] {
@@ -477,30 +506,30 @@ func redirectPhrase(r []string) string {
 	var s string
 	switch {
 	case o["scheme"] != "":
-		s = "Redirige a " + b(strings.ToUpper(o["scheme"]))
+		s = x.t("Redirige a ", "Redirects to ") + b(strings.ToUpper(o["scheme"]))
 	case o["location"] != "":
-		s = "Redirige a " + c(o["location"])
+		s = x.t("Redirige a ", "Redirects to ") + c(o["location"])
 	case o["prefix"] != "":
-		s = "Redirige anteponiendo " + c(o["prefix"])
+		s = x.t("Redirige anteponiendo ", "Redirects by prepending ") + c(o["prefix"])
 	default:
-		s = "Redirige"
+		s = x.t("Redirige", "Redirects")
 	}
 	if code := o["code"]; code != "" {
-		if n := KB.RedirectCodes[code]; n != "" {
+		if n := x.kb().RedirectCodes[code]; n != "" {
 			s += " (" + code + " " + n + ")"
 		} else {
 			s += " (" + code + ")"
 		}
 	}
 	if o["drop-query"] != "" {
-		s += ", sin la query string"
+		s += x.t(", sin la query string", ", dropping the query string")
 	}
 	return s
 }
 
 var reParen = regexp.MustCompile(`\((.*)\)`)
 
-func actionPhrase(act string, r []string) string {
+func (x tr) actionPhrase(act string, r []string) string {
 	name := act
 	if i := strings.Index(act, "("); i >= 0 {
 		name = act[:i]
@@ -512,7 +541,7 @@ func actionPhrase(act string, r []string) string {
 	rs := strings.Join(r, " ")
 	switch name {
 	case "redirect":
-		return redirectPhrase(r)
+		return x.redirectPhrase(r)
 	case "deny":
 		st := kv(r, "deny_status")
 		if st == "" {
@@ -521,104 +550,115 @@ func actionPhrase(act string, r []string) string {
 		if st == "" {
 			st = "403"
 		}
-		return b("Rechaza") + " la petición (" + st + ")"
+		return x.t(b("Rechaza")+" la petición ("+st+")", b("Denies")+" the request ("+st+")")
 	case "allow":
-		return "Permite y deja de evaluar reglas"
+		return x.t("Permite y deja de evaluar reglas", "Allows and stops evaluating rules")
 	case "accept":
-		return "Acepta"
+		return x.t("Acepta", "Accepts")
 	case "auth":
-		s := "Pide usuario y contraseña (HTTP Basic)"
+		s := x.t("Pide usuario y contraseña (HTTP Basic)", "Asks for username and password (HTTP Basic)")
 		if rl := kv(r, "realm"); rl != "" {
 			s += " · realm " + c(rl)
 		}
 		return s
 	case "tarpit":
-		return "Retiene y luego rechaza (tarpit, frena abusos)"
+		return x.t("Retiene y luego rechaza (tarpit, frena abusos)", "Holds and then rejects (tarpit, slows down abuse)")
 	case "reject":
-		return b("Corta") + " la conexión sin responder"
+		return x.t(b("Corta")+" la conexión sin responder", b("Closes")+" the connection without answering")
 	case "silent-drop":
-		return "Descarta la conexión en silencio"
+		return x.t("Descarta la conexión en silencio", "Silently drops the connection")
 	case "set-header":
-		return "Fija la cabecera " + c(arg(r, 0)) + " = " + c(strings.Join(rest(r, 1), " "))
+		return x.t("Fija la cabecera ", "Sets the header ") + c(arg(r, 0)) + " = " + c(strings.Join(rest(r, 1), " "))
 	case "add-header":
-		return "Añade la cabecera " + c(arg(r, 0)) + ": " + c(strings.Join(rest(r, 1), " "))
+		return x.t("Añade la cabecera ", "Adds the header ") + c(arg(r, 0)) + ": " + c(strings.Join(rest(r, 1), " "))
 	case "del-header":
-		return "Elimina la cabecera " + c(arg(r, 0))
+		return x.t("Elimina la cabecera ", "Removes the header ") + c(arg(r, 0))
 	case "replace-header":
-		return "Reescribe la cabecera " + c(arg(r, 0)) + " (" + c(arg(r, 1)) + " → " + c(arg(r, 2)) + ")"
+		return x.t("Reescribe la cabecera ", "Rewrites the header ") + c(arg(r, 0)) + " (" + c(arg(r, 1)) + " → " + c(arg(r, 2)) + ")"
 	case "set-path":
-		return "Cambia la ruta a " + c(rs)
+		return x.t("Cambia la ruta a ", "Sets the path to ") + c(rs)
 	case "replace-path":
-		return "Reescribe la ruta (" + c(arg(r, 0)) + " → " + c(arg(r, 1)) + ")"
+		return x.t("Reescribe la ruta (", "Rewrites the path (") + c(arg(r, 0)) + " → " + c(arg(r, 1)) + ")"
 	case "set-uri":
-		return "Cambia la URI a " + c(rs)
+		return x.t("Cambia la URI a ", "Sets the URI to ") + c(rs)
 	case "set-query":
-		return "Cambia la query string a " + c(rs)
+		return x.t("Cambia la query string a ", "Sets the query string to ") + c(rs)
 	case "set-method":
-		return "Cambia el método a " + c(rs)
+		return x.t("Cambia el método a ", "Sets the method to ") + c(rs)
 	case "set-status":
-		return "Cambia el código de estado a " + b(arg(r, 0))
+		return x.t("Cambia el código de estado a ", "Sets the status code to ") + b(arg(r, 0))
 	case "return":
-		s := "Responde directamente"
+		s := x.t("Responde directamente", "Answers directly")
 		if st := kv(r, "status"); st != "" {
-			s += " con estado " + b(st)
+			s += x.t(" con estado ", " with status ") + b(st)
 		}
 		return s
 	case "track-sc0", "track-sc1", "track-sc2":
-		s := "Cuenta al cliente en la stick-table (contador " + name[len(name)-1:] + ") usando " + c(arg(r, 0))
+		n := name[len(name)-1:]
+		s := x.t("Cuenta al cliente en la stick-table (contador "+n+") usando "+c(arg(r, 0)), "Tracks the client in the stick table (counter "+n+") using "+c(arg(r, 0)))
 		if tb := kv(r, "table"); tb != "" {
-			s += " de " + c(tb)
+			s += x.t(" de ", ", table ") + c(tb)
 		}
 		return s
 	case "set-var":
-		return "Guarda en la variable " + c(inner) + " " + c(rs)
+		return x.f("Guarda en la variable %s %s", "Stores %[2]s in the variable %[1]s", c(inner), c(rs))
 	case "unset-var":
-		return "Borra la variable " + c(inner)
+		return x.t("Borra la variable ", "Deletes the variable ") + c(inner)
 	case "cache-use":
-		return "Sirve desde la caché " + c(arg(r, 0)) + " si la tiene"
+		return x.f("Sirve desde la caché %s si la tiene", "Serves from the cache %s if it has the object", c(arg(r, 0)))
 	case "cache-store":
-		return "Guarda la respuesta en la caché " + c(arg(r, 0))
+		return x.t("Guarda la respuesta en la caché ", "Stores the response in the cache ") + c(arg(r, 0))
 	case "capture":
-		return "Captura " + c(arg(r, 0)) + " para los logs"
+		return x.f("Captura %s para los logs", "Captures %s for the logs", c(arg(r, 0)))
 	case "set-log-level":
-		return "Cambia el nivel de log a " + c(arg(r, 0))
+		return x.t("Cambia el nivel de log a ", "Sets the log level to ") + c(arg(r, 0))
 	case "use-service":
-		return "Responde con el servicio " + c(arg(r, 0))
+		return x.t("Responde con el servicio ", "Answers with the service ") + c(arg(r, 0))
 	case "wait-for-body":
-		return "Espera a recibir el cuerpo de la petición"
+		return x.t("Espera a recibir el cuerpo de la petición", "Waits to receive the request body")
 	case "set-timeout":
-		return "Ajusta el timeout " + c(arg(r, 0)) + " a " + dur(arg(r, 1), "ms")
+		return x.f("Ajusta el timeout %s a %s", "Sets the timeout %s to %s", c(arg(r, 0)), x.dur(arg(r, 1), "ms"))
 	case "set-src":
-		return "Usa como IP de origen " + c(rs)
+		return x.f("Usa como IP de origen %s", "Uses %s as the source IP", c(rs))
 	case "disable-l7-retry":
-		return "Desactiva los reintentos de capa 7"
+		return x.t("Desactiva los reintentos de capa 7", "Disables layer 7 retries")
 	case "expect-proxy":
-		return "Espera el protocolo PROXY"
+		return x.t("Espera el protocolo PROXY", "Expects the PROXY protocol")
 	}
 	if strings.HasPrefix(name, "lua.") {
-		return "Ejecuta la acción Lua " + c(name[4:])
+		return x.t("Ejecuta la acción Lua ", "Runs the Lua action ") + c(name[4:])
 	}
 	if rs != "" {
-		return "Acción " + c(act) + " " + c(rs)
+		return x.t("Acción ", "Action ") + c(act) + " " + c(rs)
 	}
-	return "Acción " + c(act)
+	return x.t("Acción ", "Action ") + c(act)
 }
 
-func ruleDesc(a []string, label string) string {
+func (x tr) ruleDesc(a []string, label string) string {
 	main, cd := SplitCond(a)
-	return label + " " + actionPhrase(arg(main, 0), rest(main, 1)) + condSuffix(cd)
+	return label + " " + x.actionPhrase(arg(main, 0), rest(main, 1)) + x.condSuffix(cd)
 }
 
-func tlsOpts(a []string) string {
-	names := map[string]string{"no-sslv3": "sin SSLv3", "no-tlsv10": "sin TLS 1.0", "no-tlsv11": "sin TLS 1.1", "no-tlsv12": "sin TLS 1.2", "no-tlsv13": "sin TLS 1.3", "no-tls-tickets": "sin tickets TLS", "prefer-client-ciphers": "prefiere los cifrados del cliente", "force-tlsv12": "solo TLS 1.2", "force-tlsv13": "solo TLS 1.3"}
+func (x tr) tlsOpts(a []string) string {
+	names := map[string]string{
+		"no-sslv3":              x.t("sin SSLv3", "no SSLv3"),
+		"no-tlsv10":             x.t("sin TLS 1.0", "no TLS 1.0"),
+		"no-tlsv11":             x.t("sin TLS 1.1", "no TLS 1.1"),
+		"no-tlsv12":             x.t("sin TLS 1.2", "no TLS 1.2"),
+		"no-tlsv13":             x.t("sin TLS 1.3", "no TLS 1.3"),
+		"no-tls-tickets":        x.t("sin tickets TLS", "no TLS tickets"),
+		"prefer-client-ciphers": x.t("prefiere los cifrados del cliente", "prefers the client's ciphers"),
+		"force-tlsv12":          x.t("solo TLS 1.2", "TLS 1.2 only"),
+		"force-tlsv13":          x.t("solo TLS 1.3", "TLS 1.3 only"),
+	}
 	var out []string
 	for i := 0; i < len(a); i++ {
 		switch a[i] {
 		case "ssl-min-ver":
-			out = append(out, "TLS mínimo "+c(arg(a, i+1)))
+			out = append(out, x.t("TLS mínimo ", "minimum TLS ")+c(arg(a, i+1)))
 			i++
 		case "ssl-max-ver":
-			out = append(out, "TLS máximo "+c(arg(a, i+1)))
+			out = append(out, x.t("TLS máximo ", "maximum TLS ")+c(arg(a, i+1)))
 			i++
 		default:
 			if n, ok := names[a[i]]; ok {
@@ -631,40 +671,40 @@ func tlsOpts(a []string) string {
 	return strings.Join(out, ", ")
 }
 
-type describer func(a []string, section string) (string, bool)
+type describer func(x tr, a []string, section string) (string, bool)
 
 var describers map[string]describer
 
 func init() {
 	describers = map[string]describer{
-		"mode": func(a []string, _ string) (string, bool) {
+		"mode": func(x tr, a []string, _ string) (string, bool) {
 			switch arg(a, 0) {
 			case "http":
-				return b("Modo HTTP") + " (capa 7): HAProxy interpreta peticiones, cabeceras y rutas, y puede aplicar reglas sobre ellas.", true
+				return x.t(b("Modo HTTP")+" (capa 7): HAProxy interpreta peticiones, cabeceras y rutas, y puede aplicar reglas sobre ellas.", b("HTTP mode")+" (layer 7): HAProxy parses requests, headers and paths, and can apply rules to them."), true
 			case "tcp":
-				return b("Modo TCP") + " (capa 4): reenvía los bytes tal cual, sin inspeccionar HTTP.", true
+				return x.t(b("Modo TCP")+" (capa 4): reenvía los bytes tal cual, sin inspeccionar HTTP.", b("TCP mode")+" (layer 4): forwards the bytes as they are, without inspecting HTTP."), true
 			case "log":
-				return "Modo log: reenvía mensajes syslog.", true
+				return x.t("Modo log: reenvía mensajes syslog.", "Log mode: forwards syslog messages."), true
 			}
-			return "Modo " + c(arg(a, 0)), false
+			return x.t("Modo ", "Mode ") + c(arg(a, 0)), false
 		},
-		"bind": func(a []string, s string) (string, bool) {
+		"bind": func(x tr, a []string, s string) (string, bool) {
 			if s == "peers" {
-				return "Esta instancia peer escucha en " + addrList(arg(a, 0)), true
+				return x.t("Esta instancia peer escucha en ", "This peer instance listens on ") + x.addrList(arg(a, 0)), true
 			}
-			return describeBind(a), true
+			return x.describeBind(a), true
 		},
-		"server": func(a []string, s string) (string, bool) {
+		"server": func(x tr, a []string, s string) (string, bool) {
 			if s == "peers" {
-				return "Peer " + b(arg(a, 0)) + " en " + c(arg(a, 1)), true
+				return x.f("Peer %s en %s", "Peer %s at %s", b(arg(a, 0)), c(arg(a, 1))), true
 			}
-			t := "Servidor " + b(arg(a, 0)) + " en " + c(arg(a, 1))
-			if o := serverOpts(rest(a, 2)); len(o) > 0 {
+			t := x.f("Servidor %s en %s", "Server %s at %s", b(arg(a, 0)), c(arg(a, 1)))
+			if o := x.serverOpts(rest(a, 2)); len(o) > 0 {
 				t += " · " + strings.Join(o, " · ")
 			}
 			return t, true
 		},
-		"server-template": func(a []string, _ string) (string, bool) {
+		"server-template": func(x tr, a []string, _ string) (string, bool) {
 			first, last := 1, 0
 			if m := regexp.MustCompile(`^(\d+)-(\d+)$`).FindStringSubmatch(arg(a, 1)); m != nil {
 				first, _ = strconv.Atoi(m[1])
@@ -672,45 +712,45 @@ func init() {
 			} else {
 				last, _ = strconv.Atoi(arg(a, 1))
 			}
-			t := fmt.Sprintf("Genera %s servidores %s…%s a partir de %s", b(strconv.Itoa(last-first+1)), c(fmt.Sprint(arg(a, 0), first)), c(fmt.Sprint(arg(a, 0), last)), c(arg(a, 2)))
-			if o := serverOpts(rest(a, 3)); len(o) > 0 {
+			t := x.f("Genera %s servidores %s…%s a partir de %s", "Generates %s servers %s…%s from %s", b(strconv.Itoa(last-first+1)), c(fmt.Sprint(arg(a, 0), first)), c(fmt.Sprint(arg(a, 0), last)), c(arg(a, 2)))
+			if o := x.serverOpts(rest(a, 3)); len(o) > 0 {
 				t += " · " + strings.Join(o, " · ")
 			}
 			return t, true
 		},
-		"default-server": func(a []string, _ string) (string, bool) {
-			return "Opciones por defecto para todos los `server`: " + strings.Join(serverOpts(a), " · "), true
+		"default-server": func(x tr, a []string, _ string) (string, bool) {
+			return x.t("Opciones por defecto para todos los `server`: ", "Default options for all `server` lines: ") + strings.Join(x.serverOpts(a), " · "), true
 		},
-		"balance": func(a []string, _ string) (string, bool) {
+		"balance": func(x tr, a []string, _ string) (string, bool) {
 			k := arg(a, 0)
 			if strings.HasPrefix(k, "hdr(") {
-				return "Reparto: " + b("hash de la cabecera") + " " + c(strings.TrimSuffix(k[4:], ")")), true
+				return x.t("Reparto: "+b("hash de la cabecera")+" ", "Balancing: "+b("hash of the header")+" ") + c(strings.TrimSuffix(k[4:], ")")), true
 			}
 			if k == "url_param" {
-				return "Reparto: hash del parámetro de URL " + c(arg(a, 1)), true
+				return x.t("Reparto: hash del parámetro de URL ", "Balancing: hash of the URL parameter ") + c(arg(a, 1)), true
 			}
-			if d, ok := KB.Balance[k]; ok {
-				return "Reparto de carga: " + d, true
+			if d, ok := x.kb().Balance[k]; ok {
+				return x.t("Reparto de carga: ", "Load balancing: ") + d, true
 			}
-			return "Reparto de carga: " + c(strings.Join(a, " ")), false
+			return x.t("Reparto de carga: ", "Load balancing: ") + c(strings.Join(a, " ")), false
 		},
-		"hash-type": func(a []string, _ string) (string, bool) {
+		"hash-type": func(x tr, a []string, _ string) (string, bool) {
 			switch arg(a, 0) {
 			case "consistent":
-				return b("Hash consistente") + ": al quitar o añadir un servidor solo se reasignan sus clientes", true
+				return x.t(b("Hash consistente")+": al quitar o añadir un servidor solo se reasignan sus clientes", b("Consistent hash")+": when a server is added or removed, only its clients are reassigned"), true
 			case "map-based":
-				return "Hash basado en mapa (estático)", true
+				return x.t("Hash basado en mapa (estático)", "Map-based (static) hash"), true
 			}
-			return "Tipo de hash " + c(strings.Join(a, " ")), true
+			return x.t("Tipo de hash ", "Hash type ") + c(strings.Join(a, " ")), true
 		},
-		"timeout": func(a []string, _ string) (string, bool) {
-			what, ok := KB.Timeouts[arg(a, 0)]
+		"timeout": func(x tr, a []string, _ string) (string, bool) {
+			what, ok := x.kb().Timeouts[arg(a, 0)]
 			if !ok {
 				what = c(arg(a, 0))
 			}
-			return "Tiempo máximo " + what + ": " + dur(arg(a, 1), "ms"), ok
+			return x.t("Tiempo máximo ", "Maximum time ") + what + ": " + x.dur(arg(a, 1), "ms"), ok
 		},
-		"option": func(a []string, _ string) (string, bool) {
+		"option": func(x tr, a []string, _ string) (string, bool) {
 			o, extra := arg(a, 0), rest(a, 1)
 			if o == "httpchk" {
 				m, u := "OPTIONS", "/"
@@ -719,88 +759,98 @@ func init() {
 				} else if len(extra) >= 2 {
 					m, u = extra[0], extra[1]
 				}
-				return "Health checks " + b("HTTP") + ": envía " + c(m+" "+u) + " a cada servidor en lugar de solo abrir TCP", true
+				return x.f("Health checks %s: envía %s a cada servidor en lugar de solo abrir TCP", "%s health checks: sends %s to each server instead of just opening a TCP connection", b("HTTP"), c(m+" "+u)), true
 			}
-			if d, ok := KB.Options[o]; ok {
+			if d, ok := x.kb().Options[o]; ok {
 				if len(extra) > 0 {
 					d += " " + c(strings.Join(extra, " "))
 				}
 				return d, true
 			}
-			return "Opción " + c(strings.Join(a, " ")), false
+			return x.t("Opción ", "Option ") + c(strings.Join(a, " ")), false
 		},
-		"no": func(a []string, _ string) (string, bool) {
+		"no": func(x tr, a []string, _ string) (string, bool) {
 			if arg(a, 0) == "option" {
-				if d, ok := KB.Options[arg(a, 1)]; ok {
-					return b("Desactiva:") + " " + d, true
+				if d, ok := x.kb().Options[arg(a, 1)]; ok {
+					return b(x.t("Desactiva:", "Disables:")) + " " + d, true
 				}
-				return b("Desactiva:") + " " + c(arg(a, 1)), false
+				return b(x.t("Desactiva:", "Disables:")) + " " + c(arg(a, 1)), false
 			}
-			return "Desactiva " + c(strings.Join(a, " ")), false
+			return x.t("Desactiva ", "Disables ") + c(strings.Join(a, " ")), false
 		},
-		"maxconn": func(a []string, s string) (string, bool) {
+		"maxconn": func(x tr, a []string, s string) (string, bool) {
 			switch s {
 			case "global":
-				return "Máximo de conexiones simultáneas de todo el proceso: " + b(arg(a, 0)), true
+				return x.t("Máximo de conexiones simultáneas de todo el proceso: ", "Maximum simultaneous connections for the whole process: ") + b(arg(a, 0)), true
 			case "defaults":
-				return "Máximo de conexiones simultáneas por defecto en cada entrada: " + b(arg(a, 0)), true
+				return x.t("Máximo de conexiones simultáneas por defecto en cada entrada: ", "Default maximum simultaneous connections on each entry point: ") + b(arg(a, 0)), true
 			}
-			return "Máximo de conexiones simultáneas en esta entrada: " + b(arg(a, 0)), true
+			return x.t("Máximo de conexiones simultáneas en esta entrada: ", "Maximum simultaneous connections on this entry point: ") + b(arg(a, 0)), true
 		},
-		"retries": func(a []string, _ string) (string, bool) {
-			return "Reintentos de conexión a un servidor antes de fallar: " + b(arg(a, 0)), true
+		"retries": func(x tr, a []string, _ string) (string, bool) {
+			return x.t("Reintentos de conexión a un servidor antes de fallar: ", "Connection retries to a server before failing: ") + b(arg(a, 0)), true
 		},
-		"default_backend": func(a []string, _ string) (string, bool) {
-			return "Backend por defecto: " + b(arg(a, 0)) + " — recibe todo lo que no coincide con ninguna regla `use_backend`", true
+		"default_backend": func(x tr, a []string, _ string) (string, bool) {
+			return x.f("Backend por defecto: %s — recibe todo lo que no coincide con ninguna regla `use_backend`", "Default backend: %s — receives everything that matches no `use_backend` rule", b(arg(a, 0))), true
 		},
-		"use_backend": func(a []string, _ string) (string, bool) {
+		"use_backend": func(x tr, a []string, _ string) (string, bool) {
 			main, cd := SplitCond(a)
 			if t := arg(main, 0); strings.Contains(t, "%[") {
-				return "Envía al backend que resulte de evaluar " + c(t) + " (enrutado dinámico)" + condSuffix(cd), true
+				return x.f("Envía al backend que resulte de evaluar %s (enrutado dinámico)", "Sends to the backend that results from evaluating %s (dynamic routing)", c(t)) + x.condSuffix(cd), true
 			}
-			return "Envía al backend " + b(arg(main, 0)) + condSuffix(cd), true
+			return x.t("Envía al backend ", "Sends to the backend ") + b(arg(main, 0)) + x.condSuffix(cd), true
 		},
-		"use-server": func(a []string, _ string) (string, bool) {
+		"use-server": func(x tr, a []string, _ string) (string, bool) {
 			main, cd := SplitCond(a)
-			return "Fuerza el servidor " + b(arg(main, 0)) + condSuffix(cd), true
+			return x.t("Fuerza el servidor ", "Forces the server ") + b(arg(main, 0)) + x.condSuffix(cd), true
 		},
-		"acl": func(a []string, _ string) (string, bool) {
-			return "Define la condición " + c(arg(a, 0)) + ": " + ACLPhrase(rest(a, 1)), true
+		"acl": func(x tr, a []string, _ string) (string, bool) {
+			return x.t("Define la condición ", "Defines the condition ") + c(arg(a, 0)) + ": " + x.aclPhrase(rest(a, 1)), true
 		},
-		"http-request":        func(a []string, _ string) (string, bool) { return ruleDesc(a, "Petición:"), true },
-		"http-response":       func(a []string, _ string) (string, bool) { return ruleDesc(a, "Respuesta:"), true },
-		"http-after-response": func(a []string, _ string) (string, bool) { return ruleDesc(a, "Respuesta final:"), true },
-		"tcp-request": func(a []string, _ string) (string, bool) {
+		"http-request": func(x tr, a []string, _ string) (string, bool) {
+			return x.ruleDesc(a, x.t("Petición:", "Request:")), true
+		},
+		"http-response": func(x tr, a []string, _ string) (string, bool) {
+			return x.ruleDesc(a, x.t("Respuesta:", "Response:")), true
+		},
+		"http-after-response": func(x tr, a []string, _ string) (string, bool) {
+			return x.ruleDesc(a, x.t("Respuesta final:", "Final response:")), true
+		},
+		"tcp-request": func(x tr, a []string, _ string) (string, bool) {
 			if arg(a, 0) == "inspect-delay" {
-				return "Espera hasta " + dur(arg(a, 1), "ms") + " para poder inspeccionar el contenido TCP", true
+				return x.f("Espera hasta %s para poder inspeccionar el contenido TCP", "Waits up to %s to be able to inspect the TCP content", x.dur(arg(a, 1), "ms")), true
 			}
-			label := map[string]string{"connection": "Conexión TCP:", "content": "Contenido TCP:", "session": "Sesión TCP:"}[arg(a, 0)]
+			label := map[string]string{
+				"connection": x.t("Conexión TCP:", "TCP connection:"),
+				"content":    x.t("Contenido TCP:", "TCP content:"),
+				"session":    x.t("Sesión TCP:", "TCP session:"),
+			}[arg(a, 0)]
 			if label == "" {
 				label = "TCP:"
 			}
-			return ruleDesc(rest(a, 1), label), true
+			return x.ruleDesc(rest(a, 1), label), true
 		},
-		"redirect": func(a []string, _ string) (string, bool) {
+		"redirect": func(x tr, a []string, _ string) (string, bool) {
 			main, cd := SplitCond(a)
-			return redirectPhrase(main) + condSuffix(cd), true
+			return x.redirectPhrase(main) + x.condSuffix(cd), true
 		},
-		"log": func(a []string, _ string) (string, bool) {
+		"log": func(x tr, a []string, _ string) (string, bool) {
 			t := arg(a, 0)
 			if t == "global" {
-				return "Usa los destinos de log definidos en `global`", true
+				return x.t("Usa los destinos de log definidos en `global`", "Uses the log destinations defined in `global`"), true
 			}
 			var tgt string
 			switch {
 			case t == "/dev/log":
-				tgt = "al syslog local (`/dev/log`)"
+				tgt = x.t("al syslog local (`/dev/log`)", "to the local syslog (`/dev/log`)")
 			case t == "stdout":
-				tgt = "a la salida estándar"
+				tgt = x.t("a la salida estándar", "to standard output")
 			case t == "stderr":
-				tgt = "a la salida de error"
+				tgt = x.t("a la salida de error", "to standard error")
 			case strings.HasPrefix(t, "ring@"):
-				tgt = "al buffer " + c(t[5:])
+				tgt = x.t("al buffer ", "to the buffer ") + c(t[5:])
 			default:
-				tgt = "al syslog " + c(t)
+				tgt = x.t("al syslog ", "to the syslog ") + c(t)
 			}
 			var r []string
 			for i := 1; i < len(a); i++ {
@@ -810,69 +860,77 @@ func init() {
 				}
 				r = append(r, a[i])
 			}
-			s := "Envía logs " + tgt
+			s := x.t("Envía logs ", "Sends logs ") + tgt
 			if len(r) > 0 {
 				s += " · facility " + c(r[0])
 			}
 			if len(r) > 1 {
-				s += " · solo nivel " + c(r[1]) + " o más grave"
+				s += x.f(" · solo nivel %s o más grave", " · only level %s or more severe", c(r[1]))
 			}
 			return s, true
 		},
-		"stats": func(a []string, _ string) (string, bool) {
+		"stats": func(x tr, a []string, _ string) (string, bool) {
 			r := rest(a, 1)
 			switch arg(a, 0) {
 			case "socket":
-				s := "Socket de administración en " + addr(arg(r, 0))
+				s := x.t("Socket de administración en ", "Admin socket: ") + x.addr(arg(r, 0))
 				for _, o := range parseOpts(rest(r, 1)) {
 					switch o.k {
 					case "level":
 						if o.v == "admin" {
-							s += " con " + b("permisos de administrador")
+							s += x.t(" con "+b("permisos de administrador"), " with "+b("administrator permissions"))
 						} else {
-							s += " (nivel " + c(o.v) + ")"
+							s += x.t(" (nivel ", " (level ") + c(o.v) + ")"
 						}
 					case "mode":
-						s += ", permisos de fichero " + c(o.v)
+						s += x.t(", permisos de fichero ", ", file permissions ") + c(o.v)
 					case "expose-fd":
-						s += ", permite recargas sin cortes"
+						s += x.t(", permite recargas sin cortes", ", allows zero-downtime reloads")
 					}
 				}
 				return s, true
 			case "timeout":
-				return "Timeout del socket de estadísticas: " + dur(arg(r, 0), "ms"), true
+				return x.t("Timeout del socket de estadísticas: ", "Statistics socket timeout: ") + x.dur(arg(r, 0), "ms"), true
 			case "enable":
-				return "Activa la " + b("página web de estadísticas"), true
+				return x.t("Activa la ", "Enables the ") + b(x.t("página web de estadísticas", "statistics web page")), true
 			case "uri":
-				return "Página de estadísticas en la ruta " + c(arg(r, 0)), true
+				return x.t("Página de estadísticas en la ruta ", "Statistics page at the path ") + c(arg(r, 0)), true
 			case "auth":
-				return "Protegida con el usuario " + b(strings.SplitN(arg(r, 0), ":", 2)[0]) + " y contraseña", true
+				return x.f("Protegida con el usuario %s y contraseña", "Protected with the user %s and a password", b(strings.SplitN(arg(r, 0), ":", 2)[0])), true
 			case "realm":
-				return "Texto del diálogo de login: " + c(strings.Join(r, " ")), true
+				return x.t("Texto del diálogo de login: ", "Login dialog text: ") + c(strings.Join(r, " ")), true
 			case "refresh":
-				return "La página se recarga cada " + dur(arg(r, 0), "s"), true
+				return x.t("La página se recarga cada ", "The page reloads every ") + x.dur(arg(r, 0), "s"), true
 			case "admin":
 				_, cd := SplitCond(r)
-				return "Permite acciones de administración desde la web" + condSuffix(cd), true
+				return x.t("Permite acciones de administración desde la web", "Allows admin actions from the web page") + x.condSuffix(cd), true
 			case "hide-version":
-				return "Oculta la versión de HAProxy en la página", true
+				return x.t("Oculta la versión de HAProxy en la página", "Hides the HAProxy version on the page"), true
 			}
-			return "Estadísticas: " + c(strings.Join(a, " ")), false
+			return x.t("Estadísticas: ", "Statistics: ") + c(strings.Join(a, " ")), false
 		},
-		"cookie": func(a []string, _ string) (string, bool) {
+		"cookie": func(x tr, a []string, _ string) (string, bool) {
 			f := toSet(rest(a, 1))
-			p := []string{"Persistencia por cookie " + b(arg(a, 0))}
-			for _, x := range []struct{ k, d string }{{"insert", "HAProxy la crea"}, {"rewrite", "reescribe la del servidor"}, {"prefix", "prefija la del servidor"}, {"indirect", "no se reenvía al servidor"}, {"nocache", "evita que se cachee"}, {"httponly", "HttpOnly"}, {"secure", "Secure"}} {
-				if f[x.k] {
-					p = append(p, x.d)
+			p := []string{x.t("Persistencia por cookie ", "Cookie-based persistence ") + b(arg(a, 0))}
+			for _, o := range []struct{ k, es, en string }{
+				{"insert", "HAProxy la crea", "HAProxy creates it"},
+				{"rewrite", "reescribe la del servidor", "rewrites the server's"},
+				{"prefix", "prefija la del servidor", "prefixes the server's"},
+				{"indirect", "no se reenvía al servidor", "not forwarded to the server"},
+				{"nocache", "evita que se cachee", "prevents caching"},
+				{"httponly", "HttpOnly", "HttpOnly"},
+				{"secure", "Secure", "Secure"},
+			} {
+				if f[o.k] {
+					p = append(p, x.t(o.es, o.en))
 				}
 			}
-			return strings.Join(p, " · ") + " — el cliente vuelve siempre al mismo servidor", true
+			return strings.Join(p, " · ") + x.t(" — el cliente vuelve siempre al mismo servidor", " — the client always goes back to the same server"), true
 		},
-		"stick-table": func(a []string, _ string) (string, bool) {
-			s := "Tabla de seguimiento: clave " + c(kv(a, "type")) + ", " + kv(a, "size") + " entradas"
+		"stick-table": func(x tr, a []string, _ string) (string, bool) {
+			s := x.f("Tabla de seguimiento: clave %s, %s entradas", "Stick table: key %s, %s entries", c(kv(a, "type")), kv(a, "size"))
 			if e := kv(a, "expire"); e != "" {
-				s += ", caducan a los " + dur(e, "ms")
+				s += x.t(", caducan a los ", ", entries expire after ") + x.dur(e, "ms")
 			}
 			if st := kv(a, "store"); st != "" {
 				var names []string
@@ -882,7 +940,7 @@ func init() {
 						names = append(names, part)
 						continue
 					}
-					n := KB.Store[m[1]]
+					n := x.kb().Store[m[1]]
 					if n == "" {
 						n = m[1]
 					}
@@ -891,17 +949,17 @@ func init() {
 					}
 					names = append(names, n)
 				}
-				s += " · guarda " + strings.Join(names, ", ")
+				s += x.t(" · guarda ", " · stores ") + strings.Join(names, ", ")
 			}
 			if p := kv(a, "peers"); p != "" {
-				s += " · replicada con " + c(p)
+				s += x.t(" · replicada con ", " · replicated with ") + c(p)
 			}
 			return s, true
 		},
-		"errorfile": func(a []string, _ string) (string, bool) {
-			return "Página personalizada para el error " + b(arg(a, 0)) + " desde " + c(arg(a, 1)), true
+		"errorfile": func(x tr, a []string, _ string) (string, bool) {
+			return x.f("Página personalizada para el error %s desde %s", "Custom page for the %s error, loaded from %s", b(arg(a, 0)), c(arg(a, 1))), true
 		},
-		"http-check": func(a []string, _ string) (string, bool) {
+		"http-check": func(x tr, a []string, _ string) (string, bool) {
 			r := rest(a, 1)
 			switch arg(a, 0) {
 			case "expect":
@@ -909,14 +967,19 @@ func init() {
 				neg := strings.HasPrefix(k, "!")
 				k = strings.TrimPrefix(k, "!")
 				v := strings.Join(rest(r, 1), " ")
-				what := map[string]string{"status": "responde con estado " + b(v), "rstatus": "el estado cumple " + c(v), "string": "el cuerpo contiene " + c(v), "rstring": "el cuerpo cumple " + c(v)}[k]
+				what := map[string]string{
+					"status":  x.t("responde con estado ", "the response status is ") + b(v),
+					"rstatus": x.t("el estado cumple ", "the status matches ") + c(v),
+					"string":  x.t("el cuerpo contiene ", "the body contains ") + c(v),
+					"rstring": x.t("el cuerpo cumple ", "the body matches ") + c(v),
+				}[k]
 				if what == "" {
 					what = c(strings.Join(r, " "))
 				}
 				if neg {
-					what = b("no") + " " + what
+					return x.t("El check es correcto si "+b("no")+" "+what, "The check passes unless "+what), true
 				}
-				return "El check es correcto si " + what, true
+				return x.t("El check es correcto si ", "The check passes if ") + what, true
 			case "send":
 				m, u := kv(r, "meth"), kv(r, "uri")
 				if m == "" {
@@ -925,90 +988,101 @@ func init() {
 				if u == "" {
 					u = "/"
 				}
-				return "El check envía " + c(m+" "+u), true
+				return x.t("El check envía ", "The check sends ") + c(m+" "+u), true
 			case "connect":
-				return "El check abre una conexión", true
+				return x.t("El check abre una conexión", "The check opens a connection"), true
 			case "disable-on-404":
-				return "Si el check recibe 404, el servidor pasa a modo drenaje (no recibe nuevos clientes)", true
+				return x.t("Si el check recibe 404, el servidor pasa a modo drenaje (no recibe nuevos clientes)", "If the check receives a 404, the server enters drain mode (it receives no new clients)"), true
 			}
-			return "Check HTTP: " + c(strings.Join(a, " ")), true
+			return x.t("Check HTTP: ", "HTTP check: ") + c(strings.Join(a, " ")), true
 		},
-		"user": func(a []string, s string) (string, bool) {
+		"user": func(x tr, a []string, s string) (string, bool) {
 			if s != "userlist" {
-				return "Ejecuta HAProxy como el usuario " + b(arg(a, 0)), true
+				return x.t("Ejecuta HAProxy como el usuario ", "Runs HAProxy as the user ") + b(arg(a, 0)), true
 			}
-			p := []string{"Usuario " + b(arg(a, 0))}
+			p := []string{x.t("Usuario ", "User ") + b(arg(a, 0))}
 			f := toSet(a)
 			if f["password"] {
-				p = append(p, "contraseña cifrada")
+				p = append(p, x.t("contraseña cifrada", "hashed password"))
 			}
 			if f["insecure-password"] {
-				p = append(p, "⚠ contraseña en texto plano")
+				p = append(p, x.t("⚠ contraseña en texto plano", "⚠ plaintext password"))
 			}
 			if g := kv(a, "groups"); g != "" {
-				p = append(p, "grupos "+c(g))
+				p = append(p, x.t("grupos ", "groups ")+c(g))
 			}
 			return strings.Join(p, " · "), true
 		},
-		"group": func(a []string, s string) (string, bool) {
+		"group": func(x tr, a []string, s string) (string, bool) {
 			if s != "userlist" {
-				return "Ejecuta HAProxy con el grupo " + b(arg(a, 0)), true
+				return x.t("Ejecuta HAProxy con el grupo ", "Runs HAProxy with the group ") + b(arg(a, 0)), true
 			}
-			t := "Grupo " + b(arg(a, 0))
+			t := x.t("Grupo ", "Group ") + b(arg(a, 0))
 			if u := kv(a, "users"); u != "" {
-				t += " con los usuarios " + c(u)
+				t += x.t(" con los usuarios ", " with the users ") + c(u)
 			}
 			return t, true
 		},
-		"nameserver": func(a []string, _ string) (string, bool) {
-			return "Servidor DNS " + b(arg(a, 0)) + " en " + c(arg(a, 1)), true
+		"nameserver": func(x tr, a []string, _ string) (string, bool) {
+			return x.f("Servidor DNS %s en %s", "DNS server %s at %s", b(arg(a, 0)), c(arg(a, 1))), true
 		},
-		"nbthread": func(a []string, _ string) (string, bool) { return "Usa " + b(arg(a, 0)) + " hilos de trabajo", true },
-		"hard-stop-after": func(a []string, _ string) (string, bool) {
-			return "Al recargar, corta las conexiones antiguas tras " + dur(arg(a, 0), "ms") + " como máximo", true
+		"nbthread": func(x tr, a []string, _ string) (string, bool) {
+			return x.f("Usa %s hilos de trabajo", "Uses %s worker threads", b(arg(a, 0))), true
 		},
-		"ssl-default-bind-options": func(a []string, _ string) (string, bool) {
-			return "Opciones TLS por defecto en los bind: " + tlsOpts(a), true
+		"hard-stop-after": func(x tr, a []string, _ string) (string, bool) {
+			return x.f("Al recargar, corta las conexiones antiguas tras %s como máximo", "On reload, cuts the old connections after at most %s", x.dur(arg(a, 0), "ms")), true
 		},
-		"ssl-default-server-options": func(a []string, _ string) (string, bool) {
-			return "Opciones TLS por defecto hacia servidores: " + tlsOpts(a), true
+		"ssl-default-bind-options": func(x tr, a []string, _ string) (string, bool) {
+			return x.t("Opciones TLS por defecto en los bind: ", "Default TLS options on binds: ") + x.tlsOpts(a), true
 		},
-		"description": func(a []string, _ string) (string, bool) { return "Descripción: " + strings.Join(a, " "), true },
+		"ssl-default-server-options": func(x tr, a []string, _ string) (string, bool) {
+			return x.t("Opciones TLS por defecto hacia servidores: ", "Default TLS options towards servers: ") + x.tlsOpts(a), true
+		},
+		"description": func(x tr, a []string, _ string) (string, bool) {
+			return x.t("Descripción: ", "Description: ") + strings.Join(a, " "), true
+		},
 	}
 }
 
-// Describe explica una directiva en el contexto de su tipo de sección.
-func Describe(l *Line, section string) Explanation {
+var reGlobalSetting = regexp.MustCompile(`^(ssl-|quic|httpclient\.|h1-|h2-|ocsp)`)
+
+// Describe explica una directiva en el contexto de su tipo de sección, en
+// español. Para otro idioma, usa DescribeLang.
+func Describe(l *Line, section string) Explanation { return DescribeLang(l, section, LangES) }
+
+// DescribeLang es Describe en el idioma pedido.
+func DescribeLang(l *Line, section string, lang Lang) Explanation {
+	x := tr{lang}
 	info, known := KB.Directives[l.Keyword]
 	ex := Explanation{Category: "misc", Known: known}
 	if known {
 		ex.Category = info.Category
 	}
 	if f, ok := describers[l.Keyword]; ok {
-		text, k := f(l.Args, section)
+		text, k := f(x, l.Args, section)
 		ex.Text = text
 		if !k {
 			ex.Known = false
 		}
 	}
-	if ex.Text == "" && known && info.Description != "" {
-		ex.Text = info.Description
-		if strings.HasSuffix(info.Description, ":") && len(l.Args) > 0 {
+	if desc := x.kb().Directives[l.Keyword]; ex.Text == "" && known && desc != "" {
+		ex.Text = desc
+		if strings.HasSuffix(desc, ":") && len(l.Args) > 0 {
 			ex.Text += " " + c(strings.Join(l.Args, " "))
 		}
 	}
 	if ex.Text == "" && strings.HasPrefix(l.Keyword, "tune.") {
-		ex = Explanation{Text: "Ajuste fino interno de rendimiento (" + c(l.Keyword[5:]) + " = " + c(strings.Join(l.Args, " ")) + ")", Category: "perf", Known: true}
+		ex = Explanation{Text: x.t("Ajuste fino interno de rendimiento (", "Internal performance tuning (") + c(l.Keyword[5:]) + " = " + c(strings.Join(l.Args, " ")) + ")", Category: "perf", Known: true}
 	}
-	if ex.Text == "" && regexp.MustCompile(`^(ssl-|quic|httpclient\.|h1-|h2-|ocsp)`).MatchString(l.Keyword) {
+	if ex.Text == "" && reGlobalSetting.MatchString(l.Keyword) {
 		cat := "misc"
 		if strings.HasPrefix(l.Keyword, "ssl") {
 			cat = "tls"
 		}
-		ex = Explanation{Text: "Ajuste global " + c(l.Keyword), Category: cat, Known: true}
+		ex = Explanation{Text: x.t("Ajuste global ", "Global setting ") + c(l.Keyword), Category: cat, Known: true}
 	}
 	if ex.Text == "" {
-		ex = Explanation{Text: "Directiva que haro no reconoce (puede ser válida en tu versión; revisa la documentación).", Category: "misc", Known: false}
+		ex = Explanation{Text: x.t("Directiva que haro no reconoce (puede ser válida en tu versión; revisa la documentación).", "Directive that haro does not recognize (it may be valid in your version; check the documentation)."), Category: "misc", Known: false}
 	}
 	return ex
 }

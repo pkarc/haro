@@ -8,7 +8,8 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   reporter: [['list']],
-  use: { channel, trace: 'retain-on-failure' },
+  // locale fijo: el idioma por defecto del núcleo sigue al del navegador y los e2e esperan español.
+  use: { channel, locale: 'es-ES', trace: 'retain-on-failure' },
   webServer: [
     { command: 'node e2e/serve.mjs example 7471', url: 'http://127.0.0.1:7471/', reuseExistingServer: false },
     { command: 'node e2e/serve.mjs multi 7472', url: 'http://127.0.0.1:7472/', reuseExistingServer: false },

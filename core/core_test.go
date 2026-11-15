@@ -28,39 +28,50 @@ type goldenLine struct {
 	Known   bool   `json:"known"`
 }
 
+// goldenName devuelve la ruta del golden de un caso: español sin sufijo de
+// idioma (`x.golden.json`) e inglés con él (`x.golden.en.json`).
+func goldenName(base string, lang Lang) string {
+	if lang == LangES {
+		return base + ".golden.json"
+	}
+	return base + ".golden." + string(lang) + ".json"
+}
+
 func TestGolden(t *testing.T) {
 	files, _ := filepath.Glob("testdata/*.cfg")
 	if len(files) == 0 {
 		t.Fatal("no hay casos en testdata/")
 	}
 	for _, f := range files {
-		t.Run(filepath.Base(f), func(t *testing.T) {
-			src, err := os.ReadFile(f)
-			if err != nil {
-				t.Fatal(err)
-			}
-			a := Analyze(string(src))
-			g := golden{Issues: a.Issues, Topology: a.Topology}
-			for _, e := range a.Explanations {
-				g.Explanations = append(g.Explanations, goldenLine{e.Line, e.Keyword, e.Args, e.Explain.Text, e.Explain.Known})
-			}
-			got, _ := json.MarshalIndent(g, "", "  ")
-			got = append(got, '\n')
-			gf := strings.TrimSuffix(f, ".cfg") + ".golden.json"
-			if *update {
-				if err := os.WriteFile(gf, got, 0o644); err != nil {
+		for _, lang := range Langs {
+			t.Run(filepath.Base(f)+"/"+string(lang), func(t *testing.T) {
+				src, err := os.ReadFile(f)
+				if err != nil {
 					t.Fatal(err)
 				}
-				return
-			}
-			want, err := os.ReadFile(gf)
-			if err != nil {
-				t.Fatalf("falta %s; ejecuta go test ./core -update", gf)
-			}
-			if string(want) != string(got) {
-				t.Errorf("%s no coincide con el resultado actual; revisa el diff y ejecuta -update si el cambio es intencionado", gf)
-			}
-		})
+				a := AnalyzeLang(string(src), lang)
+				g := golden{Issues: a.Issues, Topology: a.Topology}
+				for _, e := range a.Explanations {
+					g.Explanations = append(g.Explanations, goldenLine{e.Line, e.Keyword, e.Args, e.Explain.Text, e.Explain.Known})
+				}
+				got, _ := json.MarshalIndent(g, "", "  ")
+				got = append(got, '\n')
+				gf := goldenName(strings.TrimSuffix(f, ".cfg"), lang)
+				if *update {
+					if err := os.WriteFile(gf, got, 0o644); err != nil {
+						t.Fatal(err)
+					}
+					return
+				}
+				want, err := os.ReadFile(gf)
+				if err != nil {
+					t.Fatalf("falta %s; ejecuta go test ./core -update", gf)
+				}
+				if string(want) != string(got) {
+					t.Errorf("%s no coincide con el resultado actual; revisa el diff y ejecuta -update si el cambio es intencionado", gf)
+				}
+			})
+		}
 	}
 }
 
@@ -74,52 +85,54 @@ func TestGoldenMulti(t *testing.T) {
 			continue
 		}
 		found++
-		t.Run(filepath.Base(dir), func(t *testing.T) {
-			names, _ := filepath.Glob(filepath.Join(dir, "*.cfg"))
-			sort.Strings(names)
-			var srcs []Source
-			for _, n := range names {
-				if strings.HasPrefix(filepath.Base(n), ".") {
-					continue
+		for _, lang := range Langs {
+			t.Run(filepath.Base(dir)+"/"+string(lang), func(t *testing.T) {
+				names, _ := filepath.Glob(filepath.Join(dir, "*.cfg"))
+				sort.Strings(names)
+				var srcs []Source
+				for _, n := range names {
+					if strings.HasPrefix(filepath.Base(n), ".") {
+						continue
+					}
+					b, _ := os.ReadFile(n)
+					srcs = append(srcs, Source{Path: filepath.Base(n), Text: string(b)})
 				}
-				b, _ := os.ReadFile(n)
-				srcs = append(srcs, Source{Path: filepath.Base(n), Text: string(b)})
-			}
-			a := AnalyzeConfig(srcs)
-			type gl struct {
-				File string `json:"file"`
-				goldenLine
-			}
-			g := struct {
-				Issues       []Issue  `json:"issues"`
-				Explanations []gl     `json:"explanations"`
-				Topology     Topology `json:"topology"`
-			}{Issues: a.Issues, Topology: a.Topology}
-			for _, e := range a.Explanations {
-				g.Explanations = append(g.Explanations, gl{srcs[e.File].Path, goldenLine{e.Line, e.Keyword, e.Args, e.Explain.Text, e.Explain.Known}})
-			}
-			got, _ := json.MarshalIndent(g, "", "  ")
-			got = append(got, '\n')
-			gf := filepath.Clean(dir) + ".golden.json"
-			if *update {
-				os.WriteFile(gf, got, 0o644)
-				return
-			}
-			want, err := os.ReadFile(gf)
-			if err != nil {
-				t.Fatalf("falta %s; ejecuta go test ./core -update", gf)
-			}
-			if string(want) != string(got) {
-				t.Errorf("%s no coincide con el resultado actual", gf)
-			}
-			// Editar a través de la vista unificada modifica el archivo de origen.
-			cfg := NewConfig(srcs)
-			m := cfg.Merge()
-			m.Sections[len(m.Sections)-1].Lines = append(m.Sections[len(m.Sections)-1].Lines, &Line{Kind: KindComment, Text: "# editado"})
-			if !strings.Contains(cfg.Serialize(m.Sections[len(m.Sections)-1].File), "# editado") {
-				t.Error("la edición en la vista unificada no llegó al archivo de origen")
-			}
-		})
+				a := AnalyzeConfigLang(srcs, lang)
+				type gl struct {
+					File string `json:"file"`
+					goldenLine
+				}
+				g := struct {
+					Issues       []Issue  `json:"issues"`
+					Explanations []gl     `json:"explanations"`
+					Topology     Topology `json:"topology"`
+				}{Issues: a.Issues, Topology: a.Topology}
+				for _, e := range a.Explanations {
+					g.Explanations = append(g.Explanations, gl{srcs[e.File].Path, goldenLine{e.Line, e.Keyword, e.Args, e.Explain.Text, e.Explain.Known}})
+				}
+				got, _ := json.MarshalIndent(g, "", "  ")
+				got = append(got, '\n')
+				gf := goldenName(filepath.Clean(dir), lang)
+				if *update {
+					os.WriteFile(gf, got, 0o644)
+					return
+				}
+				want, err := os.ReadFile(gf)
+				if err != nil {
+					t.Fatalf("falta %s; ejecuta go test ./core -update", gf)
+				}
+				if string(want) != string(got) {
+					t.Errorf("%s no coincide con el resultado actual", gf)
+				}
+				// Editar a través de la vista unificada modifica el archivo de origen.
+				cfg := NewConfig(srcs)
+				m := cfg.Merge()
+				m.Sections[len(m.Sections)-1].Lines = append(m.Sections[len(m.Sections)-1].Lines, &Line{Kind: KindComment, Text: "# editado"})
+				if !strings.Contains(cfg.Serialize(m.Sections[len(m.Sections)-1].File), "# editado") {
+					t.Error("la edición en la vista unificada no llegó al archivo de origen")
+				}
+			})
+		}
 	}
 	if found == 0 {
 		t.Fatal("no hay casos de varios archivos en testdata/")
@@ -148,6 +161,22 @@ func TestTokenize(t *testing.T) {
 		got, _ := Tokenize(in)
 		if strings.Join(got, "|") != strings.Join(want, "|") {
 			t.Errorf("Tokenize(%q) = %q, quería %q", in, got, want)
+		}
+	}
+}
+
+func TestACLPhraseEN(t *testing.T) {
+	cases := map[string]string{
+		"path_beg -i /api /v2":         "the path starts with `/api` or `/v2` (case-insensitive)",
+		"hdr(host) -i x.com":           "the Host header is `x.com` (case-insensitive)",
+		"src 10.0.0.0/8":               "the source IP is in `10.0.0.0/8`",
+		"ssl_fc":                       "the incoming connection is TLS",
+		"sc_http_req_rate(0) gt 20":    "the client's request rate (counter 0) is greater than **20**",
+		"hdr_dom(host) -i example.com": "the Host header contains the domain `example.com` (case-insensitive)",
+	}
+	for in, want := range cases {
+		if got := ACLPhraseLang(strings.Fields(in), LangEN); got != want {
+			t.Errorf("ACLPhraseLang(%q)\n got  %q\n want %q", in, got, want)
 		}
 	}
 }

@@ -37,6 +37,9 @@ service ConfigService {
 message AnalyzeRequest {
   string text = 1;
   repeated SourceFile files = 2;
+  // Idioma de las explicaciones y de los mensajes del detector: "es" o "en".
+  // Vacío = español. Cualquier otro valor es un error (INVALID_ARGUMENT).
+  string lang = 3;
 }
 
 message SourceFile {
@@ -198,7 +201,10 @@ message ApplyResponse {
   repeated FileChange changes = 2;  // solo los que cambiaron
 }
 
-message GetKnowledgeRequest {}
+message GetKnowledgeRequest {
+  // Idioma de los textos: "es" o "en". Vacío = español.
+  string lang = 1;
+}
 
 message SectionInfo {
   string color = 1;

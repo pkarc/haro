@@ -13,16 +13,22 @@ Para la web hace falta Node: `make web`.
 
 ## Añadir o mejorar explicaciones
 
-1. Edita `core/knowledge/knowledge.json` (secciones, directivas, opciones, fetches…) o, si la frase depende de los argumentos, `core/describe.go`.
-2. Añade o amplía un caso en `core/testdata/` (`*.cfg`; un subdirectorio es un caso de varios archivos).
-3. Ejecuta `make golden`, **revisa el diff** de los `.golden.json` y súbelo con el cambio.
+Las explicaciones existen en español e inglés. Un cambio completo toca:
+
+1. **Estructura** en `core/knowledge/knowledge.json`: secciones donde es válida la directiva (`sections`), categoría (`category`), colores, `booleanFetches`, `builtinAcls`…
+2. **Texto** en `core/knowledge/text.es.json` y `core/knowledge/text.en.json`, con exactamente las mismas claves y ningún valor vacío (`TestKnowledgeTextsSameShape` lo comprueba). El inglés debe sonar natural y técnico, no ser una traducción literal.
+3. **Frases con argumentos** en `core/describe.go`, escritas completas en los dos idiomas con el contexto `x tr`: `x.t("Cambia la ruta a ", "Sets the path to ")`. Cuando el orden de las palabras cambia, usa dos plantillas completas con `x.f(plantillaES, plantillaEN, args...)` en lugar de concatenar. El idioma viaja siempre en `x`; nunca lo guardes en una variable global (el servidor atiende varios idiomas a la vez).
+4. Un caso en `core/testdata/` (`*.cfg`; un subdirectorio es un caso de varios archivos). `coverage.cfg` recorre casi todas las frases.
+5. `make golden`, y **revisa el diff** de los `.golden.json` (español) y de los `.golden.en.json` (inglés). Los golden en español no deberían cambiar si no tocaste el español. Lee los de inglés a mano: `TestNoLanguageLeftovers` caza restos de español, pero no sustituye a una lectura.
 
 Las explicaciones usan markdown mínimo: `**negrita**` y `` `código` ``. No metas HTML.
+
+Los errores de edición (`core/edit.go`, `ApplyError`) y los textos de interfaz (CLI, TUI, web) no se traducen.
 
 ## Reglas del detector
 
 - Cada regla tiene un identificador estable en `core.Rules`. No lo renombres: lo usan `--disable`, la salida JSON y la integración continua de los usuarios.
-- Toda regla nueva lleva su caso en `core/testdata/` y su golden.
+- Toda regla nueva lleva su caso en `core/testdata/` y sus golden, en español y en inglés: descripción en `rulesES` y `rulesEN` (`core/lint.go`) y el mensaje en los dos idiomas en la llamada a `add`.
 - El detector es orientativo. La validación definitiva es `haproxy -c`.
 
 ## Validar con HAProxy

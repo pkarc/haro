@@ -52,6 +52,19 @@ func fromProto(m proto.Message, v any) error {
 	return json.Unmarshal(b, v)
 }
 
+// requestLang interpreta el campo lang de una petición: vacío es español y un
+// idioma que el núcleo no conoce es un error del cliente.
+func requestLang(v string) (core.Lang, error) {
+	if v == "" {
+		return core.LangES, nil
+	}
+	l, ok := core.ParseLang(v)
+	if !ok {
+		return "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("idioma desconocido %q (usa es o en)", v))
+	}
+	return l, nil
+}
+
 func internal(err error) error { return connect.NewError(connect.CodeInternal, err) }
 
 // sources reúne los archivos de una petición: files si llega, o text como un
@@ -82,7 +95,11 @@ func checkToProto(c checkResult) *harov1.CheckResult {
 type coreService struct{ s *server }
 
 func (c coreService) Analyze(_ context.Context, req *connect.Request[harov1.AnalyzeRequest]) (*connect.Response[harov1.Analysis], error) {
-	a := core.AnalyzeConfig(sources(req.Msg.Text, req.Msg.Files))
+	lang, err := requestLang(req.Msg.Lang)
+	if err != nil {
+		return nil, err
+	}
+	a := core.AnalyzeConfigLang(sources(req.Msg.Text, req.Msg.Files), lang)
 	out, err := toProto(a, &harov1.Analysis{})
 	if err != nil {
 		return nil, internal(err)
@@ -126,8 +143,12 @@ func (c coreService) Diff(_ context.Context, req *connect.Request[harov1.DiffReq
 	return connect.NewResponse(out), nil
 }
 
-func (c coreService) GetKnowledge(context.Context, *connect.Request[harov1.GetKnowledgeRequest]) (*connect.Response[harov1.Knowledge], error) {
-	out, err := toProto(core.KB.Public(), &harov1.Knowledge{})
+func (c coreService) GetKnowledge(_ context.Context, req *connect.Request[harov1.GetKnowledgeRequest]) (*connect.Response[harov1.Knowledge], error) {
+	lang, err := requestLang(req.Msg.Lang)
+	if err != nil {
+		return nil, err
+	}
+	out, err := toProto(core.KB.PublicFor(lang), &harov1.Knowledge{})
 	if err != nil {
 		return nil, internal(err)
 	}

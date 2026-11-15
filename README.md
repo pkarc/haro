@@ -43,6 +43,7 @@ haro lint --format json mi.cfg          # salida para CI (también sarif y markd
 haro lint --disable no-global,tls-no-alpn mi.cfg
 haro lint --rules                       # lista de reglas
 haro explain mi.cfg
+haro explain --lang en mi.cfg           # explicaciones en inglés (también en lint, tui y mcp)
 cat mi.cfg | haro explain -
 haro diff antes.cfg despues.cfg
 haro serve --file /etc/haproxy/haproxy.cfg               # solo lectura
@@ -117,9 +118,11 @@ Al guardar desde `haro serve`, se valida la configuración completa con el cambi
 ```
 core/        Núcleo en Go: parser sin pérdidas, serializador, base de
              conocimiento, explicaciones, detector, herencia, topología, diff
-core/knowledge/knowledge.json   Explicaciones y reglas como datos
-core/testdata/                  Casos .cfg con su resultado esperado (.golden.json);
-                                cada subdirectorio es un caso de varios archivos
+core/knowledge/knowledge.json   Estructura de la base de conocimiento (secciones, directivas…)
+core/knowledge/text.es.json     Textos en español (misma forma y claves que text.en.json)
+core/knowledge/text.en.json     Textos en inglés
+core/testdata/                  Casos .cfg con su resultado esperado (.golden.json en español,
+                                .golden.en.json en inglés); cada subdirectorio es un caso de varios archivos
 scripts/fetch-corpus.sh         Descarga configuraciones reales para tests de no-regresión
 cmd/haro/    CLI y servidor local (serve)
 proto/       Contrato del API (Connect), fuente de verdad de los tipos
@@ -128,7 +131,11 @@ web/         Interfaz React + Vite + TypeScript, embebida en el binario
 
 - El núcleo no depende de ninguna interfaz. Lo usan el CLI y `haro serve`, y en el futuro lo usará un módulo WASM para la web pública.
 - Las explicaciones usan un markdown mínimo (`**negrita**`, `` `código` ``) que la terminal y la web pintan a su manera.
-- `core/testdata` es la especificación del proyecto: cada `.cfg` tiene su `.golden.json` con problemas, explicaciones y topología esperados.
+- `core/testdata` es la especificación del proyecto: cada `.cfg` tiene su `.golden.json` (español) y su `.golden.en.json` (inglés) con problemas, explicaciones y topología esperados.
+
+### Idioma
+
+Las explicaciones y los mensajes del detector existen en español e inglés. `haro lint`, `haro explain`, `haro tui` y `haro mcp` aceptan `--lang es|en`; por defecto se usa `LC_ALL`, `LC_MESSAGES` o `LANG` (inglés si empiezan por `en`, español en cualquier otro caso). `haro lint --rules` y los formatos SARIF y markdown salen en ese idioma. Las herramientas del servidor MCP aceptan además un argumento `lang`. En la API, `AnalyzeRequest` y `GetKnowledgeRequest` llevan un campo `lang` (vacío = español), y en la web el idioma se elige en Ajustes. Solo cambia el texto que produce el núcleo: los mensajes de los comandos y la interfaz siguen en español.
 
 ## Desarrollo
 
@@ -158,9 +165,11 @@ El corpus no se incluye en el repo. El test se omite si no está descargado.
 
 ### Añadir o corregir explicaciones
 
-1. Edita `core/knowledge/knowledge.json` (texto) o `core/describe.go` (frases con argumentos).
-2. Añade o amplía un caso en `core/testdata/`.
-3. `make golden` y revisa el diff de los `.golden.json`.
+1. Estructura (a qué secciones y categoría pertenece una directiva…) en `core/knowledge/knowledge.json`.
+2. Texto en **los dos** `core/knowledge/text.es.json` y `text.en.json`, con las mismas claves (un test lo comprueba).
+3. Si la frase depende de los argumentos, `core/describe.go`, escrita completa en los dos idiomas (`x.t("español", "English")`, o `x.f(plantillaES, plantillaEN, ...)` si el orden de las palabras cambia).
+4. Añade o amplía un caso en `core/testdata/`.
+5. `make golden` y revisa el diff de los `.golden.json` y de los `.golden.en.json`.
 
 ## Hoja de ruta
 

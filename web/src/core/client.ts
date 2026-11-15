@@ -1,7 +1,7 @@
 import { Code, ConnectError, createClient } from '@connectrpc/connect'
 import { createConnectTransport } from '@connectrpc/connect-web'
 import { ConfigService, CoreService } from '../gen/haro/v1/haro_pb'
-import type { Analysis, ApplyResult, Capabilities, CheckResult, DiffOp, Knowledge, Op, PutResult, SourceFile } from './types'
+import type { Analysis, ApplyResult, Capabilities, CheckResult, DiffOp, Knowledge, Lang, Op, PutResult, SourceFile } from './types'
 
 // La interfaz no sabe con qué núcleo habla:
 //  - ConnectCoreClient: `haro serve` local (Go nativo), con el cliente
@@ -11,7 +11,8 @@ import type { Analysis, ApplyResult, Capabilities, CheckResult, DiffOp, Knowledg
 // Una configuración puede tener uno o varios archivos, en orden de carga.
 export interface CoreClient {
   capabilities(): Promise<Capabilities>
-  analyze(files: SourceFile[]): Promise<Analysis>
+  // `lang` es el idioma de las explicaciones y mensajes del detector (por defecto, español).
+  analyze(files: SourceFile[], lang?: Lang): Promise<Analysis>
   apply(files: SourceFile[], ops: Op[]): Promise<ApplyResult>
   diff(before: string, after: string): Promise<DiffOp[]>
   check(files: SourceFile[]): Promise<CheckResult>
@@ -19,7 +20,7 @@ export interface CoreClient {
   putFile(path: string, text: string): Promise<PutResult>
   // Guarda varios archivos a la vez: se valida el conjunto y se guarda todo o nada.
   putFiles(files: SourceFile[]): Promise<PutResult>
-  knowledge(): Promise<Knowledge>
+  knowledge(lang?: Lang): Promise<Knowledge>
 }
 
 // Los errores de RPC llegan como Error con el mensaje del servidor (sin el
@@ -49,11 +50,11 @@ export class ConnectCoreClient implements CoreClient {
   }
 
   async capabilities() { return plain<Capabilities>(await rpc(this.config.getCapabilities({}))) }
-  async analyze(files: SourceFile[]) { return plain<Analysis>(await rpc(this.core.analyze({ files }))) }
+  async analyze(files: SourceFile[], lang: Lang = 'es') { return plain<Analysis>(await rpc(this.core.analyze({ files, lang }))) }
   async apply(files: SourceFile[], ops: Op[]) { return plain<ApplyResult>(await rpc(this.core.apply({ files, ops }))) }
   async diff(before: string, after: string) { return plain<DiffOp[]>((await rpc(this.core.diff({ before, after }))).ops) }
   async check(files: SourceFile[]) { return plain<CheckResult>(await rpc(this.core.check({ files }))) }
-  async knowledge() { return plain<Knowledge>(await rpc(this.core.getKnowledge({}))) }
+  async knowledge(lang: Lang = 'es') { return plain<Knowledge>(await rpc(this.core.getKnowledge({ lang }))) }
 
   async getConfig() {
     try { return plain<SourceFile[]>((await this.config.getConfig({})).files) }

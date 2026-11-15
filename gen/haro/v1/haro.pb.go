@@ -32,9 +32,12 @@ const (
 // Un único texto (text) o varios archivos (files) en orden de carga, como
 // `haproxy -f a.cfg -f b.cfg`. Si llega files, text se ignora.
 type AnalyzeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Text          string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
-	Files         []*SourceFile          `protobuf:"bytes,2,rep,name=files,proto3" json:"files,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Text  string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	Files []*SourceFile          `protobuf:"bytes,2,rep,name=files,proto3" json:"files,omitempty"`
+	// Idioma de las explicaciones y de los mensajes del detector: "es" o "en".
+	// Vacío = español. Cualquier otro valor es un error (INVALID_ARGUMENT).
+	Lang          string `protobuf:"bytes,3,opt,name=lang,proto3" json:"lang,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -81,6 +84,13 @@ func (x *AnalyzeRequest) GetFiles() []*SourceFile {
 		return x.Files
 	}
 	return nil
+}
+
+func (x *AnalyzeRequest) GetLang() string {
+	if x != nil {
+		return x.Lang
+	}
+	return ""
 }
 
 type SourceFile struct {
@@ -1528,7 +1538,9 @@ func (x *ApplyResponse) GetChanges() []*FileChange {
 }
 
 type GetKnowledgeRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Idioma de los textos: "es" o "en". Vacío = español.
+	Lang          string `protobuf:"bytes,1,opt,name=lang,proto3" json:"lang,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1561,6 +1573,13 @@ func (x *GetKnowledgeRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetKnowledgeRequest.ProtoReflect.Descriptor instead.
 func (*GetKnowledgeRequest) Descriptor() ([]byte, []int) {
 	return file_haro_v1_haro_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *GetKnowledgeRequest) GetLang() string {
+	if x != nil {
+		return x.Lang
+	}
+	return ""
 }
 
 type SectionInfo struct {
@@ -2493,10 +2512,11 @@ var File_haro_v1_haro_proto protoreflect.FileDescriptor
 
 const file_haro_v1_haro_proto_rawDesc = "" +
 	"\n" +
-	"\x12haro/v1/haro.proto\x12\aharo.v1\"O\n" +
+	"\x12haro/v1/haro.proto\x12\aharo.v1\"c\n" +
 	"\x0eAnalyzeRequest\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12)\n" +
-	"\x05files\x18\x02 \x03(\v2\x13.haro.v1.SourceFileR\x05files\"4\n" +
+	"\x05files\x18\x02 \x03(\v2\x13.haro.v1.SourceFileR\x05files\x12\x12\n" +
+	"\x04lang\x18\x03 \x01(\tR\x04lang\"4\n" +
 	"\n" +
 	"SourceFile\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x12\n" +
@@ -2621,8 +2641,9 @@ const file_haro_v1_haro_proto_rawDesc = "" +
 	"\x04text\x18\x03 \x01(\tR\x04text\"i\n" +
 	"\rApplyResponse\x12)\n" +
 	"\x05files\x18\x01 \x03(\v2\x13.haro.v1.SourceFileR\x05files\x12-\n" +
-	"\achanges\x18\x02 \x03(\v2\x13.haro.v1.FileChangeR\achanges\"\x15\n" +
-	"\x13GetKnowledgeRequest\"q\n" +
+	"\achanges\x18\x02 \x03(\v2\x13.haro.v1.FileChangeR\achanges\")\n" +
+	"\x13GetKnowledgeRequest\x12\x12\n" +
+	"\x04lang\x18\x01 \x01(\tR\x04lang\"q\n" +
 	"\vSectionInfo\x12\x14\n" +
 	"\x05color\x18\x01 \x01(\tR\x05color\x12\x14\n" +
 	"\x05named\x18\x02 \x01(\tR\x05named\x12\x14\n" +

@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/pkarc/haro/core"
 )
 
 // mcpCall ejecuta una llamada a herramienta y devuelve (texto, estructurado, isError).
@@ -229,5 +231,55 @@ func TestMCPToolListHasAllTools(t *testing.T) {
 	got := strings.Join((&mcpTools{}).server().SortedNames(), ",")
 	if got != "haro_analyze,haro_apply,haro_check,haro_diff,haro_explain,haro_lint" {
 		t.Errorf("herramientas: %s", got)
+	}
+}
+
+func TestMCPLang(t *testing.T) {
+	cfg := strings.Replace(mcpCfg, "default_backend api", "default_backend nope", 1)
+	// Sin lang: español. Con lang=en: inglés, también en explain y analyze.
+	text, _, _ := mcpCall(t, &mcpTools{}, "haro_lint", map[string]any{"text": cfg})
+	if !strings.Contains(text, "no existe") {
+		t.Errorf("por defecto debe ser español: %s", text)
+	}
+	text, st, isErr := mcpCall(t, &mcpTools{}, "haro_lint", map[string]any{"text": cfg, "lang": "en"})
+	if isErr || !strings.Contains(text, "The backend “nope” does not exist.") {
+		t.Errorf("lint en inglés: %v %s", isErr, text)
+	}
+	if st["issues"].([]any)[0].(map[string]any)["message"] == "" {
+		t.Error("falta el mensaje estructurado")
+	}
+	text, _, _ = mcpCall(t, &mcpTools{}, "haro_explain", map[string]any{"text": cfg, "lang": "en", "section": "web"})
+	if !strings.Contains(text, "Default backend") || !strings.Contains(text, "Traffic entry point") {
+		t.Errorf("explain en inglés: %s", text)
+	}
+	// --lang fija el valor por defecto y el argumento lo sobrescribe.
+	text, _, _ = mcpCall(t, &mcpTools{lang: core.LangEN}, "haro_lint", map[string]any{"text": cfg})
+	if !strings.Contains(text, "does not exist") {
+		t.Errorf("--lang en: %s", text)
+	}
+	text, _, _ = mcpCall(t, &mcpTools{lang: core.LangEN}, "haro_lint", map[string]any{"text": cfg, "lang": "es"})
+	if !strings.Contains(text, "no existe") {
+		t.Errorf("lang=es debe ganar a --lang: %s", text)
+	}
+	if text, _, isErr := mcpCall(t, &mcpTools{}, "haro_lint", map[string]any{"text": cfg, "lang": "fr"}); !isErr {
+		t.Errorf("un idioma desconocido debe ser error: %s", text)
+	}
+	// El esquema de las herramientas de lectura declara el enum.
+	for _, tool := range (&mcpTools{}).tools() {
+		switch tool.Name {
+		case "haro_lint", "haro_explain", "haro_analyze", "haro_apply":
+			props := tool.InputSchema["properties"].(map[string]any)
+			lp, ok := props["lang"].(map[string]any)
+			if !ok || len(lp["enum"].([]string)) != 2 {
+				t.Errorf("%s: falta lang (enum es/en) en el esquema", tool.Name)
+			}
+		}
+	}
+	// El recurso de reglas sigue el idioma por defecto.
+	var out bytes.Buffer
+	req := `{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"haro://rules"}}`
+	(&mcpTools{lang: core.LangEN}).server().Serve(context.Background(), strings.NewReader(req+"\n"), &out)
+	if !strings.Contains(out.String(), "Reference to a backend that does not exist") {
+		t.Errorf("haro://rules en inglés: %s", out.String())
 	}
 }

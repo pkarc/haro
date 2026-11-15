@@ -21,17 +21,21 @@ type Analysis struct {
 }
 
 // Analyze parsea un único texto y calcula problemas, explicaciones, herencia
-// y topología. Para varios archivos, usa AnalyzeConfig.
-func Analyze(text string) Analysis {
-	return analyzeDoc(Parse(text))
+// y topología, con los textos en español. Para varios archivos, usa
+// AnalyzeConfig; para otro idioma, AnalyzeLang.
+func Analyze(text string) Analysis { return AnalyzeLang(text, LangES) }
+
+// AnalyzeLang es Analyze con los textos en el idioma pedido.
+func AnalyzeLang(text string, lang Lang) Analysis {
+	return analyzeDoc(Parse(text), lang)
 }
 
-func analyzeDoc(doc *Doc) Analysis {
+func analyzeDoc(doc *Doc, lang Lang) Analysis {
 	ex := []LineExplanation{}
 	for i, s := range doc.Sections {
 		for _, l := range s.Directives() {
-			ex = append(ex, LineExplanation{File: s.File, Line: l.Line, Section: i, Keyword: l.Keyword, Args: DisplayArgs(l), Explain: Describe(l, s.Type)})
+			ex = append(ex, LineExplanation{File: s.File, Line: l.Line, Section: i, Keyword: l.Keyword, Args: DisplayArgs(l), Explain: DescribeLang(l, s.Type, lang)})
 		}
 	}
-	return Analysis{Doc: doc, Issues: Lint(doc), Explanations: ex, Effective: ComputeEffective(doc), Topology: BuildTopology(doc)}
+	return Analysis{Doc: doc, Issues: LintLang(doc, lang), Explanations: ex, Effective: ComputeEffective(doc), Topology: BuildTopology(doc)}
 }

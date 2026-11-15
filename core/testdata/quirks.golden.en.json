@@ -1,0 +1,110 @@
+{
+  "issues": [
+    {
+      "rule": "timeout-missing",
+      "file": 0,
+      "severity": "warn",
+      "line": 5,
+      "section": 1,
+      "message": "frontend “quoted name”: missing “timeout client” (neither here nor in defaults)."
+    }
+  ],
+  "explanations": [
+    {
+      "line": 2,
+      "keyword": "log",
+      "args": "stdout format raw local0",
+      "text": "Sends logs to standard output · facility `local0`",
+      "known": true
+    },
+    {
+      "line": 3,
+      "keyword": "tune.bufsize",
+      "args": "32768",
+      "text": "Internal performance tuning (`bufsize` = `32768`)",
+      "known": true
+    },
+    {
+      "line": 6,
+      "keyword": "bind",
+      "args": "ipv6@:::80 v4v6",
+      "text": "Listens on all interfaces (IPv4 + IPv6), port `80` · IPv4 and IPv6",
+      "known": true
+    },
+    {
+      "line": 7,
+      "keyword": "bind",
+      "args": "unix@/run/haproxy.sock mode 600",
+      "text": "Listens on Unix socket `/run/haproxy.sock` · permissions `600`",
+      "known": true
+    },
+    {
+      "line": 8,
+      "keyword": "http-request",
+      "args": "set-header X-Foo \"valor con espacios\"",
+      "text": "Request: Sets the header `X-Foo` = `valor con espacios`",
+      "known": true
+    },
+    {
+      "line": 9,
+      "keyword": "http-request",
+      "args": "set-var(txn.host) req.hdr(host),lower",
+      "text": "Request: Stores `req.hdr(host),lower` in the variable `txn.host`",
+      "known": true
+    },
+    {
+      "line": 10,
+      "keyword": "acl",
+      "args": "local src -f /etc/haproxy/allow.lst",
+      "text": "Defines the condition `local`: the source IP is in the list in file `/etc/haproxy/allow.lst`",
+      "known": true
+    },
+    {
+      "line": 11,
+      "keyword": "acl",
+      "args": "h hdr_dom(host) -i example.com",
+      "text": "Defines the condition `h`: the Host header contains the domain `example.com` (case-insensitive)",
+      "known": true
+    },
+    {
+      "line": 12,
+      "keyword": "use_backend",
+      "args": "%[req.hdr(host),lower,map(/etc/haproxy/hosts.map,def)]",
+      "text": "Sends to the backend that results from evaluating `%[req.hdr(host),lower,map(/etc/haproxy/hosts.map,def)]` (dynamic routing)",
+      "known": true
+    }
+  ],
+  "topology": {
+    "entries": [
+      {
+        "section": 1,
+        "type": "frontend",
+        "name": "quoted name",
+        "binds": [
+          {
+            "address": "ipv6@:::80",
+            "tls": false
+          },
+          {
+            "address": "unix@/run/haproxy.sock",
+            "tls": false
+          }
+        ]
+      }
+    ],
+    "backends": [],
+    "edges": [
+      {
+        "file": 0,
+        "from": 1,
+        "to": -1,
+        "toName": "%[req.hdr(host),lower,map(/etc/haproxy/hosts.map,def)]",
+        "default": false,
+        "line": 12
+      }
+    ],
+    "missing": [
+      "%[req.hdr(host),lower,map(/etc/haproxy/hosts.map,def)]"
+    ]
+  }
+}

@@ -108,10 +108,11 @@ func sarifURI(path, cwd string) sarifArtifactLocation {
 }
 
 // writeSARIF escribe el informe de los problemas encontrados en srcs.
-func writeSARIF(w io.Writer, srcs []core.Source, issues []core.Issue) error {
+func writeSARIF(w io.Writer, srcs []core.Source, issues []core.Issue, lang core.Lang) error {
+	coreRules := core.RulesFor(lang)
 	cwd, _ := os.Getwd()
-	ids := make([]string, 0, len(core.Rules))
-	for id := range core.Rules {
+	ids := make([]string, 0, len(coreRules))
+	for id := range coreRules {
 		ids = append(ids, id)
 	}
 	sort.Strings(ids)
@@ -119,7 +120,7 @@ func writeSARIF(w io.Writer, srcs []core.Source, issues []core.Issue) error {
 	rules := make([]sarifRule, len(ids))
 	for i, id := range ids {
 		index[id] = i
-		rules[i] = sarifRule{ID: id, ShortDescription: sarifText{core.Rules[id]}}
+		rules[i] = sarifRule{ID: id, ShortDescription: sarifText{coreRules[id]}}
 	}
 	run := sarifRun{
 		Tool: sarifTool{Driver: sarifDriver{Name: "haro", Version: version, InformationURI: "https://github.com/pkarc/haro", Rules: rules}},

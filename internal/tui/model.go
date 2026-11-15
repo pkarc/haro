@@ -26,6 +26,8 @@ type Options struct {
 	Dirs []string
 	// Editor sobrescribe $VISUAL/$EDITOR (vacío = del entorno).
 	Editor string
+	// Lang es el idioma de las explicaciones y mensajes del detector (vacío = español).
+	Lang core.Lang
 	// NoColor desactiva los colores.
 	NoColor bool
 	// NoWatch desactiva la recarga automática.
@@ -212,7 +214,7 @@ func (m *Model) setSources(srcs []core.Source) {
 		prevKey = s.Type + "\x00" + s.Name
 	}
 	m.srcs = srcs
-	m.analysis = core.AnalyzeConfig(srcs)
+	m.analysis = core.AnalyzeConfigLang(srcs, m.opts.Lang)
 	m.items = buildItems(m.analysis)
 	m.cursor = 0
 	for i, it := range m.items {
@@ -513,7 +515,7 @@ func (m *Model) refreshDetail() {
 	if m.cursor < len(m.items) {
 		si = m.items[m.cursor].section
 	}
-	rows, hlRow := renderDetail(m.analysis, si, m.hl, m.st, m.detail.Width)
+	rows, hlRow := renderDetail(m.analysis, m.opts.Lang, si, m.hl, m.st, m.detail.Width)
 	m.detail.SetContent(strings.Join(rows, "\n"))
 	m.detail.GotoTop()
 	if hlRow >= 0 {

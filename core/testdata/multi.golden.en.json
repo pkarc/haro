@@ -1,0 +1,207 @@
+{
+  "issues": [
+    {
+      "rule": "duplicate-name",
+      "file": 2,
+      "severity": "error",
+      "line": 7,
+      "section": 5,
+      "message": "Another section acting as a backend named “app” already exists (20-web.cfg, line 7)."
+    },
+    {
+      "rule": "outside-section",
+      "file": 3,
+      "severity": "error",
+      "line": 2,
+      "section": -1,
+      "message": "“server” is outside any section. Every directive must go inside global, defaults, frontend, backend…"
+    }
+  ],
+  "explanations": [
+    {
+      "file": "10-global.cfg",
+      "line": 3,
+      "keyword": "log",
+      "args": "/dev/log local0",
+      "text": "Sends logs to the local syslog (`/dev/log`) · facility `local0`",
+      "known": true
+    },
+    {
+      "file": "10-global.cfg",
+      "line": 4,
+      "keyword": "maxconn",
+      "args": "4096",
+      "text": "Maximum simultaneous connections for the whole process: **4096**",
+      "known": true
+    },
+    {
+      "file": "10-global.cfg",
+      "line": 7,
+      "keyword": "mode",
+      "args": "http",
+      "text": "**HTTP mode** (layer 7): HAProxy parses requests, headers and paths, and can apply rules to them.",
+      "known": true
+    },
+    {
+      "file": "10-global.cfg",
+      "line": 8,
+      "keyword": "timeout",
+      "args": "connect 5s",
+      "text": "Maximum time to establish the TCP connection to a server: **5 s**",
+      "known": true
+    },
+    {
+      "file": "10-global.cfg",
+      "line": 9,
+      "keyword": "timeout",
+      "args": "client 30s",
+      "text": "Maximum time of client inactivity: **30 s**",
+      "known": true
+    },
+    {
+      "file": "10-global.cfg",
+      "line": 10,
+      "keyword": "timeout",
+      "args": "server 30s",
+      "text": "Maximum time waiting for data from the server: **30 s**",
+      "known": true
+    },
+    {
+      "file": "20-web.cfg",
+      "line": 2,
+      "keyword": "bind",
+      "args": "*:80",
+      "text": "Listens on all interfaces, port `80`",
+      "known": true
+    },
+    {
+      "file": "20-web.cfg",
+      "line": 3,
+      "keyword": "acl",
+      "args": "is_api path_beg /api",
+      "text": "Defines the condition `is_api`: the path starts with `/api`",
+      "known": true
+    },
+    {
+      "file": "20-web.cfg",
+      "line": 4,
+      "keyword": "use_backend",
+      "args": "api if is_api",
+      "text": "Sends to the backend **api** — if `is_api`",
+      "known": true
+    },
+    {
+      "file": "20-web.cfg",
+      "line": 5,
+      "keyword": "default_backend",
+      "args": "app",
+      "text": "Default backend: **app** — receives everything that matches no `use_backend` rule",
+      "known": true
+    },
+    {
+      "file": "20-web.cfg",
+      "line": 8,
+      "keyword": "server",
+      "args": "a1 10.0.0.1:8080 check",
+      "text": "Server **a1** at `10.0.0.1:8080` · active health checks",
+      "known": true
+    },
+    {
+      "file": "30-api.cfg",
+      "line": 3,
+      "keyword": "balance",
+      "args": "leastconn",
+      "text": "Load balancing: picks the server with the **fewest active connections** (ideal for long sessions)",
+      "known": true
+    },
+    {
+      "file": "30-api.cfg",
+      "line": 4,
+      "keyword": "server",
+      "args": "api1 10.0.0.21:9000 check",
+      "text": "Server **api1** at `10.0.0.21:9000` · active health checks",
+      "known": true
+    },
+    {
+      "file": "30-api.cfg",
+      "line": 8,
+      "keyword": "server",
+      "args": "a2 10.0.0.2:8080 check",
+      "text": "Server **a2** at `10.0.0.2:8080` · active health checks",
+      "known": true
+    }
+  ],
+  "topology": {
+    "entries": [
+      {
+        "section": 2,
+        "type": "frontend",
+        "name": "web",
+        "binds": [
+          {
+            "address": "*:80",
+            "tls": false
+          }
+        ]
+      }
+    ],
+    "backends": [
+      {
+        "section": 3,
+        "name": "app",
+        "balance": "roundrobin",
+        "servers": [
+          {
+            "name": "a1",
+            "address": "10.0.0.1:8080",
+            "check": true
+          }
+        ]
+      },
+      {
+        "section": 4,
+        "name": "api",
+        "balance": "leastconn",
+        "servers": [
+          {
+            "name": "api1",
+            "address": "10.0.0.21:9000",
+            "check": true
+          }
+        ]
+      },
+      {
+        "section": 5,
+        "name": "app",
+        "balance": "roundrobin",
+        "servers": [
+          {
+            "name": "a2",
+            "address": "10.0.0.2:8080",
+            "check": true
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "file": 1,
+        "from": 2,
+        "to": 4,
+        "toName": "api",
+        "default": false,
+        "condition": "is_api",
+        "line": 4
+      },
+      {
+        "file": 1,
+        "from": 2,
+        "to": 5,
+        "toName": "app",
+        "default": true,
+        "line": 5
+      }
+    ],
+    "missing": []
+  }
+}

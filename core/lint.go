@@ -28,9 +28,12 @@ type Issue struct {
 	Message  string   `json:"message"`
 }
 
-// Rules documenta cada regla del detector. El identificador es estable y
-// sirve para desactivar reglas desde la configuración del usuario o en CI.
-var Rules = map[string]string{
+// Rules documenta cada regla del detector, en español. El identificador es
+// estable y sirve para desactivar reglas desde la configuración del usuario o
+// en CI. Para otro idioma, usa RulesFor.
+var Rules = rulesES
+
+var rulesES = map[string]string{
 	"outside-section": "Directiva fuera de cualquier sección",
 	"section-name":    "Sección que requiere nombre y no lo tiene",
 	"duplicate-name":  "Dos secciones con el mismo nombre",
@@ -50,21 +53,53 @@ var Rules = map[string]string{
 	"no-global":       "No hay sección global",
 }
 
+var rulesEN = map[string]string{
+	"outside-section": "Directive outside any section",
+	"section-name":    "Section that requires a name and has none",
+	"duplicate-name":  "Two sections with the same name",
+	"multiple-global": "More than one global section",
+	"misplaced":       "Directive that is not valid in that section type",
+	"unknown-section": "Word at the start of a line that is not a known section",
+	"no-bind":         "Frontend or listen without a bind",
+	"timeout-missing": "Missing timeout client, connect or server",
+	"no-servers":      "Backend without servers",
+	"no-route":        "Frontend that sends traffic to no backend",
+	"backend-missing": "Reference to a backend that does not exist",
+	"mode-mismatch":   "HTTP frontend sending to a TCP backend",
+	"acl-undefined":   "Condition that uses an undefined ACL",
+	"weak-stats-auth": "Statistics password that looks like a placeholder",
+	"tls-no-verify":   "TLS server without certificate verification",
+	"tls-no-alpn":     "TLS bind in http mode without ALPN (no HTTP/2)",
+	"no-global":       "There is no global section",
+}
+
+// RulesFor devuelve las descripciones de las reglas en el idioma pedido.
+func RulesFor(lang Lang) map[string]string {
+	if lang == LangEN {
+		return rulesEN
+	}
+	return rulesES
+}
+
 var reGlobalPrefix = regexp.MustCompile(`^(tune\.|ssl-|quic|httpclient|h1-|h2-|ocsp)`)
 var reWeakPass = regexp.MustCompile(`(?i):(admin|password|123456|cambiame|changeme|cambiar|secret)$`)
 
-// Lint analiza el documento y devuelve los problemas ordenados por línea.
-// Es orientativo: la validación definitiva es `haproxy -c`.
-func Lint(doc *Doc) []Issue {
+// Lint analiza el documento y devuelve los problemas ordenados por línea,
+// con los mensajes en español. Es orientativo: la validación definitiva es
+// `haproxy -c`.
+func Lint(doc *Doc) []Issue { return LintLang(doc, LangES) }
+
+// LintLang es Lint con los mensajes en el idioma pedido.
+func LintLang(doc *Doc, lang Lang) []Issue {
 	issues := []Issue{}
 	file := 0
-	add := func(rule string, sev Severity, line, sec int, format string, a ...any) {
-		issues = append(issues, Issue{Rule: rule, File: file, Severity: sev, Line: line, Section: sec, Message: fmt.Sprintf(format, a...)})
+	add := func(rule string, sev Severity, line, sec int, es, en string, a ...any) {
+		issues = append(issues, Issue{Rule: rule, File: file, Severity: sev, Line: line, Section: sec, Message: fmt.Sprintf(lang.t(es, en), a...)})
 	}
 	for _, l := range doc.Pre {
 		if l.Kind == KindDirective {
 			file = l.File
-			add("outside-section", SevError, l.Line, -1, "«%s» está fuera de cualquier sección. Toda directiva debe ir dentro de global, defaults, frontend, backend…", l.Keyword)
+			add("outside-section", SevError, l.Line, -1, "«%s» está fuera de cualquier sección. Toda directiva debe ir dentro de global, defaults, frontend, backend…", "“%s” is outside any section. Every directive must go inside global, defaults, frontend, backend…", l.Keyword)
 		}
 	}
 	eff := ComputeEffective(doc)
@@ -78,11 +113,11 @@ func Lint(doc *Doc) []Issue {
 		if s.Type == "global" {
 			globals++
 			if globals == 2 {
-				add("multiple-global", SevWarn, s.Line, i, "Hay más de una sección global; HAProxy las combina, pero es mejor tener una sola.")
+				add("multiple-global", SevWarn, s.Line, i, "Hay más de una sección global; HAProxy las combina, pero es mejor tener una sola.", "There is more than one global section; HAProxy merges them, but it is better to have just one.")
 			}
 		}
 		if info.Named == "required" && s.Name == "" {
-			add("section-name", SevError, s.Line, i, "La sección %s necesita un nombre.", s.Type)
+			add("section-name", SevError, s.Line, i, "La sección %s necesita un nombre.", "The %s section needs a name.", s.Type)
 		}
 		if s.Name != "" {
 			keys := []string{s.Type}
@@ -92,11 +127,11 @@ func Lint(doc *Doc) []Issue {
 			for _, k := range keys {
 				key := k + ":" + s.Name
 				if prev, ok := seen[key]; ok {
-					where := fmt.Sprintf("línea %d", prev.line)
+					where := fmt.Sprintf(lang.t("línea %d", "line %d"), prev.line)
 					if prev.file != s.File {
-						where = fmt.Sprintf("%s, línea %d", fileLabel(doc, prev.file), prev.line)
+						where = fmt.Sprintf(lang.t("%s, línea %d", "%s, line %d"), fileLabel(doc, prev.file, lang), prev.line)
 					}
-					add("duplicate-name", SevError, s.Line, i, "Ya existe otra sección con capacidad de %s llamada «%s» (%s).", k, s.Name, where)
+					add("duplicate-name", SevError, s.Line, i, "Ya existe otra sección con capacidad de %s llamada «%s» (%s).", "Another section acting as a %s named “%s” already exists (%s).", k, s.Name, where)
 				} else {
 					seen[key] = pos{s.File, s.Line}
 				}
@@ -115,17 +150,17 @@ func Lint(doc *Doc) []Issue {
 		for _, l := range dirs {
 			d, known := KB.Directives[l.Keyword]
 			if known && checkPlacement && !d.AllowedIn(s.Type) {
-				add("misplaced", SevWarn, l.Line, i, "«%s» no es válida en una sección %s.", l.Keyword, s.Type)
+				add("misplaced", SevWarn, l.Line, i, "«%s» no es válida en una sección %s.", "“%s” is not valid in a %s section.", l.Keyword, s.Type)
 			}
 			if !known && l.IndentSet && l.Indent == "" && !reGlobalPrefix.MatchString(l.Keyword) {
-				add("unknown-section", SevError, l.Line, i, "«%s» al inicio de línea no es una sección conocida. ¿Está mal escrita?", l.Keyword)
+				add("unknown-section", SevError, l.Line, i, "«%s» al inicio de línea no es una sección conocida. ¿Está mal escrita?", "“%s” at the start of a line is not a known section. Is it misspelled?", l.Keyword)
 			}
 		}
 		if s.Type != "frontend" && s.Type != "backend" && s.Type != "listen" {
 			continue
 		}
 		isFE, isBE := s.Type != "backend", s.Type != "frontend"
-		label := fmt.Sprintf("%s «%s»", s.Type, s.Name)
+		label := fmt.Sprintf(lang.t("%s «%s»", "%s “%s”"), s.Type, s.Name)
 		has := func(kw string) bool {
 			for _, l := range dirs {
 				if l.Keyword == kw {
@@ -135,14 +170,14 @@ func Lint(doc *Doc) []Issue {
 			return false
 		}
 		if isFE && !has("bind") {
-			add("no-bind", SevError, s.Line, i, "%s no tiene ninguna línea bind: no escucha en ningún puerto.", label)
+			add("no-bind", SevError, s.Line, i, "%s no tiene ninguna línea bind: no escucha en ningún puerto.", "%s has no bind line: it does not listen on any port.", label)
 		}
 		for _, tk := range []struct {
 			name string
 			need bool
 		}{{"client", isFE}, {"connect", isBE}, {"server", isBE}} {
 			if tk.need && !e.Timeouts[tk.name] {
-				add("timeout-missing", SevWarn, s.Line, i, "%s: falta «timeout %s» (ni aquí ni en defaults).", label, tk.name)
+				add("timeout-missing", SevWarn, s.Line, i, "%s: falta «timeout %s» (ni aquí ni en defaults).", "%s: missing “timeout %s” (neither here nor in defaults).", label, tk.name)
 			}
 		}
 		hasServers := has("server") || has("server-template") || has("dispatch")
@@ -153,13 +188,13 @@ func Lint(doc *Doc) []Issue {
 			}
 		}
 		if s.Type == "backend" && !hasServers {
-			add("no-servers", SevWarn, s.Line, i, "%s no tiene servidores: responderá 503.", label)
+			add("no-servers", SevWarn, s.Line, i, "%s no tiene servidores: responderá 503.", "%s has no servers: it will answer 503.", label)
 		}
 		if s.Type == "listen" && !hasServers && !selfAnswers {
-			add("no-servers", SevWarn, s.Line, i, "%s no tiene servidores ni responde por sí mismo.", label)
+			add("no-servers", SevWarn, s.Line, i, "%s no tiene servidores ni responde por sí mismo.", "%s has no servers and does not answer by itself.", label)
 		}
 		if s.Type == "frontend" && !has("default_backend") && !has("use_backend") && !selfAnswers {
-			add("no-route", SevWarn, s.Line, i, "%s no envía el tráfico a ningún backend.", label)
+			add("no-route", SevWarn, s.Line, i, "%s no envía el tráfico a ningún backend.", "%s does not send traffic to any backend.", label)
 		}
 		acls := map[string]bool{}
 		for _, l := range dirs {
@@ -179,33 +214,33 @@ func Lint(doc *Doc) []Issue {
 			if target != "" && !strings.Contains(target, "%[") {
 				ti, ok := targets[target]
 				if !ok {
-					add("backend-missing", SevError, l.Line, i, "El backend «%s» no existe.", target)
+					add("backend-missing", SevError, l.Line, i, "El backend «%s» no existe.", "The backend “%s” does not exist.", target)
 				} else if e.Mode == "http" && eff[ti].Mode == "tcp" {
-					add("mode-mismatch", SevError, l.Line, i, "Un %s en modo http no puede enviar tráfico al backend «%s», que está en modo tcp.", s.Type, target)
+					add("mode-mismatch", SevError, l.Line, i, "Un %s en modo http no puede enviar tráfico al backend «%s», que está en modo tcp.", "An http-mode %s cannot send traffic to the backend “%s”, which is in tcp mode.", s.Type, target)
 				}
 			}
 			if l.Keyword != "acl" {
 				if _, cd := SplitCond(l.Args); cd != nil {
 					for _, n := range cd.ACLNames() {
 						if !acls[n] && !KB.builtinACLs[n] {
-							add("acl-undefined", SevError, l.Line, i, "La ACL «%s» no está definida en esta sección.", n)
+							add("acl-undefined", SevError, l.Line, i, "La ACL «%s» no está definida en esta sección.", "The ACL “%s” is not defined in this section.", n)
 						}
 					}
 				}
 			}
 			switch {
 			case l.Keyword == "stats" && arg(l.Args, 0) == "auth" && reWeakPass.MatchString(arg(l.Args, 1)):
-				add("weak-stats-auth", SevInfo, l.Line, i, "La contraseña de la página de estadísticas parece de ejemplo. Cámbiala.")
+				add("weak-stats-auth", SevInfo, l.Line, i, "La contraseña de la página de estadísticas parece de ejemplo. Cámbiala.", "The statistics page password looks like a placeholder. Change it.")
 			case l.Keyword == "server" && toSet(l.Args)["ssl"] && kv(l.Args, "verify") == "none":
-				add("tls-no-verify", SevInfo, l.Line, i, "El servidor «%s» usa TLS sin verificar el certificado.", arg(l.Args, 0))
+				add("tls-no-verify", SevInfo, l.Line, i, "El servidor «%s» usa TLS sin verificar el certificado.", "The server “%s” uses TLS without verifying the certificate.", arg(l.Args, 0))
 			case l.Keyword == "bind" && e.Mode == "http" && toSet(l.Args)["ssl"] && !toSet(l.Args)["alpn"]:
-				add("tls-no-alpn", SevInfo, l.Line, i, "Este bind TLS no declara «alpn h2,http/1.1»: los clientes no podrán usar HTTP/2.")
+				add("tls-no-alpn", SevInfo, l.Line, i, "Este bind TLS no declara «alpn h2,http/1.1»: los clientes no podrán usar HTTP/2.", "This TLS bind does not declare “alpn h2,http/1.1”: clients will not be able to use HTTP/2.")
 			}
 		}
 	}
 	if len(doc.Sections) > 0 && globals == 0 {
 		file = 0
-		add("no-global", SevInfo, 1, -1, "No hay sección global (es opcional, pero suele usarse para logs, usuario y límites).")
+		add("no-global", SevInfo, 1, -1, "No hay sección global (es opcional, pero suele usarse para logs, usuario y límites).", "There is no global section (it is optional, but it is usually used for logging, user and limits).")
 	}
 	sort.SliceStable(issues, func(a, b int) bool {
 		if issues[a].File != issues[b].File {
@@ -220,9 +255,9 @@ func Lint(doc *Doc) []Issue {
 }
 
 // fileLabel devuelve el nombre del archivo para los mensajes, si se conoce.
-func fileLabel(doc *Doc, i int) string {
+func fileLabel(doc *Doc, i int, lang Lang) string {
 	if i >= 0 && i < len(doc.Files) && doc.Files[i] != "" {
 		return doc.Files[i]
 	}
-	return fmt.Sprintf("archivo %d", i+1)
+	return fmt.Sprintf(lang.t("archivo %d", "file %d"), i+1)
 }

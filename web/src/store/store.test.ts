@@ -135,3 +135,54 @@ describe('archivos de disco', () => {
     expect(dirtyIndexes([F('a'), F('b', 'n.cfg')], [F('z')])).toEqual([0])
   })
 })
+
+describe('idioma', () => {
+  const kn = (tag: string) => ({ categories: { net: tag }, sections: {}, directives: {}, rules: {}, templates: {} })
+
+  it('usa el idioma del navegador si es inglés y español si no', async () => {
+    const orig = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+    const setNav = (language: string) => Object.defineProperty(globalThis, 'navigator', { value: { language }, configurable: true })
+    try {
+      setNav('en-US')
+      expect(mk().getState().lang).toBe('en')
+      setNav('es-MX')
+      expect(mk().getState().lang).toBe('es')
+      setNav('fr-FR')
+      expect(mk().getState().lang).toBe('es')
+    } finally {
+      if (orig) Object.defineProperty(globalThis, 'navigator', orig)
+    }
+  })
+
+  it('pasa el idioma a analyze y knowledge, y al cambiarlo reanaliza y recarga el conocimiento', async () => {
+    const analyze = vi.fn(async (f: SourceFile[], _lang?: string) => emptyAnalysis(f[0].text))
+    const knowledge = vi.fn(async (lang?: string) => kn(lang ?? '?'))
+    const s = mk(fakeClient({ analyze, knowledge }))
+    s.setState({ files: [F('x')], lang: 'es' })
+    await s.getState().init()
+    expect(analyze).toHaveBeenLastCalledWith([F('x')], 'es')
+    expect(knowledge).toHaveBeenLastCalledWith('es')
+    await s.getState().setLang('en')
+    expect(s.getState().lang).toBe('en')
+    expect(analyze).toHaveBeenLastCalledWith([F('x')], 'en')
+    expect(knowledge).toHaveBeenLastCalledWith('en')
+    expect(s.getState().knowledge?.categories.net).toBe('en')
+    const n = analyze.mock.calls.length
+    await s.getState().setLang('en')
+    expect(analyze.mock.calls.length).toBe(n) // sin cambio no hay llamadas
+  })
+
+  it('persiste el idioma y descarta valores inválidos', () => {
+    const mem = new Map<string, string>()
+    const storage = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => { mem.set(k, v) }, removeItem: (k: string) => { mem.delete(k) } }
+    const a = createAppStore(fakeClient(), { storage })
+    a.setState({ lang: 'en' })
+    a.getState().setText(0, 'cambio') // fuerza la escritura en el almacenamiento
+    const saved = JSON.parse(mem.get('haro.v1')!)
+    expect(saved.state.lang).toBe('en')
+    expect(createAppStore(fakeClient(), { storage }).getState().lang).toBe('en')
+    saved.state.lang = 'klingon'
+    mem.set('haro.v1', JSON.stringify(saved))
+    expect(['es', 'en']).toContain(createAppStore(fakeClient(), { storage }).getState().lang)
+  })
+})
