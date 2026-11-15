@@ -21,6 +21,7 @@ backend api_servers  Grupo de servidores
 - **`haro lint`**: detecta problemas (backends inexistentes, ACLs sin definir, timeouts que faltan, modos http/tcp incompatibles…). Devuelve código 1 si hay errores, así que sirve en CI.
 - **`haro diff`**: compara dos configuraciones.
 - **`haro` / `haro tui`**: interfaz de terminal: secciones con sus explicaciones, problemas navegables (`p`), mapa del tráfico (`m`), edición en tu `$EDITOR` en la línea exacta (`e`) y recarga automática al cambiar los archivos. Sin terminal interactivo (un pipe) `haro` muestra la ayuda.
+- **`haro mcp`**: servidor MCP por stdio para Claude Code, Claude Desktop y otros clientes (ver más abajo).
 - **`haro serve`**: abre una interfaz web local con modo código, modo visual y mapa del tráfico.
 
 ## Instalación
@@ -46,6 +47,22 @@ haro serve --file /etc/haproxy/haproxy.cfg               # solo lectura
 haro serve --file /etc/haproxy/haproxy.cfg --allow-write # permite guardar
 haro serve --file haproxy.cfg --file conf.d/             # varios archivos
 ```
+
+### Servidor MCP
+
+`haro mcp` expone el análisis de haro como herramientas MCP: `haro_lint`, `haro_explain`, `haro_analyze`, `haro_diff`, `haro_check` (`haproxy -c`) y `haro_apply` (ediciones estructurales), más los recursos `haro://knowledge` y `haro://rules`. Habla las dos versiones del protocolo (el handshake `initialize` de 2025-11-25 y anteriores, y la versión sin sesión de 2026-07-28).
+
+```sh
+# Claude Code
+claude mcp add haro -- haro mcp --root /etc/haproxy
+```
+
+```jsonc
+// Claude Desktop: claude_desktop_config.json
+{ "mcpServers": { "haro": { "command": "haro", "args": ["mcp", "--root", "/etc/haproxy"] } } }
+```
+
+Seguridad: con `--root` (repetible) solo se leen y escriben rutas dentro de esos directorios (se resuelven los enlaces simbólicos). Sin `--root`, el cliente puede leer cualquier ruta que pueda leer el proceso. `haro_apply` solo escribe con `--allow-write` y `write: true`, con las mismas garantías que `haro serve`: valida la configuración completa, guarda todo o nada y deja copia `.bak`. En [`skills/haro`](skills/haro/SKILL.md) hay una skill de Claude con el flujo recomendado.
 
 ### Configuraciones en varios archivos
 
@@ -125,5 +142,6 @@ El plan detallado está en [`docs/PLAN.md`](docs/PLAN.md).
 - [ ] Web: asistente
 - [x] Interfaz de terminal con Bubble Tea (`haro` sin argumentos)
 - [x] Operaciones de edición en el núcleo (`apply`)
+- [x] Servidor MCP (`haro mcp`)
 - [ ] Asistente: construcción de contexto en el núcleo, llamada a la API en cada cliente
 - [ ] Módulo WASM y web pública

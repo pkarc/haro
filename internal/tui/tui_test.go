@@ -303,3 +303,29 @@ func TestListScrollIsRemembered(t *testing.T) {
 		t.Errorf("subir una fila no debe mover la ventana: %d → %d", bottom, m.offset)
 	}
 }
+
+// Con configuraciones reales (si se descargó el corpus) ninguna vista debe
+// fallar, con cualquier ancho de pantalla.
+func TestCorpusRenders(t *testing.T) {
+	files, _ := filepath.Glob("../../core/testdata/corpus/*/*.cfg")
+	deep, _ := filepath.Glob("../../core/testdata/corpus/*/*/*.cfg")
+	files = append(files, deep...)
+	if len(files) == 0 {
+		t.Skip("sin corpus; ejecuta scripts/fetch-corpus.sh")
+	}
+	for _, f := range files {
+		b, _ := os.ReadFile(f)
+		for _, w := range []int{20, 60, 140} {
+			m := New(Options{Load: loader(string(b)), NoWatch: true})
+			var tm tea.Model = m
+			tm, _ = tm.Update(tea.WindowSizeMsg{Width: w, Height: 12})
+			tm, _ = tm.Update(m.load())
+			m = tm.(Model)
+			_ = m.View()
+			for _, k := range []string{"G", "p", "enter", "m", "esc", "?", "x"} {
+				m = press(t, m, k)
+				_ = m.View()
+			}
+		}
+	}
+}

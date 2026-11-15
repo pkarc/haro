@@ -207,3 +207,18 @@ func readMulti(t *testing.T, dir string) []Source {
 	}
 	return srcs
 }
+
+func TestUnifiedDiff(t *testing.T) {
+	if d := UnifiedDiff("a.cfg", "a\nb\n", "a\nb\n", 3); d != "" {
+		t.Errorf("textos iguales deben dar diff vacío: %q", d)
+	}
+	before := "1\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12\n"
+	after := "1\n2\nTRES\n4\n5\n6\n7\n8\n9\n10\n11\n12\n13\n"
+	want := "--- a.cfg\n+++ a.cfg\n@@ -1,6 +1,6 @@\n 1\n 2\n-3\n+TRES\n 4\n 5\n 6\n@@ -10,3 +10,4 @@\n 10\n 11\n 12\n+13\n"
+	if got := UnifiedDiff("a.cfg", before, after, 3); got != want {
+		t.Errorf("diff unificado:\n got  %q\n want %q", got, want)
+	}
+	if got := UnifiedDiff("x", "", "a\n", 3); !strings.Contains(got, "@@ -0,0 +1 @@\n+a\n") {
+		t.Errorf("archivo nuevo: %q", got)
+	}
+}

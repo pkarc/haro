@@ -18,6 +18,7 @@ Uso:
   haro explain [rutas...]       Explica cada sección y directiva en lenguaje humano
   haro diff    <antes> <después> Compara dos configuraciones
   haro serve   [opciones]       Abre la interfaz web local
+  haro mcp     [opciones]       Servidor MCP por stdio (para Claude Code, Claude Desktop…)
   haro version                  Muestra la versión
 
 Las rutas pueden ser archivos o directorios y se cargan como con haproxy -f:
@@ -51,6 +52,8 @@ func main() {
 		err = runDiff(args)
 	case "tui":
 		err = runTUI(args)
+	case "mcp":
+		err = runMCP(args)
 	case "serve":
 		err = runServe(args)
 	case "version", "--version", "-v":

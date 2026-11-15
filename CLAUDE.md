@@ -22,6 +22,8 @@ core/                 parser, serializer, knowledge, describe, lint, model (here
 core/knowledge/       knowledge.json: secciones, directivas, opciones, fetches… (datos, no código)
 core/testdata/        *.cfg + *.golden.json; cada subdirectorio es un caso de varios archivos
 cmd/haro/             main, cli (lint/explain/diff), files (expansión de rutas), serve + rpc (API Connect), tui (arranque)
+internal/mcp/         servidor MCP por stdio (JSON-RPC a mano, dos eras del protocolo); las herramientas están en cmd/haro/mcp.go
+skills/haro/          skill de Claude para usar las herramientas MCP
 internal/tui/         interfaz de terminal (Bubble Tea); solo presenta, la lógica es de core
 proto/haro/v1/        contrato del API
 web/                  React + Vite + TS (esqueleto); web/placeholder.html se sirve si no hay build
