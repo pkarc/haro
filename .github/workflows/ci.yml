@@ -104,3 +104,12 @@ jobs:
       - run: make proto
       - name: gen/ y web/src/gen deben coincidir con proto/
         run: git diff --exit-code
+
+  docker:
+    name: Imagen de Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t haro .
+      - name: La imagen analiza una configuración
+        run: docker run --rm -v "$PWD/core/testdata:/cfg:ro" haro lint /cfg/multiok

@@ -30,6 +30,8 @@ backend api_servers  Grupo de servidores
 go install github.com/pkarc/haro/cmd/haro@latest
 ```
 
+`go install` compila sin la web (la interfaz de `haro serve` se reduce a una página provisional, porque `web/dist` no se versiona). Los binarios de las releases, Homebrew y la imagen de Docker sí la incluyen. Para compilar con la web desde el código: `make web build`.
+
 ## Uso
 
 ```sh
@@ -37,7 +39,7 @@ haro                                    # interfaz de terminal (en un terminal)
 haro tui haproxy.cfg conf.d/            # con rutas, como haproxy -f
 haro lint                               # /etc/haproxy/haproxy.cfg por defecto
 haro lint haproxy.cfg conf.d/           # varios archivos, como haproxy -f
-haro lint --format json mi.cfg          # salida para CI
+haro lint --format json mi.cfg          # salida para CI (también sarif y markdown)
 haro lint --disable no-global,tls-no-alpn mi.cfg
 haro lint --rules                       # lista de reglas
 haro explain mi.cfg
@@ -47,6 +49,40 @@ haro serve --file /etc/haproxy/haproxy.cfg               # solo lectura
 haro serve --file /etc/haproxy/haproxy.cfg --allow-write # permite guardar
 haro serve --file haproxy.cfg --file conf.d/             # varios archivos
 ```
+
+### En CI y en tu repositorio
+
+```yaml
+# .github/workflows/haproxy.yml
+on: [pull_request]
+permissions: { contents: read, security-events: write, pull-requests: write }
+jobs:
+  haro:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pkarc/haro@v0.1.0
+        with:
+          paths: haproxy/            # archivos o directorios, como haproxy -f
+```
+
+La Action instala haro, ejecuta `haro lint`, sube el informe SARIF a *code scanning* y deja (y actualiza) un comentario en el pull request. Salidas de `haro lint`: `--format text|json|sarif|markdown`.
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/pkarc/haro
+    rev: v0.1.0
+    hooks:
+      - id: haro-lint
+```
+
+```sh
+brew install pkarc/tap/haro            # Homebrew (macOS y Linux)
+docker run --rm -v /etc/haproxy:/cfg:ro ghcr.io/pkarc/haro lint /cfg
+```
+
+También hay binarios, `.deb` y `.rpm` en las [releases](https://github.com/pkarc/haro/releases). La imagen de Docker es mínima (sin `haproxy`): sirve para `lint`, `explain` y `mcp`; para validar con `haproxy -c` usa el binario junto a HAProxy.
 
 ### Servidor MCP
 

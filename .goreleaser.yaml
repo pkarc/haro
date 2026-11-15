@@ -1,0 +1,62 @@
+version: 2
+project_name: haro
+
+before:
+  hooks:
+    # La web se embebe en el binario: hay que compilarla antes.
+    - sh -c "cd web && npm ci && npm run build"
+
+builds:
+  - id: haro
+    main: ./cmd/haro
+    binary: haro
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin, windows]
+    goarch: [amd64, arm64]
+    flags: [-trimpath]
+    ldflags:
+      - -s -w -X main.version={{.Version}}
+
+archives:
+  - formats: [tar.gz]
+    format_overrides:
+      - goos: windows
+        formats: [zip]
+    name_template: "haro_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files: [LICENSE, README.md]
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^Merge "
+      - "^docs?:"
+      - "^test:"
+
+nfpms:
+  - id: packages
+    package_name: haro
+    homepage: https://github.com/pkarc/haro
+    maintainer: Ivan Jaramillo
+    description: Lee, explica, valida y edita configuraciones de HAProxy
+    license: MIT
+    formats: [deb, rpm]
+
+# Fórmula de Homebrew. `brews` está marcado como obsoleto en GoReleaser v2 (el
+# reemplazo, homebrew_casks, solo sirve para macOS), pero es la única vía que
+# también cubre Linuxbrew, y haro tiene mucho público Linux/homelab.
+# Se publica en pkarc/homebrew-tap. Necesita un token con
+# permiso de escritura en ese repositorio en el secreto HOMEBREW_TAP_GITHUB_TOKEN.
+brews:
+  - repository:
+      owner: pkarc
+      name: homebrew-tap
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    homepage: https://github.com/pkarc/haro
+    description: Lee, explica, valida y edita configuraciones de HAProxy
+    license: MIT
+    test: |
+      system "#{bin}/haro", "version"

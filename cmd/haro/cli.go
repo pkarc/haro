@@ -79,7 +79,7 @@ func (s style) sev(sev core.Severity) string {
 
 func runLint(args []string) error {
 	fs := flag.NewFlagSet("lint", flag.ExitOnError)
-	format := fs.String("format", "text", "formato de salida: text | json")
+	format := fs.String("format", "text", "formato de salida: text | json | sarif | markdown")
 	disable := fs.String("disable", "", "reglas a ignorar, separadas por comas (p. ej. no-global,tls-no-alpn)")
 	strict := fs.Bool("strict", false, "termina con código 1 también si hay avisos")
 	noColor := fs.Bool("no-color", false, "sin colores")
@@ -96,6 +96,9 @@ func runLint(args []string) error {
 			fmt.Printf("%-18s %s\n", id, d)
 		}
 		return nil
+	}
+	if f := *format; f != "text" && f != "json" && f != "sarif" && f != "markdown" {
+		return fmt.Errorf("formato desconocido %q (usa text, json, sarif o markdown)", f)
 	}
 	srcs, err := readSources(fs.Args())
 	if err != nil {
@@ -120,7 +123,13 @@ func runLint(args []string) error {
 	for _, i := range issues {
 		counts[i.Severity]++
 	}
-	if *format == "json" {
+	if *format == "sarif" {
+		if err := writeSARIF(os.Stdout, srcs, issues); err != nil {
+			return err
+		}
+	} else if *format == "markdown" {
+		writeMarkdown(os.Stdout, srcs, issues)
+	} else if *format == "json" {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		type jsonIssue struct {

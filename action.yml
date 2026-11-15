@@ -1,0 +1,106 @@
+name: haro lint
+description: Analiza configuraciones de HAProxy con haro, sube el resultado a code scanning (SARIF) y comenta en el pull request.
+author: Ivan Jaramillo
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  paths:
+    description: Archivos o directorios de configuración, separados por espacios (como haproxy -f).
+    default: "."
+  version:
+    description: Versión de haro (por ejemplo v0.1.0). Vacío = la última.
+    default: ""
+  fail-on:
+    description: "Cuándo falla el paso: error (por defecto), warning o never."
+    default: error
+  disable:
+    description: Reglas a ignorar, separadas por comas (ver «haro lint --rules»).
+    default: ""
+  sarif:
+    description: Sube el informe SARIF a GitHub code scanning (necesita permiso security-events write).
+    default: "true"
+  comment:
+    description: En pull requests, comenta (y actualiza) un resumen (necesita permiso pull-requests write).
+    default: "true"
+  token:
+    description: Token para descargar haro y comentar.
+    default: ${{ github.token }}
+
+outputs:
+  exit-code:
+    description: Código de salida de haro lint.
+    value: ${{ steps.lint.outputs.exit-code }}
+  sarif-file:
+    description: Ruta del informe SARIF generado.
+    value: ${{ steps.lint.outputs.sarif-file }}
+
+runs:
+  using: composite
+  steps:
+    - name: Instalar haro
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        HARO_VERSION: ${{ inputs.version }}
+      run: |
+        set -euo pipefail
+        case "$RUNNER_OS" in Linux) os=linux ;; macOS) os=darwin ;; *) echo "Sistema no soportado: $RUNNER_OS" >&2; exit 1 ;; esac
+        case "$RUNNER_ARCH" in X64) arch=amd64 ;; ARM64) arch=arm64 ;; *) echo "Arquitectura no soportada: $RUNNER_ARCH" >&2; exit 1 ;; esac
+        dest="$RUNNER_TEMP/haro-bin"; mkdir -p "$dest"
+        gh release download ${HARO_VERSION:+"$HARO_VERSION"} --repo pkarc/haro \
+          --pattern "haro_*_${os}_${arch}.tar.gz" --dir "$dest" --clobber
+        tar -xzf "$dest"/haro_*_"${os}_${arch}".tar.gz -C "$dest" haro
+        echo "$dest" >> "$GITHUB_PATH"
+
+    - name: haro lint
+      id: lint
+      shell: bash
+      env:
+        PATHS: ${{ inputs.paths }}
+        DISABLE: ${{ inputs.disable }}
+        FAIL_ON: ${{ inputs.fail-on }}
+      run: |
+        set +e
+        args=()
+        [ -n "$DISABLE" ] && args+=(--disable "$DISABLE")
+        # $PATHS sin comillas a propósito: son varias rutas separadas por espacios.
+        sarif="$RUNNER_TEMP/haro.sarif"
+        haro lint --format sarif "${args[@]}" $PATHS > "$sarif"
+        code=$?
+        haro lint --format markdown "${args[@]}" $PATHS > "$RUNNER_TEMP/haro.md"
+        haro lint "${args[@]}" $PATHS   # salida legible en el registro
+        # haro lint sale con 1 si hay errores; con --strict, también si hay avisos.
+        case "$FAIL_ON" in
+          never) result=0 ;;
+          warning) haro lint --strict "${args[@]}" $PATHS >/dev/null; result=$? ;;
+          *) result=$code ;;
+        esac
+        echo "exit-code=$result" >> "$GITHUB_OUTPUT"
+        echo "sarif-file=$sarif" >> "$GITHUB_OUTPUT"
+        cat "$RUNNER_TEMP/haro.md" >> "$GITHUB_STEP_SUMMARY"
+        exit 0
+
+    - name: Subir SARIF
+      if: inputs.sarif == 'true'
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ steps.lint.outputs.sarif-file }}
+        category: haro
+
+    - name: Comentar en el pull request
+      if: inputs.comment == 'true' && github.event_name == 'pull_request'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        PR: ${{ github.event.pull_request.number }}
+      run: |
+        gh pr comment "$PR" --edit-last --create-if-none --body-file "$RUNNER_TEMP/haro.md" \
+          || echo "No se pudo comentar (¿falta el permiso pull-requests: write?)"
+
+    - name: Resultado
+      shell: bash
+      env:
+        CODE: ${{ steps.lint.outputs.exit-code }}
+      run: exit "${CODE:-0}"

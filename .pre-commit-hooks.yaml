@@ -1,0 +1,26 @@
+# Hooks de pre-commit para repositorios con configuraciones de HAProxy.
+# Requiere el binario haro en el PATH (brew install pkarc/tap/haro, o go install).
+#
+#   repos:
+#     - repo: https://github.com/pkarc/haro
+#       rev: v0.1.0
+#       hooks:
+#         - id: haro-lint
+#           files: haproxy\.cfg$      # ajusta a tus archivos
+- id: haro-lint
+  name: haro lint
+  description: Detecta problemas en configuraciones de HAProxy
+  entry: haro lint
+  language: system
+  files: \.cfg$
+  types: [text]
+  # Cada archivo se analiza por separado, que es lo que pre-commit pasa. Para
+  # un conjunto (conf.d) que depende de varios archivos, usa haro-lint-dir.
+  require_serial: true
+- id: haro-lint-dir
+  name: haro lint (directorio completo)
+  description: Analiza juntos todos los .cfg del repositorio como una sola configuración
+  entry: haro lint .
+  language: system
+  pass_filenames: false
+  files: \.cfg$
