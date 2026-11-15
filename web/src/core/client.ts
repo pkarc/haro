@@ -1,16 +1,17 @@
-import type { Analysis, Capabilities, CheckResult, DiffOp } from './types'
+import type { Analysis, Capabilities, CheckResult, DiffOp, SourceFile } from './types'
 
 // La interfaz no sabe con qué núcleo habla:
 //  - HttpCoreClient: `haro serve` local (Go nativo).
 //  - WasmCoreClient (futuro): el mismo núcleo compilado a WebAssembly para la
 //    web pública, sin servidor y sin que la configuración salga del navegador.
+// Una configuración puede tener uno o varios archivos, en orden de carga.
 export interface CoreClient {
   capabilities(): Promise<Capabilities>
-  analyze(text: string): Promise<Analysis>
+  analyze(files: SourceFile[]): Promise<Analysis>
   diff(before: string, after: string): Promise<DiffOp[]>
-  check(text: string): Promise<CheckResult>
-  getConfig(): Promise<{ path: string; text: string } | null>
-  putConfig(text: string): Promise<{ saved: boolean; error?: string }>
+  check(files: SourceFile[]): Promise<CheckResult>
+  getConfig(): Promise<SourceFile[] | null>
+  putFile(path: string, text: string): Promise<{ saved: boolean; error?: string }>
 }
 
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -26,15 +27,15 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 
 export class HttpCoreClient implements CoreClient {
   capabilities() { return call<Capabilities>('GET', '/api/v1/capabilities') }
-  analyze(text: string) { return call<Analysis>('POST', '/api/v1/analyze', { text }) }
+  analyze(files: SourceFile[]) { return call<Analysis>('POST', '/api/v1/analyze', { files }) }
   async diff(before: string, after: string) { return (await call<{ ops: DiffOp[] }>('POST', '/api/v1/diff', { before, after })).ops }
-  check(text: string) { return call<CheckResult>('POST', '/api/v1/check', { text }) }
+  check(files: SourceFile[]) { return call<CheckResult>('POST', '/api/v1/check', { files }) }
   async getConfig() {
-    try { return await call<{ path: string; text: string }>('GET', '/api/v1/config') }
+    try { return (await call<{ files: SourceFile[] }>('GET', '/api/v1/config')).files }
     catch (e) { if ((e as { status?: number }).status === 404) return null; throw e }
   }
-  async putConfig(text: string) {
-    try { return await call<{ saved: boolean }>('PUT', '/api/v1/config', { text }) }
+  async putFile(path: string, text: string) {
+    try { return await call<{ saved: boolean }>('PUT', '/api/v1/config', { path, text }) }
     catch (e) { return { saved: false, error: (e as Error).message } }
   }
 }

@@ -32,6 +32,7 @@ go install github.com/haro/haro/cmd/haro@latest
 
 ```sh
 haro lint                               # /etc/haproxy/haproxy.cfg por defecto
+haro lint haproxy.cfg conf.d/           # varios archivos, como haproxy -f
 haro lint --format json mi.cfg          # salida para CI
 haro lint --disable no-global,tls-no-alpn mi.cfg
 haro lint --rules                       # lista de reglas
@@ -40,7 +41,18 @@ cat mi.cfg | haro explain -
 haro diff antes.cfg despues.cfg
 haro serve --file /etc/haproxy/haproxy.cfg               # solo lectura
 haro serve --file /etc/haproxy/haproxy.cfg --allow-write # permite guardar
+haro serve --file haproxy.cfg --file conf.d/             # varios archivos
 ```
+
+### Configuraciones en varios archivos
+
+haro carga las rutas igual que `haproxy -f`: en el orden indicado y, para cada directorio, sus archivos `.cfg` no ocultos en orden lexicográfico (sin entrar en subdirectorios). El análisis trata el conjunto como una sola configuración:
+
+- cada archivo empieza fuera de cualquier sección, porque una sección no puede repartirse entre archivos;
+- la herencia de `defaults`, las referencias a backends y los nombres duplicados sí cruzan archivos;
+- cada problema indica su archivo y línea (`conf.d/20-web.cfg:4`).
+
+Al guardar desde `haro serve`, se valida la configuración completa con el cambio aplicado, no solo el archivo editado.
 
 `haro serve` escucha solo en `127.0.0.1:7468` y rechaza peticiones con un `Host` externo. Para guardar hace falta `--allow-write`. Antes de escribir, haro valida con `haproxy -c` si el binario está disponible; si no lo está, usa su propio detector y se niega a guardar si encuentra errores. Siempre deja una copia `.bak` de la versión anterior.
 
@@ -50,7 +62,9 @@ haro serve --file /etc/haproxy/haproxy.cfg --allow-write # permite guardar
 core/        Núcleo en Go: parser sin pérdidas, serializador, base de
              conocimiento, explicaciones, detector, herencia, topología, diff
 core/knowledge/knowledge.json   Explicaciones y reglas como datos
-core/testdata/                  Casos .cfg con su resultado esperado (.golden.json)
+core/testdata/                  Casos .cfg con su resultado esperado (.golden.json);
+                                cada subdirectorio es un caso de varios archivos
+scripts/fetch-corpus.sh         Descarga configuraciones reales para tests de no-regresión
 cmd/haro/    CLI y servidor local (serve)
 proto/       Contrato del API (Connect), fuente de verdad de los tipos
 web/         Interfaz React + Vite + TypeScript, embebida en el binario
@@ -72,6 +86,15 @@ make run      # serve con la configuración de ejemplo
 
 Para trabajar en la web con recarga en caliente: `go run ./cmd/haro serve` en una terminal y `cd web && npm run dev` en otra. Vite redirige `/api` al servidor local.
 
+### Corpus de configuraciones reales
+
+```sh
+scripts/fetch-corpus.sh                 # descarga HariSekhon/HAProxy-configs (MIT) en core/testdata/corpus
+go test ./core -run TestCorpus -v       # reescritura sin pérdidas + cobertura de la base de conocimiento
+```
+
+El corpus no se incluye en el repo. El test se omite si no está descargado.
+
 ### Añadir o corregir explicaciones
 
 1. Edita `core/knowledge/knowledge.json` (texto) o `core/describe.go` (frases con argumentos).
@@ -83,6 +106,10 @@ Para trabajar en la web con recarga en caliente: `go run ./cmd/haro serve` en un
 - [x] Núcleo en Go con casos golden
 - [x] CLI: `lint`, `explain`, `diff`, `serve`
 - [x] API local JSON con guardado seguro
+- [x] Configuraciones en varios archivos y directorios
+- [x] Test opcional con corpus de configuraciones reales
+- [ ] Ampliar la base de conocimiento con el catálogo de client-native (Apache-2.0)
+- [ ] Plantillas de backend por tecnología (PostgreSQL, Redis, Elasticsearch…)
 - [ ] Generar servidor y cliente Connect desde `proto/` con buf
 - [ ] Web: portar el prototipo (CodeMirror 6, modo visual, React Flow, asistente)
 - [ ] Interfaz de terminal con Bubble Tea (`haro` sin argumentos)

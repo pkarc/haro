@@ -86,6 +86,7 @@ type BackendNode struct {
 
 // Edge une una entrada con un backend.
 type Edge struct {
+	File      int    `json:"file"`    // archivo de la regla
 	From      int    `json:"from"`    // índice de sección
 	To        int    `json:"to"`      // índice de sección, -1 si no existe
 	ToName    string `json:"toName"`  // nombre del backend
@@ -165,7 +166,7 @@ func BuildTopology(doc *Doc) Topology {
 						t.Missing = append(t.Missing, target)
 					}
 				}
-				t.Edges = append(t.Edges, Edge{From: i, To: to, ToName: target, Default: def, Condition: cond, Line: l.Line})
+				t.Edges = append(t.Edges, Edge{File: s.File, From: i, To: to, ToName: target, Default: def, Condition: cond, Line: l.Line})
 			}
 		case "backend":
 			bal := "roundrobin"

@@ -14,6 +14,7 @@ import (
 
 const defaultConfigPath = "/etc/haproxy/haproxy.cfg"
 
+// readConfig lee un único archivo (o stdin con "-"). Lo usa diff.
 func readConfig(path string) (string, string, error) {
 	if path == "" {
 		path = defaultConfigPath
@@ -84,7 +85,8 @@ func runLint(args []string) error {
 	noColor := fs.Bool("no-color", false, "sin colores")
 	listRules := fs.Bool("rules", false, "lista las reglas disponibles y sale")
 	fs.Usage = func() {
-		fmt.Fprintln(fs.Output(), "Uso: haro lint [opciones] [archivo|-]")
+		fmt.Fprintln(fs.Output(), "Uso: haro lint [opciones] [archivo|directorio|-]...")
+		fmt.Fprintln(fs.Output(), "Varios archivos o directorios se analizan juntos, en el orden de carga de haproxy -f.")
 		fs.PrintDefaults()
 	}
 	fs.Parse(args)
@@ -95,7 +97,7 @@ func runLint(args []string) error {
 		}
 		return nil
 	}
-	text, name, err := readConfig(fs.Arg(0))
+	srcs, err := readSources(fs.Args())
 	if err != nil {
 		return err
 	}
@@ -106,7 +108,7 @@ func runLint(args []string) error {
 		}
 	}
 	var issues []core.Issue
-	for _, i := range core.Lint(core.Parse(text)) {
+	for _, i := range core.Lint(core.NewConfig(srcs).Merge()) {
 		if !off[i.Rule] {
 			issues = append(issues, i)
 		}
@@ -121,19 +123,38 @@ func runLint(args []string) error {
 	if *format == "json" {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		enc.Encode(map[string]any{"file": name, "issues": issues})
+		type jsonIssue struct {
+			Path string `json:"path"`
+			core.Issue
+		}
+		out := make([]jsonIssue, len(issues))
+		for k, i := range issues {
+			out[k] = jsonIssue{srcs[i.File].Path, i}
+		}
+		paths := make([]string, len(srcs))
+		for k, s := range srcs {
+			paths[k] = s.Path
+		}
+		enc.Encode(map[string]any{"files": paths, "issues": out})
 	} else {
-		lines := strings.Split(text, "\n")
+		lines := make([][]string, len(srcs))
+		for k, s := range srcs {
+			lines[k] = strings.Split(s.Text, "\n")
+		}
 		for _, i := range issues {
-			fmt.Printf("%s:%d: %s %s %s\n", name, i.Line, st.sev(i.Severity), i.Message, st.dim("["+i.Rule+"]"))
-			if i.Line-1 < len(lines) {
-				fmt.Printf("    %s\n", st.dim(strings.TrimSpace(lines[i.Line-1])))
+			fmt.Printf("%s:%d: %s %s %s\n", srcs[i.File].Path, i.Line, st.sev(i.Severity), i.Message, st.dim("["+i.Rule+"]"))
+			if l := lines[i.File]; i.Line-1 < len(l) {
+				fmt.Printf("    %s\n", st.dim(strings.TrimSpace(l[i.Line-1])))
 			}
 		}
 		if len(issues) == 0 {
-			fmt.Println(st.green("✓ Sin problemas detectados.") + st.dim(" Valida siempre con: haproxy -c -f "+name))
+			var fargs []string
+			for _, s := range srcs {
+				fargs = append(fargs, "-f "+s.Path)
+			}
+			fmt.Println(st.green("✓ Sin problemas detectados.") + st.dim(" Valida siempre con: haproxy -c "+strings.Join(fargs, " ")))
 		} else {
-			fmt.Printf("\n%d errores, %d avisos, %d sugerencias\n", counts[core.SevError], counts[core.SevWarn], counts[core.SevInfo])
+			fmt.Printf("\n%s, %s, %s\n", plural(counts[core.SevError], "error", "errores"), plural(counts[core.SevWarn], "aviso", "avisos"), plural(counts[core.SevInfo], "sugerencia", "sugerencias"))
 		}
 	}
 	if counts[core.SevError] > 0 || (*strict && counts[core.SevWarn] > 0) {
@@ -150,30 +171,36 @@ func runExplain(args []string) error {
 	section := fs.String("section", "", "explica solo la sección con este nombre o tipo")
 	format := fs.String("format", "text", "formato de salida: text | json")
 	fs.Usage = func() {
-		fmt.Fprintln(fs.Output(), "Uso: haro explain [opciones] [archivo|-]")
+		fmt.Fprintln(fs.Output(), "Uso: haro explain [opciones] [archivo|directorio|-]...")
 		fs.PrintDefaults()
 	}
 	fs.Parse(args)
-	text, _, err := readConfig(fs.Arg(0))
+	srcs, err := readSources(fs.Args())
 	if err != nil {
 		return err
 	}
-	a := core.Analyze(text)
+	a := core.AnalyzeConfig(srcs)
 	if *format == "json" {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		return enc.Encode(a)
 	}
 	st := newStyle(*noColor)
-	byLine := map[int][]core.Issue{}
+	type key struct{ file, line int }
+	byLine := map[key][]core.Issue{}
 	for _, i := range a.Issues {
-		byLine[i.Line] = append(byLine[i.Line], i)
+		byLine[key{i.File, i.Line}] = append(byLine[key{i.File, i.Line}], i)
 	}
-	exByLine := map[int]core.LineExplanation{}
+	exByLine := map[key]core.LineExplanation{}
 	for _, e := range a.Explanations {
-		exByLine[e.Line] = e
+		exByLine[key{e.File, e.Line}] = e
 	}
+	curFile := -1
 	for si, s := range a.Doc.Sections {
+		if len(srcs) > 1 && s.File != curFile && (*section == "" || s.Name == *section || s.Type == *section) {
+			curFile = s.File
+			fmt.Println(st.dim("── " + srcs[s.File].Path + " ──"))
+		}
 		if *section != "" && s.Name != *section && s.Type != *section {
 			continue
 		}
@@ -188,18 +215,18 @@ func runExplain(args []string) error {
 			from := map[string]string{"own": "", "defaults": " (heredado de defaults)", "implicit": " (implícito)"}[e.ModeFrom]
 			fmt.Printf("  %s\n", st.dim("modo "+e.Mode+from))
 		}
-		for _, i := range byLine[s.Line] {
+		for _, i := range byLine[key{s.File, s.Line}] {
 			fmt.Printf("  %s %s\n", st.sev(i.Severity), i.Message)
 		}
 		for _, l := range s.Lines {
 			if l.Kind != core.KindDirective {
 				continue
 			}
-			e := exByLine[l.Line]
+			e := exByLine[key{s.File, l.Line}]
 			cat := core.KB.Categories[e.Explain.Category]
 			fmt.Printf("\n  %s %s %s\n", st.dim(fmt.Sprintf("%4d", l.Line)), st.cyan(l.Keyword), e.Args)
 			fmt.Printf("       %s %s\n", st.dim("["+cat+"]"), st.rich(e.Explain.Text))
-			for _, i := range byLine[l.Line] {
+			for _, i := range byLine[key{s.File, l.Line}] {
 				fmt.Printf("       %s %s\n", st.sev(i.Severity), i.Message)
 			}
 		}
@@ -243,4 +270,11 @@ func runDiff(args []string) error {
 		return exitError(1)
 	}
 	return nil
+}
+
+func plural(n int, one, many string) string {
+	if n == 1 {
+		return "1 " + one
+	}
+	return fmt.Sprintf("%d %s", n, many)
 }

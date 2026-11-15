@@ -26,6 +26,8 @@ type Line struct {
 	Keyword string   `json:"keyword,omitempty"`
 	Args    []string `json:"args,omitempty"`
 	Comment string   `json:"comment,omitempty"`
+	// File es el índice del archivo de origen dentro de un Config.
+	File int `json:"file"`
 	// IndentSet indica si Indent viene del archivo original. Las líneas nuevas
 	// creadas por operaciones de edición usan la indentación por defecto.
 	IndentSet bool `json:"-"`
@@ -33,6 +35,7 @@ type Line struct {
 
 // Section es una sección de nivel superior: global, defaults, frontend…
 type Section struct {
+	File    int      `json:"file"` // índice del archivo de origen dentro de un Config
 	Type    string   `json:"type"`
 	Name    string   `json:"name,omitempty"`
 	Line    int      `json:"line"`
@@ -58,4 +61,7 @@ func (s *Section) Directives() []*Line {
 type Doc struct {
 	Pre      []*Line    `json:"pre"`
 	Sections []*Section `json:"sections"`
+	// Files lista las rutas de origen cuando el Doc une varios archivos
+	// (ver Config.Merge). Vacío para un único texto.
+	Files []string `json:"files,omitempty"`
 }

@@ -11,6 +11,6 @@ backend app
     server a1 10.0.0.1:8080 check</textarea>
 <p><button id="b">Analizar</button></p><pre id="o"></pre>
 <script>
-document.getElementById('b').onclick=async()=>{const r=await fetch('/api/v1/analyze',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({text:document.getElementById('t').value})});const a=await r.json();
+document.getElementById('b').onclick=async()=>{const r=await fetch('/api/v1/analyze',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({files:[{path:'haproxy.cfg',text:document.getElementById('t').value}]})});const a=await r.json();
 document.getElementById('o').textContent=a.explanations.map(e=>'L'+e.line+' '+e.keyword+' — '+e.explanation.text.replace(/\*\*|`/g,'')).join('\n')+'\n\n'+(a.issues.length?a.issues.map(i=>'['+i.severity+'] L'+i.line+' '+i.message).join('\n'):'Sin problemas detectados');};
 </script></body></html>

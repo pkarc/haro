@@ -2,6 +2,7 @@
   "issues": [
     {
       "rule": "timeout-missing",
+      "file": 0,
       "severity": "warn",
       "line": 5,
       "section": 1,
@@ -94,6 +95,7 @@
     "backends": [],
     "edges": [
       {
+        "file": 0,
         "from": 1,
         "to": -1,
         "toName": "%[req.hdr(host),lower,map(/etc/haproxy/hosts.map,def)]",

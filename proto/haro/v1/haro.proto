@@ -26,7 +26,17 @@ service ConfigService {
   rpc PutConfig(PutConfigRequest) returns (PutConfigResponse);
 }
 
-message AnalyzeRequest { string text = 1; }
+// Un único texto (text) o varios archivos (files) en orden de carga, como
+// `haproxy -f a.cfg -f b.cfg`. Si llega files, text se ignora.
+message AnalyzeRequest {
+  string text = 1;
+  repeated SourceFile files = 2;
+}
+
+message SourceFile {
+  string path = 1;
+  string text = 2;
+}
 
 message Analysis {
   Doc doc = 1;
@@ -36,12 +46,16 @@ message Analysis {
   Topology topology = 5;
 }
 
+// Con varios archivos, Doc es la vista unificada en orden de carga y files
+// lista las rutas; cada sección y línea indica su archivo.
 message Doc {
   repeated Line pre = 1;
   repeated Section sections = 2;
+  repeated string files = 3;
 }
 
 message Section {
+  int32 file = 9;
   string type = 1;
   string name = 2;
   int32 line = 3;
@@ -53,6 +67,7 @@ message Section {
 }
 
 message Line {
+  int32 file = 8;
   string kind = 1; // blank | comment | directive
   int32 line = 2;
   string indent = 3;
@@ -63,6 +78,7 @@ message Line {
 }
 
 message Issue {
+  int32 file = 6;
   string rule = 1;
   string severity = 2; // error | warn | info
   int32 line = 3;
@@ -77,6 +93,7 @@ message Explanation {
 }
 
 message LineExplanation {
+  int32 file = 6;
   int32 line = 1;
   int32 section = 2;
   string keyword = 3;
@@ -128,6 +145,7 @@ message BackendNode {
 }
 
 message Edge {
+  int32 file = 7;
   int32 from = 1;
   int32 to = 2;
   string to_name = 3;
@@ -148,7 +166,10 @@ message DiffOp {
 
 message DiffResponse { repeated DiffOp ops = 1; }
 
-message CheckRequest { string text = 1; }
+message CheckRequest {
+  string text = 1;
+  repeated SourceFile files = 2;
+}
 
 message CheckResult {
   bool available = 1;
@@ -160,7 +181,7 @@ message GetCapabilitiesRequest {}
 
 message Capabilities {
   string version = 1;
-  string file = 2;
+  repeated string paths = 2; // argumentos de --file (archivos o directorios)
   bool can_read = 3;
   bool can_write = 4;
   bool can_check = 5;
@@ -169,12 +190,16 @@ message Capabilities {
 
 message GetConfigRequest {}
 
+// Los archivos ya expandidos, en orden de carga.
 message ConfigFile {
+  repeated SourceFile files = 1;
+}
+
+// Guarda un archivo concreto; se valida la configuración completa.
+message PutConfigRequest {
   string path = 1;
   string text = 2;
 }
-
-message PutConfigRequest { string text = 1; }
 
 message PutConfigResponse {
   bool saved = 1;

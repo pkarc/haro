@@ -2,6 +2,7 @@
   "issues": [
     {
       "rule": "weak-stats-auth",
+      "file": 0,
       "severity": "info",
       "line": 62,
       "section": 7,
@@ -417,6 +418,7 @@
     ],
     "edges": [
       {
+        "file": 0,
         "from": 3,
         "to": 5,
         "toName": "api_servers",
@@ -425,6 +427,7 @@
         "line": 36
       },
       {
+        "file": 0,
         "from": 3,
         "to": 6,
         "toName": "static_servers",
@@ -433,6 +436,7 @@
         "line": 37
       },
       {
+        "file": 0,
         "from": 3,
         "to": 4,
         "toName": "web_servers",

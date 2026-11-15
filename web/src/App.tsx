@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { HttpCoreClient } from './core/client'
-import type { Analysis } from './core/types'
+import type { Analysis, SourceFile } from './core/types'
 
-// Punto de partida mínimo: editor de texto + explicaciones + problemas.
+// Punto de partida mínimo: un editor por archivo + explicaciones + problemas.
 // Aquí se integrarán CodeMirror 6 (modo código), las tarjetas por sección
 // (modo visual), React Flow (mapa) y el asistente, portando el prototipo.
 
@@ -16,28 +16,34 @@ function Rich({ text }: { text: string }) {
 }
 
 export function App() {
-  const [text, setText] = useState(SAMPLE)
+  const [files, setFiles] = useState<SourceFile[]>([{ path: 'haproxy.cfg', text: SAMPLE }])
+  const [active, setActive] = useState(0)
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [error, setError] = useState('')
 
-  useEffect(() => { core.getConfig().then(c => c && setText(c.text)).catch(() => {}) }, [])
+  useEffect(() => { core.getConfig().then(f => f && f.length && setFiles(f)).catch(() => {}) }, [])
   useEffect(() => {
-    const t = setTimeout(() => core.analyze(text).then(a => { setAnalysis(a); setError('') }).catch(e => setError(e.message)), 200)
+    const t = setTimeout(() => core.analyze(files).then(a => { setAnalysis(a); setError('') }).catch(e => setError(e.message)), 200)
     return () => clearTimeout(t)
-  }, [text])
+  }, [files])
+  const setText = (text: string) => setFiles(fs => fs.map((f, i) => i === active ? { ...f, text } : f))
+  const text = files[active]?.text ?? ''
 
   const bySection = useMemo(() => analysis?.doc.sections.map((s, i) => ({ s, ex: analysis.explanations.filter(e => e.section === i) })) ?? [], [analysis])
 
   return (
     <main style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, padding: 16, fontFamily: 'system-ui' }}>
-      <textarea value={text} onChange={e => setText(e.target.value)} spellCheck={false} style={{ fontFamily: 'monospace', minHeight: '80vh' }} />
+      <div>
+        {files.length > 1 && <nav>{files.map((f, i) => <button key={f.path} onClick={() => setActive(i)} disabled={i === active}>{f.path.split('/').pop()}</button>)}</nav>}
+        <textarea value={text} onChange={e => setText(e.target.value)} spellCheck={false} style={{ fontFamily: 'monospace', width: '100%', minHeight: '80vh' }} />
+      </div>
       <section>
         {error && <p style={{ color: 'crimson' }}>{error}</p>}
-        {analysis?.issues.map((i, k) => <p key={k}>[{i.severity}] L{i.line}: {i.message}</p>)}
+        {analysis?.issues.map((i, k) => <p key={k}>[{i.severity}] {files[i.file]?.path.split('/').pop()}:{i.line} {i.message}</p>)}
         {bySection.map(({ s, ex }) => (
-          <article key={s.line}>
+          <article key={`${s.file}:${s.line}`}>
             <h3>{s.type} {s.name}</h3>
-            {ex.map(e => <p key={e.line}><code>{e.keyword} {e.args}</code><br /><Rich text={e.explanation.text} /></p>)}
+            {ex.map(e => <p key={`${e.file}:${e.line}`}><code>{e.keyword} {e.args}</code><br /><Rich text={e.explanation.text} /></p>)}
           </article>
         ))}
       </section>

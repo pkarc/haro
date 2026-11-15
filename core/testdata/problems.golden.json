@@ -2,6 +2,7 @@
   "issues": [
     {
       "rule": "outside-section",
+      "file": 0,
       "severity": "error",
       "line": 1,
       "section": -1,
@@ -9,6 +10,7 @@
     },
     {
       "rule": "no-global",
+      "file": 0,
       "severity": "info",
       "line": 1,
       "section": -1,
@@ -16,6 +18,7 @@
     },
     {
       "rule": "timeout-missing",
+      "file": 0,
       "severity": "warn",
       "line": 7,
       "section": 1,
@@ -23,6 +26,7 @@
     },
     {
       "rule": "tls-no-alpn",
+      "file": 0,
       "severity": "info",
       "line": 8,
       "section": 1,
@@ -30,6 +34,7 @@
     },
     {
       "rule": "acl-undefined",
+      "file": 0,
       "severity": "error",
       "line": 12,
       "section": 1,
@@ -37,6 +42,7 @@
     },
     {
       "rule": "acl-undefined",
+      "file": 0,
       "severity": "error",
       "line": 12,
       "section": 1,
@@ -44,6 +50,7 @@
     },
     {
       "rule": "backend-missing",
+      "file": 0,
       "severity": "error",
       "line": 13,
       "section": 1,
@@ -51,6 +58,7 @@
     },
     {
       "rule": "no-bind",
+      "file": 0,
       "severity": "error",
       "line": 15,
       "section": 2,
@@ -58,6 +66,7 @@
     },
     {
       "rule": "timeout-missing",
+      "file": 0,
       "severity": "warn",
       "line": 15,
       "section": 2,
@@ -65,6 +74,7 @@
     },
     {
       "rule": "timeout-missing",
+      "file": 0,
       "severity": "warn",
       "line": 18,
       "section": 3,
@@ -72,6 +82,7 @@
     },
     {
       "rule": "misplaced",
+      "file": 0,
       "severity": "warn",
       "line": 20,
       "section": 3,
@@ -79,6 +90,7 @@
     },
     {
       "rule": "tls-no-verify",
+      "file": 0,
       "severity": "info",
       "line": 21,
       "section": 3,
@@ -86,6 +98,7 @@
     },
     {
       "rule": "timeout-missing",
+      "file": 0,
       "severity": "warn",
       "line": 24,
       "section": 4,
@@ -93,6 +106,7 @@
     },
     {
       "rule": "timeout-missing",
+      "file": 0,
       "severity": "warn",
       "line": 28,
       "section": 5,
@@ -100,6 +114,7 @@
     },
     {
       "rule": "mode-mismatch",
+      "file": 0,
       "severity": "error",
       "line": 30,
       "section": 5,
@@ -107,6 +122,7 @@
     },
     {
       "rule": "timeout-missing",
+      "file": 0,
       "severity": "warn",
       "line": 32,
       "section": 6,
@@ -114,6 +130,7 @@
     },
     {
       "rule": "timeout-missing",
+      "file": 0,
       "severity": "warn",
       "line": 32,
       "section": 6,
@@ -121,6 +138,7 @@
     },
     {
       "rule": "weak-stats-auth",
+      "file": 0,
       "severity": "info",
       "line": 35,
       "section": 6,
@@ -128,6 +146,7 @@
     },
     {
       "rule": "unknown-section",
+      "file": 0,
       "severity": "error",
       "line": 36,
       "section": 6,
@@ -359,6 +378,7 @@
     ],
     "edges": [
       {
+        "file": 0,
         "from": 1,
         "to": 3,
         "toName": "api",
@@ -367,6 +387,7 @@
         "line": 12
       },
       {
+        "file": 0,
         "from": 1,
         "to": -1,
         "toName": "nope",
@@ -374,6 +395,7 @@
         "line": 13
       },
       {
+        "file": 0,
         "from": 2,
         "to": 3,
         "toName": "api",
@@ -381,6 +403,7 @@
         "line": 16
       },
       {
+        "file": 0,
         "from": 5,
         "to": 4,
         "toName": "tcpbe",

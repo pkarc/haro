@@ -5,6 +5,7 @@ import (
 	"flag"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -63,9 +64,72 @@ func TestGolden(t *testing.T) {
 	}
 }
 
+// TestGoldenMulti trata cada subdirectorio de testdata como una configuración
+// de varios archivos, cargados como lo haría `haproxy -f dir/`.
+func TestGoldenMulti(t *testing.T) {
+	entries, _ := filepath.Glob("testdata/*")
+	found := 0
+	for _, dir := range entries {
+		if fi, err := os.Stat(dir); err != nil || !fi.IsDir() || filepath.Base(dir) == "corpus" {
+			continue
+		}
+		found++
+		t.Run(filepath.Base(dir), func(t *testing.T) {
+			names, _ := filepath.Glob(filepath.Join(dir, "*.cfg"))
+			sort.Strings(names)
+			var srcs []Source
+			for _, n := range names {
+				if strings.HasPrefix(filepath.Base(n), ".") {
+					continue
+				}
+				b, _ := os.ReadFile(n)
+				srcs = append(srcs, Source{Path: filepath.Base(n), Text: string(b)})
+			}
+			a := AnalyzeConfig(srcs)
+			type gl struct {
+				File string `json:"file"`
+				goldenLine
+			}
+			g := struct {
+				Issues       []Issue  `json:"issues"`
+				Explanations []gl     `json:"explanations"`
+				Topology     Topology `json:"topology"`
+			}{Issues: a.Issues, Topology: a.Topology}
+			for _, e := range a.Explanations {
+				g.Explanations = append(g.Explanations, gl{srcs[e.File].Path, goldenLine{e.Line, e.Keyword, e.Args, e.Explain.Text, e.Explain.Known}})
+			}
+			got, _ := json.MarshalIndent(g, "", "  ")
+			got = append(got, '\n')
+			gf := filepath.Clean(dir) + ".golden.json"
+			if *update {
+				os.WriteFile(gf, got, 0o644)
+				return
+			}
+			want, err := os.ReadFile(gf)
+			if err != nil {
+				t.Fatalf("falta %s; ejecuta go test ./core -update", gf)
+			}
+			if string(want) != string(got) {
+				t.Errorf("%s no coincide con el resultado actual", gf)
+			}
+			// Editar a través de la vista unificada modifica el archivo de origen.
+			cfg := NewConfig(srcs)
+			m := cfg.Merge()
+			m.Sections[len(m.Sections)-1].Lines = append(m.Sections[len(m.Sections)-1].Lines, &Line{Kind: KindComment, Text: "# editado"})
+			if !strings.Contains(cfg.Serialize(m.Sections[len(m.Sections)-1].File), "# editado") {
+				t.Error("la edición en la vista unificada no llegó al archivo de origen")
+			}
+		})
+	}
+	if found == 0 {
+		t.Fatal("no hay casos de varios archivos en testdata/")
+	}
+}
+
 func TestRoundTrip(t *testing.T) {
 	files, _ := filepath.Glob("testdata/*.cfg")
-	for _, f := range files {
+	more, _ := filepath.Glob("testdata/*/*.cfg")
+	for _, f := range append(files, more...) {
 		src, _ := os.ReadFile(f)
 		if out := Serialize(Parse(string(src))); out != string(src) {
 			t.Errorf("%s: Serialize(Parse(x)) != x", f)

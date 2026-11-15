@@ -21,6 +21,7 @@ var sevRank = map[Severity]int{SevError: 0, SevWarn: 1, SevInfo: 2}
 // Issue es un problema detectado en la configuración.
 type Issue struct {
 	Rule     string   `json:"rule"`
+	File     int      `json:"file"` // índice del archivo dentro del Config
 	Severity Severity `json:"severity"`
 	Line     int      `json:"line"`
 	Section  int      `json:"section"` // -1 si está fuera de secciones
@@ -56,19 +57,23 @@ var reWeakPass = regexp.MustCompile(`(?i):(admin|password|123456|cambiame|change
 // Es orientativo: la validación definitiva es `haproxy -c`.
 func Lint(doc *Doc) []Issue {
 	issues := []Issue{}
+	file := 0
 	add := func(rule string, sev Severity, line, sec int, format string, a ...any) {
-		issues = append(issues, Issue{Rule: rule, Severity: sev, Line: line, Section: sec, Message: fmt.Sprintf(format, a...)})
+		issues = append(issues, Issue{Rule: rule, File: file, Severity: sev, Line: line, Section: sec, Message: fmt.Sprintf(format, a...)})
 	}
 	for _, l := range doc.Pre {
 		if l.Kind == KindDirective {
+			file = l.File
 			add("outside-section", SevError, l.Line, -1, "«%s» está fuera de cualquier sección. Toda directiva debe ir dentro de global, defaults, frontend, backend…", l.Keyword)
 		}
 	}
 	eff := ComputeEffective(doc)
-	seen := map[string]int{}
+	type pos struct{ file, line int }
+	seen := map[string]pos{}
 	targets := map[string]int{}
 	globals := 0
 	for i, s := range doc.Sections {
+		file = s.File
 		info := Sections[s.Type]
 		if s.Type == "global" {
 			globals++
@@ -87,9 +92,13 @@ func Lint(doc *Doc) []Issue {
 			for _, k := range keys {
 				key := k + ":" + s.Name
 				if prev, ok := seen[key]; ok {
-					add("duplicate-name", SevError, s.Line, i, "Ya existe otra sección con capacidad de %s llamada «%s» (línea %d).", k, s.Name, prev)
+					where := fmt.Sprintf("línea %d", prev.line)
+					if prev.file != s.File {
+						where = fmt.Sprintf("%s, línea %d", fileLabel(doc, prev.file), prev.line)
+					}
+					add("duplicate-name", SevError, s.Line, i, "Ya existe otra sección con capacidad de %s llamada «%s» (%s).", k, s.Name, where)
 				} else {
-					seen[key] = s.Line
+					seen[key] = pos{s.File, s.Line}
 				}
 			}
 		}
@@ -99,6 +108,7 @@ func Lint(doc *Doc) []Issue {
 	}
 
 	for i, s := range doc.Sections {
+		file = s.File
 		dirs := s.Directives()
 		e := eff[i]
 		checkPlacement := proxySections[s.Type]
@@ -194,13 +204,25 @@ func Lint(doc *Doc) []Issue {
 		}
 	}
 	if len(doc.Sections) > 0 && globals == 0 {
+		file = 0
 		add("no-global", SevInfo, 1, -1, "No hay sección global (es opcional, pero suele usarse para logs, usuario y límites).")
 	}
 	sort.SliceStable(issues, func(a, b int) bool {
+		if issues[a].File != issues[b].File {
+			return issues[a].File < issues[b].File
+		}
 		if issues[a].Line != issues[b].Line {
 			return issues[a].Line < issues[b].Line
 		}
 		return sevRank[issues[a].Severity] < sevRank[issues[b].Severity]
 	})
 	return issues
+}
+
+// fileLabel devuelve el nombre del archivo para los mensajes, si se conoce.
+func fileLabel(doc *Doc, i int) string {
+	if i >= 0 && i < len(doc.Files) && doc.Files[i] != "" {
+		return doc.Files[i]
+	}
+	return fmt.Sprintf("archivo %d", i+1)
 }

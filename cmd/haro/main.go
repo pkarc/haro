@@ -12,13 +12,15 @@ var version = "dev"
 const usage = `haro — readout para configuraciones de HAProxy
 
 Uso:
-  haro lint    [archivo]        Detecta problemas (código de salida 1 si hay errores)
-  haro explain [archivo]        Explica cada sección y directiva en lenguaje humano
+  haro lint    [rutas...]       Detecta problemas (código de salida 1 si hay errores)
+  haro explain [rutas...]       Explica cada sección y directiva en lenguaje humano
   haro diff    <antes> <después> Compara dos configuraciones
   haro serve   [opciones]       Abre la interfaz web local
   haro version                  Muestra la versión
 
-Sin archivo, lint y explain leen /etc/haproxy/haproxy.cfg; usa "-" para stdin.
+Las rutas pueden ser archivos o directorios y se cargan como con haproxy -f:
+en orden, y de cada directorio sus .cfg no ocultos en orden lexicográfico.
+Sin rutas, se lee /etc/haproxy/haproxy.cfg; usa "-" para stdin.
 Ejecuta "haro <comando> -h" para ver las opciones de cada comando.
 `
 
