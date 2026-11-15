@@ -155,3 +155,21 @@ func TestApplyEndpoint(t *testing.T) {
 		t.Errorf("una operación inválida debería responder 422, respondió %d", res.StatusCode)
 	}
 }
+
+func TestKnowledgeEndpoint(t *testing.T) {
+	ts := newTestServer(t, &server{})
+	res := do(t, "GET", ts.URL+"/api/v1/knowledge", nil)
+	if res.StatusCode != 200 {
+		t.Fatalf("knowledge respondió %d", res.StatusCode)
+	}
+	var k struct {
+		Sections   map[string]any `json:"sections"`
+		Directives map[string]struct{ Sections []string }
+		Rules      map[string]string `json:"rules"`
+		Templates  map[string]any    `json:"templates"`
+	}
+	json.NewDecoder(res.Body).Decode(&k)
+	if len(k.Sections) == 0 || len(k.Directives["server"].Sections) == 0 || len(k.Rules) == 0 || k.Templates["backend"] == nil {
+		t.Errorf("respuesta incompleta: %+v", k)
+	}
+}

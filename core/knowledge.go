@@ -82,3 +82,19 @@ func toSet(list []string) map[string]bool {
 	}
 	return m
 }
+
+// PublicKnowledge es lo que las interfaces necesitan de la base de
+// conocimiento: tipos de sección, categorías, directivas por sección (para el
+// autocompletado), reglas del detector y plantillas de sección.
+type PublicKnowledge struct {
+	Categories map[string]string          `json:"categories"`
+	Sections   map[string]SectionInfo     `json:"sections"`
+	Directives map[string]DirectiveInfo   `json:"directives"`
+	Rules      map[string]string          `json:"rules"`
+	Templates  map[string]SectionTemplate `json:"templates"`
+}
+
+// Public devuelve la parte de la base de conocimiento que se publica por la API.
+func (k *Knowledge) Public() PublicKnowledge {
+	return PublicKnowledge{Categories: k.Categories, Sections: k.Sections, Directives: k.Directives, Rules: Rules, Templates: Templates}
+}

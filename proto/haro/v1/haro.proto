@@ -18,6 +18,8 @@ service CoreService {
   // Aplica operaciones de edición y devuelve los archivos resultantes, sin
   // escribir en disco. Es la única vía de edición de todas las interfaces.
   rpc Apply(ApplyRequest) returns (ApplyResponse);
+  // Datos de la base de conocimiento que necesitan las interfaces (autocompletado, modo visual).
+  rpc GetKnowledge(GetKnowledgeRequest) returns (Knowledge);
   // Valida con el binario real de HAProxy (`haproxy -c`), si está disponible.
   rpc Check(CheckRequest) returns (CheckResult);
 }
@@ -193,6 +195,34 @@ message FileChange {
 message ApplyResponse {
   repeated SourceFile files = 1;    // todos los archivos, en orden de carga
   repeated FileChange changes = 2;  // solo los que cambiaron
+}
+
+message GetKnowledgeRequest {}
+
+message SectionInfo {
+  string color = 1;
+  string named = 2; // required | optional | none
+  string title = 3;
+  string description = 4;
+}
+
+message DirectiveInfo {
+  repeated string sections = 1;
+  string category = 2;
+  string description = 3;
+}
+
+message SectionTemplate {
+  string name = 1;
+  repeated string lines = 2; // {{backend}} se sustituye por el primer backend, o se omite la línea
+}
+
+message Knowledge {
+  map<string, string> categories = 1;
+  map<string, SectionInfo> sections = 2;
+  map<string, DirectiveInfo> directives = 3;
+  map<string, string> rules = 4; // id estable de la regla del detector -> descripción
+  map<string, SectionTemplate> templates = 5;
 }
 
 message DiffRequest {

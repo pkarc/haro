@@ -102,6 +102,7 @@ func runServe(args []string) error {
 func (s *server) routes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/capabilities", s.handleCapabilities)
+	mux.HandleFunc("GET /api/v1/knowledge", s.handleKnowledge)
 	mux.HandleFunc("POST /api/v1/analyze", s.handleAnalyze)
 	mux.HandleFunc("POST /api/v1/apply", s.handleApply)
 	mux.HandleFunc("POST /api/v1/diff", s.handleDiff)
@@ -163,6 +164,13 @@ func (r analyzeRequest) sources() []core.Source {
 
 func (s *server) handleCapabilities(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, 200, capabilities{Version: version, Paths: s.paths, CanRead: len(s.paths) > 0, CanWrite: s.allowWrite, CanCheck: s.haproxyBin != "", HAProxyBin: s.haproxyBin})
+}
+
+// handleKnowledge expone los datos que la interfaz necesita para el
+// autocompletado y el modo visual (tipos de sección, categorías, directivas
+// conocidas por sección y plantillas), para que la web no duplique nada.
+func (s *server) handleKnowledge(w http.ResponseWriter, _ *http.Request) {
+	writeJSON(w, 200, core.KB.Public())
 }
 
 func (s *server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
