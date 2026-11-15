@@ -168,3 +168,34 @@ func TestHAProxyAgreesOnProblems(t *testing.T) {
 	}
 	t.Logf("detector con errores=%v, haproxy aceptó=%v\n%s", hasErr, ok, out)
 }
+
+// Las plantillas de sección deben producir configuraciones que haproxy acepte.
+func TestHAProxyAcceptsTemplates(t *testing.T) {
+	bin := haproxyBin(t)
+	base := "global\n    log /dev/log local0\n\ndefaults\n    mode http\n    timeout connect 5s\n    timeout client 30s\n    timeout server 30s\n\nfrontend base_in\n    bind *:80\n    default_backend base\n\nbackend base\n    server s 127.0.0.1:9000\n"
+	for typ := range Templates {
+		if typ == "global" || typ == "defaults" {
+			continue
+		}
+		t.Run(typ, func(t *testing.T) {
+			out, _, err := Apply(NewConfig([]Source{{Path: "a.cfg", Text: base}}), Op{Op: OpAddSection, Type: typ, Template: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ok, msg := haproxyCheck(t, bin, []string{out.Serialize(0)}); !ok {
+				t.Errorf("haproxy -c rechaza la plantilla %s:\n%s\n%s", typ, out.Serialize(0), msg)
+			}
+		})
+	}
+	for _, typ := range []string{"global", "defaults"} {
+		t.Run(typ, func(t *testing.T) {
+			out, _, err := Apply(NewConfig([]Source{{Path: "a.cfg", Text: "frontend f\n    bind *:80\n    default_backend base\n\nbackend base\n    server s 127.0.0.1:9000\n"}}), Op{Op: OpAddSection, Type: typ, Template: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if ok, msg := haproxyCheck(t, bin, []string{out.Serialize(0)}); !ok {
+				t.Errorf("haproxy -c rechaza la plantilla %s:\n%s\n%s", typ, out.Serialize(0), msg)
+			}
+		})
+	}
+}
