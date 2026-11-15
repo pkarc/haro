@@ -173,3 +173,46 @@ func TestKnowledgeEndpoint(t *testing.T) {
 		t.Errorf("respuesta incompleta: %+v", k)
 	}
 }
+
+// Un cambio que toca dos archivos a la vez (renombrar un backend y su
+// referencia) solo es válido como conjunto: se guarda de una vez o no se guarda.
+func TestPutConfigMultiFileAtomic(t *testing.T) {
+	dir := t.TempDir()
+	web := filepath.Join(dir, "20-web.cfg")
+	api := filepath.Join(dir, "30-api.cfg")
+	os.WriteFile(web, []byte("frontend f\n    bind *:80\n    default_backend api\n"), 0o640)
+	os.WriteFile(api, []byte("backend api\n    server s 1.1.1.1:80\n"), 0o640)
+	ts := newTestServer(t, &server{paths: []string{dir}, allowWrite: true})
+
+	// Por separado, cada archivo dejaría una referencia rota.
+	if res := do(t, "PUT", ts.URL+"/api/v1/config", map[string]string{"path": api, "text": "backend api2\n    server s 1.1.1.1:80\n"}); res.StatusCode != 422 {
+		t.Errorf("guardar solo el backend renombrado debería ser 422, fue %d", res.StatusCode)
+	}
+	// Como conjunto, es válido.
+	files := []map[string]string{
+		{"path": web, "text": "frontend f\n    bind *:80\n    default_backend api2\n"},
+		{"path": api, "text": "backend api2\n    server s 1.1.1.1:80\n"},
+	}
+	if res := do(t, "PUT", ts.URL+"/api/v1/config", map[string]any{"files": files}); res.StatusCode != 200 {
+		t.Fatalf("el conjunto válido debería guardarse, fue %d", res.StatusCode)
+	}
+	for _, f := range files {
+		if b, _ := os.ReadFile(f["path"]); string(b) != f["text"] {
+			t.Errorf("%s no se guardó: %q", f["path"], b)
+		}
+		if _, err := os.Stat(f["path"] + ".bak"); err != nil {
+			t.Errorf("falta la copia .bak de %s", f["path"])
+		}
+	}
+	// Un conjunto inválido no toca ningún archivo.
+	bad := []map[string]string{
+		{"path": web, "text": "frontend f\n    bind *:80\n    default_backend nope\n"},
+		{"path": api, "text": "backend api3\n    server s 1.1.1.1:80\n"},
+	}
+	if res := do(t, "PUT", ts.URL+"/api/v1/config", map[string]any{"files": bad}); res.StatusCode != 422 {
+		t.Errorf("conjunto inválido debería ser 422, fue %d", res.StatusCode)
+	}
+	if b, _ := os.ReadFile(api); string(b) != files[1]["text"] {
+		t.Errorf("un guardado rechazado modificó %s: %q", api, b)
+	}
+}

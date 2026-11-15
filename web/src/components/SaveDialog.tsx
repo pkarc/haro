@@ -5,8 +5,6 @@ import { fileLabels } from '../store/files'
 import { DiffBlock } from './DiffBlock'
 import { Modal } from './Modal'
 
-type Result = PutResult & { pending?: boolean }
-
 // Guardar en disco: diff previo de cada archivo modificado, validación y
 // salida de haproxy -c si el servidor rechaza el guardado.
 export function SaveDialog({ onClose }: { onClose(): void }) {
@@ -18,7 +16,7 @@ export function SaveDialog({ onClose }: { onClose(): void }) {
   const dirtyFn = useApp(s => s.dirty)
   const [dirty] = useState(dirtyFn)
   const [busy, setBusy] = useState(false)
-  const [results, setResults] = useState<Record<number, Result>>({})
+  const [failure, setFailure] = useState<PutResult | null>(null)
   const [check, setCheck] = useState<CheckResult | null>(null)
   const labels = fileLabels(files)
   const remaining = dirtyFn()
@@ -30,30 +28,18 @@ export function SaveDialog({ onClose }: { onClose(): void }) {
     try { setCheck(await coreClient.check(files)) } catch (e) { toast(`No se pudo validar: ${(e as Error).message}`, 'error') } finally { setBusy(false) }
   }
 
-  // Cada guardado valida la configuración completa con el resto de archivos tal
-  // como están en disco. Si un archivo depende de otro modificado, se reintenta
-  // cuando los demás ya se guardaron.
+  // Se guardan todos los archivos modificados de una vez: el servidor valida el
+  // conjunto, así que un cambio que toca varios archivos (renombrar un backend y
+  // sus referencias) no queda a medias.
   const doSave = async () => {
     setBusy(true)
-    const res: Record<number, Result> = {}
-    let pending = [...dirty]
-    for (;;) {
-      const failed: number[] = []
-      let progress = false
-      for (const i of pending) {
-        const r = await save(i)
-        res[i] = r
-        if (r.saved) progress = true
-        else failed.push(i)
-      }
-      pending = failed
-      if (!pending.length || !progress) break
-    }
-    setResults(res)
+    const r = await save(dirty)
     setBusy(false)
-    if (!pending.length) {
+    if (r.saved) {
       toast(dirty.length > 1 ? `Guardados ${dirty.length} archivos` : 'Guardado', 'info')
       onClose()
+    } else {
+      setFailure(r)
     }
   }
 
@@ -65,10 +51,10 @@ export function SaveDialog({ onClose }: { onClose(): void }) {
     </>}>
       <p className="muted sm">Se valida la configuración completa antes de escribir y se deja una copia <code>.bak</code> de cada archivo.</p>
       {check && <CheckOutput check={check} />}
+      {failure && <SaveError r={failure} />}
       {dirty.map(i => (
         <section key={files[i].path} className="save-file">
           <h4>{labels[i]} <span className="muted sm">{files[i].path}</span></h4>
-          {results[i] && !results[i].saved && <SaveError r={results[i]} />}
           <DiffBlock before={disk?.find(f => f.path === files[i].path)?.text ?? ''} after={files[i].text} />
         </section>
       ))}

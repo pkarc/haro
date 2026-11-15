@@ -64,7 +64,8 @@ export interface AppState {
   goto(file: number, line: number): void
   clearFocus(): void
   dirty(): number[]
-  save(index: number): Promise<PutResult>
+  // Guarda varios archivos a la vez: se valida el conjunto y se guarda todo o nada.
+  save(indexes: number[]): Promise<PutResult>
   markSaved(path: string, text: string): void
   toast(msg: string, kind?: Toast['kind'], action?: Toast['action']): void
   dismissToast(id: number): void
@@ -278,10 +279,10 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
 
       dirty() { const s = get(); return dirtyIndexes(s.files, s.disk) },
 
-      async save(index) {
-        const f = get().files[index]
-        const res = await client.putFile(f.path, f.text)
-        if (res.saved) get().markSaved(f.path, f.text)
+      async save(indexes) {
+        const files = indexes.map(i => get().files[i])
+        const res = await client.putFiles(files)
+        if (res.saved) files.forEach(f => get().markSaved(f.path, f.text))
         return res
       },
 

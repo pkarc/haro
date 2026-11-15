@@ -47,11 +47,17 @@ test('un guardado que rompe una referencia entre archivos se rechaza', async ({ 
   expect(disk.files[1].text).not.toContain('inexistente')
 })
 
-test('renombrar con referencias entre archivos cambia ambos archivos en el editor', async ({ page }) => {
+test('renombrar con referencias entre archivos se guarda de una vez', async ({ page, request }) => {
   await page.goto(BASE + '/')
   await expect(page.getByTestId('section').first()).toBeVisible()
   await page.getByRole('button', { name: 'Renombrar backend api' }).click()
   await page.getByRole('dialog').getByRole('textbox').fill('api2')
   await page.getByRole('dialog').getByRole('button', { name: 'Aceptar' }).click()
   await expect(page.getByTestId('save-button')).toContainText('Guardar (2)')
+  await page.getByTestId('save-button').click()
+  await page.getByTestId('confirm-save').click()
+  await expect(page.getByText('Guardados 2 archivos')).toBeVisible()
+  const disk = await (await request.get(BASE + '/api/v1/config')).json()
+  expect(disk.files[1].text).toContain('use_backend api2 if is_api')
+  expect(disk.files[2].text).toContain('backend api2')
 })

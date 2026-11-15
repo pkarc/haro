@@ -13,6 +13,8 @@ export interface CoreClient {
   check(files: SourceFile[]): Promise<CheckResult>
   getConfig(): Promise<SourceFile[] | null>
   putFile(path: string, text: string): Promise<PutResult>
+  // Guarda varios archivos a la vez: se valida el conjunto y se guarda todo o nada.
+  putFiles(files: SourceFile[]): Promise<PutResult>
   knowledge(): Promise<Knowledge>
 }
 
@@ -38,8 +40,10 @@ export class HttpCoreClient implements CoreClient {
     catch (e) { if ((e as { status?: number }).status === 404) return null; throw e }
   }
   knowledge() { return call<Knowledge>('GET', '/api/v1/knowledge') }
-  async putFile(path: string, text: string): Promise<PutResult> {
-    try { return await call<PutResult>('PUT', '/api/v1/config', { path, text }) }
+  putFile(path: string, text: string): Promise<PutResult> { return this.put({ path, text }) }
+  putFiles(files: SourceFile[]): Promise<PutResult> { return this.put({ files }) }
+  private async put(body: unknown): Promise<PutResult> {
+    try { return await call<PutResult>('PUT', '/api/v1/config', body) }
     catch (e) {
       const err = e as Error & { status?: number; data?: Partial<PutResult> }
       // El cuerpo del 422 trae check (salida de haproxy -c) o issue (detector).

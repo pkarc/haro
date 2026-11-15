@@ -52,7 +52,7 @@ haro carga las rutas igual que `haproxy -f`: en el orden indicado y, para cada d
 - la herencia de `defaults`, las referencias a backends y los nombres duplicados sí cruzan archivos;
 - cada problema indica su archivo y línea (`conf.d/20-web.cfg:4`).
 
-Al guardar desde `haro serve`, se valida la configuración completa con el cambio aplicado, no solo el archivo editado.
+Al guardar desde `haro serve`, se valida la configuración completa con el cambio aplicado, no solo el archivo editado. `PUT /api/v1/config` acepta `{files: [...]}` para guardar varios archivos a la vez (todo o nada), necesario cuando un cambio, como renombrar un backend, toca dos archivos.
 
 `haro serve` escucha solo en `127.0.0.1:7468` y rechaza peticiones con un `Host` externo. Para guardar hace falta `--allow-write`. Antes de escribir, haro valida con `haproxy -c` si el binario está disponible; si no lo está, usa su propio detector y se niega a guardar si encuentra errores. Siempre deja una copia `.bak` de la versión anterior.
 
@@ -117,7 +117,8 @@ El plan detallado está en [`docs/PLAN.md`](docs/PLAN.md).
 - [ ] Ampliar la base de conocimiento con el catálogo de client-native (Apache-2.0)
 - [ ] Plantillas de backend por tecnología (PostgreSQL, Redis, Elasticsearch…)
 - [ ] Generar servidor y cliente Connect desde `proto/` con buf
-- [ ] Web: portar el prototipo (CodeMirror 6, modo visual, React Flow, asistente)
+- [x] Web: modo código (CodeMirror 6), modo visual, mapa (React Flow) y panel de problemas
+- [ ] Web: asistente
 - [ ] Interfaz de terminal con Bubble Tea (`haro` sin argumentos)
 - [x] Operaciones de edición en el núcleo (`apply`)
 - [ ] Asistente: construcción de contexto en el núcleo, llamada a la API en cada cliente

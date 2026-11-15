@@ -288,38 +288,56 @@ func (s *server) handleGetConfig(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, 200, map[string]any{"files": srcs})
 }
 
-// handlePutConfig guarda un archivo de la configuración. Solo funciona con
-// --allow-write; valida la configuración completa (todos los archivos, con el
-// cambio aplicado) con `haproxy -c` o, si no está instalado, con el detector
-// de haro. Escribe de forma atómica y deja una copia .bak.
+// handlePutConfig guarda uno o varios archivos de la configuración. Acepta
+// {path, text} para uno o {files: [{path, text}]} para varios, que se validan
+// y se guardan juntos: así un cambio que toca dos archivos a la vez (por
+// ejemplo renombrar un backend y sus referencias) no queda a medias. Solo
+// funciona con --allow-write; valida la configuración completa (todos los
+// archivos, con los cambios aplicados) con `haproxy -c` o, si no está
+// instalado, con el detector de haro. Escribe de forma atómica, deja una copia
+// .bak de cada archivo y, si falla una escritura, restaura los ya escritos.
 func (s *server) handlePutConfig(w http.ResponseWriter, r *http.Request) {
 	if !s.allowWrite {
 		writeErr(w, 403, "la escritura está desactivada; inicia haro serve con --allow-write")
 		return
 	}
-	var req core.Source
+	var req struct {
+		core.Source
+		Files []core.Source `json:"files"`
+	}
 	if err := decode(r, &req); err != nil {
 		writeErr(w, 400, "petición inválida")
 		return
+	}
+	changes := req.Files
+	if len(changes) == 0 {
+		changes = []core.Source{req.Source}
 	}
 	srcs, err := readSources(s.paths)
 	if err != nil {
 		writeErr(w, 500, err.Error())
 		return
 	}
-	idx := -1
+	old := make([]string, len(srcs))
 	for i, src := range srcs {
-		if src.Path == req.Path || (req.Path == "" && len(srcs) == 1) {
-			idx = i
-			break
+		old[i] = src.Text
+	}
+	touched := map[int]bool{}
+	for _, c := range changes {
+		idx := -1
+		for i, src := range srcs {
+			if src.Path == c.Path || (c.Path == "" && len(srcs) == 1) {
+				idx = i
+				break
+			}
 		}
+		if idx < 0 {
+			writeErr(w, 400, "ese archivo no forma parte de la configuración servida")
+			return
+		}
+		srcs[idx].Text = c.Text
+		touched[idx] = true
 	}
-	if idx < 0 {
-		writeErr(w, 400, "ese archivo no forma parte de la configuración servida")
-		return
-	}
-	target := srcs[idx].Path
-	srcs[idx].Text = req.Text
 
 	res, err := s.check(r.Context(), srcs)
 	if err != nil {
@@ -339,21 +357,42 @@ func (s *server) handlePutConfig(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if err := writeAtomic(target, req.Text); err != nil {
-		writeErr(w, 500, err.Error())
-		return
+
+	var written []int
+	var saved []map[string]string
+	for i := range srcs {
+		if !touched[i] {
+			continue
+		}
+		if err := writeFile(srcs[i].Path, srcs[i].Text, true); err != nil {
+			for _, j := range written { // deshacer lo ya escrito
+				_ = writeFile(srcs[j].Path, old[j], false)
+			}
+			writeErr(w, 500, err.Error())
+			return
+		}
+		written = append(written, i)
+		saved = append(saved, map[string]string{"path": srcs[i].Path, "backup": srcs[i].Path + ".bak"})
 	}
-	writeJSON(w, 200, map[string]any{"saved": true, "path": target, "backup": target + ".bak", "check": res})
+	out := map[string]any{"saved": true, "files": saved, "check": res}
+	if len(saved) == 1 {
+		out["path"], out["backup"] = saved[0]["path"], saved[0]["backup"]
+	}
+	writeJSON(w, 200, out)
 }
 
-func writeAtomic(path, text string) error {
+// writeFile escribe el archivo de forma atómica (temporal + rename), con copia
+// .bak de la versión anterior si backup es true.
+func writeFile(path, text string, backup bool) error {
 	mode := os.FileMode(0o640)
 	if old, err := os.ReadFile(path); err == nil {
 		if fi, err := os.Stat(path); err == nil {
 			mode = fi.Mode().Perm()
 		}
-		if err := os.WriteFile(path+".bak", old, mode); err != nil {
-			return fmt.Errorf("no se pudo crear la copia de seguridad: %w", err)
+		if backup {
+			if err := os.WriteFile(path+".bak", old, mode); err != nil {
+				return fmt.Errorf("no se pudo crear la copia de seguridad: %w", err)
+			}
 		}
 	}
 	tmp, err := os.CreateTemp(filepath.Dir(path), ".haro-*")

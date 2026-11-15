@@ -18,6 +18,7 @@ function fakeClient(over: Partial<CoreClient> = {}): CoreClient {
     check: async () => ({ available: false, ok: false, output: '' }),
     getConfig: async () => null,
     putFile: async () => ({ saved: true }),
+    putFiles: async () => ({ saved: true }),
     knowledge: async () => ({ categories: {}, sections: {}, directives: {}, rules: {}, templates: {} }),
     ...over,
   }

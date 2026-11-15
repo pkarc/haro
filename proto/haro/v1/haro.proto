@@ -266,15 +266,24 @@ message ConfigFile {
   repeated SourceFile files = 1;
 }
 
-// Guarda un archivo concreto; se valida la configuración completa.
+// Guarda un archivo (path, text) o varios a la vez (files). Con varios, la
+// configuración completa se valida con todos los cambios aplicados y se guarda
+// todo o nada.
 message PutConfigRequest {
   string path = 1;
   string text = 2;
+  repeated SourceFile files = 3;
+}
+
+message SavedFile {
+  string path = 1;
+  string backup = 2;
 }
 
 message PutConfigResponse {
   bool saved = 1;
-  string path = 2;
-  string backup = 3;
+  string path = 2;   // solo si se guardó un único archivo
+  string backup = 3; // solo si se guardó un único archivo
   CheckResult check = 4;
+  repeated SavedFile files = 5;
 }
