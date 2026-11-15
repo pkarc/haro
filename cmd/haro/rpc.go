@@ -25,7 +25,6 @@ import (
 // JSON. La conversión es estricta: si el núcleo añade un campo que el contrato
 // no tiene, falla, y lo detecta TestRPCContract.
 
-
 func (s *server) mountRPC(mux *http.ServeMux) {
 	opts := []connect.HandlerOption{connect.WithReadMaxBytes(10 << 20)}
 	mux.Handle(harov1connect.NewCoreServiceHandler(coreService{s}, opts...))

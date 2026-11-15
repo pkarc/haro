@@ -158,11 +158,11 @@ type saved struct{ Path, Backup string }
 // validación no es un fallo del servidor: lleva el motivo en Err y, según quién
 // lo rechazó, la salida de haproxy -c (Check) o el error del detector (Issue).
 type putOutcome struct {
-	Saved   []saved
-	Err     string
-	Check   *checkResult
-	Issue   *core.Issue
-	Path    string // archivo del error del detector
+	Saved []saved
+	Err   string
+	Check *checkResult
+	Issue *core.Issue
+	Path  string // archivo del error del detector
 }
 
 // errClient es un error de la petición (no del servidor).
