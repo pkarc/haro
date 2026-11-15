@@ -14,8 +14,9 @@
   language: system
   files: \.cfg$
   types: [text]
-  # Cada archivo se analiza por separado, que es lo que pre-commit pasa. Para
-  # un conjunto (conf.d) que depende de varios archivos, usa haro-lint-dir.
+  # pre-commit pasa los archivos modificados juntos, y haro los analiza como un
+  # único conjunto (como haproxy -f). Si una referencia vive en un archivo que no
+  # se modificó, usa haro-lint-dir, que analiza el directorio completo.
   require_serial: true
 - id: haro-lint-dir
   name: haro lint (directorio completo)
