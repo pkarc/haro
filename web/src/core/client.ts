@@ -1,4 +1,4 @@
-import type { Analysis, Capabilities, CheckResult, DiffOp, SourceFile } from './types'
+import type { Analysis, ApplyResult, Capabilities, CheckResult, DiffOp, Op, SourceFile } from './types'
 
 // La interfaz no sabe con qué núcleo habla:
 //  - HttpCoreClient: `haro serve` local (Go nativo).
@@ -8,6 +8,7 @@ import type { Analysis, Capabilities, CheckResult, DiffOp, SourceFile } from './
 export interface CoreClient {
   capabilities(): Promise<Capabilities>
   analyze(files: SourceFile[]): Promise<Analysis>
+  apply(files: SourceFile[], ops: Op[]): Promise<ApplyResult>
   diff(before: string, after: string): Promise<DiffOp[]>
   check(files: SourceFile[]): Promise<CheckResult>
   getConfig(): Promise<SourceFile[] | null>
@@ -28,6 +29,7 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
 export class HttpCoreClient implements CoreClient {
   capabilities() { return call<Capabilities>('GET', '/api/v1/capabilities') }
   analyze(files: SourceFile[]) { return call<Analysis>('POST', '/api/v1/analyze', { files }) }
+  apply(files: SourceFile[], ops: Op[]) { return call<ApplyResult>('POST', '/api/v1/apply', { files, ops }) }
   async diff(before: string, after: string) { return (await call<{ ops: DiffOp[] }>('POST', '/api/v1/diff', { before, after })).ops }
   check(files: SourceFile[]) { return call<CheckResult>('POST', '/api/v1/check', { files }) }
   async getConfig() {

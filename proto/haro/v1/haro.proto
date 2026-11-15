@@ -15,6 +15,9 @@ service CoreService {
   rpc Analyze(AnalyzeRequest) returns (Analysis);
   // Compara dos configuraciones línea a línea.
   rpc Diff(DiffRequest) returns (DiffResponse);
+  // Aplica operaciones de edición y devuelve los archivos resultantes, sin
+  // escribir en disco. Es la única vía de edición de todas las interfaces.
+  rpc Apply(ApplyRequest) returns (ApplyResponse);
   // Valida con el binario real de HAProxy (`haproxy -c`), si está disponible.
   rpc Check(CheckRequest) returns (CheckResult);
 }
@@ -152,6 +155,44 @@ message Edge {
   bool default = 4;
   string condition = 5;
   int32 line = 6;
+}
+
+// Operación de edición. Según op se usan unos campos u otros (ver core/edit.go):
+// add_section, remove_section, move_section, rename_section, add_directive,
+// update_directive, remove_directive, move_directive. Los índices de sección son
+// los de la vista unificada; line_index es la posición en Section.lines.
+message Op {
+  string op = 1;
+  int32 section = 2;
+  string type = 3;
+  string name = 4;
+  bool template = 5;
+  optional int32 file = 6;
+  optional int32 at = 7;
+  optional int32 to = 8;
+  string text = 9;
+  int32 line_index = 10;
+  int32 delta = 11;
+  bool update_refs = 12;
+}
+
+// Aplica ops en orden sobre los archivos (o sobre text). Si una falla no se
+// aplica ninguna.
+message ApplyRequest {
+  string text = 1;
+  repeated SourceFile files = 2;
+  repeated Op ops = 3;
+}
+
+message FileChange {
+  int32 file = 1;
+  string path = 2;
+  string text = 3;
+}
+
+message ApplyResponse {
+  repeated SourceFile files = 1;    // todos los archivos, en orden de carga
+  repeated FileChange changes = 2;  // solo los que cambiaron
 }
 
 message DiffRequest {

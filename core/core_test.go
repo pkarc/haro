@@ -191,3 +191,19 @@ func TestDiffLines(t *testing.T) {
 		t.Errorf("DiffLines = %s", got)
 	}
 }
+
+// readMulti lee un caso de varios archivos de testdata en orden lexicográfico.
+func readMulti(t *testing.T, dir string) []Source {
+	t.Helper()
+	names, _ := filepath.Glob(filepath.Join("testdata", dir, "*.cfg"))
+	sort.Strings(names)
+	var srcs []Source
+	for _, n := range names {
+		b, err := os.ReadFile(n)
+		if err != nil {
+			t.Fatal(err)
+		}
+		srcs = append(srcs, Source{Path: filepath.Base(n), Text: string(b)})
+	}
+	return srcs
+}

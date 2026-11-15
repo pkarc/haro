@@ -51,3 +51,20 @@ export interface Analysis {
 export interface DiffOp { op: '=' | '-' | '+'; text: string }
 export interface CheckResult { available: boolean; ok: boolean; output: string }
 export interface Capabilities { version: string; paths?: string[]; canRead: boolean; canWrite: boolean; canCheck: boolean; haproxyBin?: string }
+
+export interface Op {
+  op: 'add_section' | 'remove_section' | 'move_section' | 'rename_section' | 'add_directive' | 'update_directive' | 'remove_directive' | 'move_directive'
+  section?: number
+  type?: string
+  name?: string
+  template?: boolean
+  file?: number
+  at?: number
+  to?: number
+  text?: string
+  lineIndex?: number
+  delta?: number
+  updateRefs?: boolean
+}
+export interface FileChange { file: number; path: string; text: string }
+export interface ApplyResult { files: SourceFile[]; changes: FileChange[] }

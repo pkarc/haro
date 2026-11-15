@@ -86,6 +86,10 @@ make run      # serve con la configuración de ejemplo
 
 Para trabajar en la web con recarga en caliente: `go run ./cmd/haro serve` en una terminal y `cd web && npm run dev` en otra. Vite redirige `/api` al servidor local.
 
+### Editar desde código: `core.Apply`
+
+Todas las interfaces editan con operaciones (`add_section`, `rename_section`, `move_directive`…) que `core.Apply` aplica sobre una copia y devuelve como los archivos que cambiaron. Los archivos que la operación no menciona vuelven byte a byte. Se exponen en `POST /api/v1/apply` (`{files, ops}`); guardar sigue siendo `PUT /api/v1/config`. Las operaciones están documentadas en `core/edit.go`.
+
 ### Corpus de configuraciones reales
 
 ```sh
@@ -115,6 +119,6 @@ El plan detallado está en [`docs/PLAN.md`](docs/PLAN.md).
 - [ ] Generar servidor y cliente Connect desde `proto/` con buf
 - [ ] Web: portar el prototipo (CodeMirror 6, modo visual, React Flow, asistente)
 - [ ] Interfaz de terminal con Bubble Tea (`haro` sin argumentos)
-- [ ] Operaciones de edición en el núcleo (`apply`)
+- [x] Operaciones de edición en el núcleo (`apply`)
 - [ ] Asistente: construcción de contexto en el núcleo, llamada a la API en cada cliente
 - [ ] Módulo WASM y web pública

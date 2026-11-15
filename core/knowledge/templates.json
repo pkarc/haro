@@ -1,0 +1,40 @@
+{
+  "global": {
+    "lines": ["log /dev/log local0", "maxconn 4096", "user haproxy", "group haproxy", "daemon"]
+  },
+  "defaults": {
+    "lines": ["mode http", "log global", "option httplog", "timeout connect 5s", "timeout client 30s", "timeout server 30s"]
+  },
+  "frontend": {
+    "name": "nuevo_frontend",
+    "lines": ["bind *:8080", "mode http", "default_backend {{backend}}"]
+  },
+  "backend": {
+    "name": "nuevo_backend",
+    "lines": ["balance roundrobin", "server srv1 127.0.0.1:8080 check"]
+  },
+  "listen": {
+    "name": "nuevo_listen",
+    "lines": ["bind *:8404", "mode http", "stats enable", "stats uri /stats", "stats refresh 10s"]
+  },
+  "resolvers": {
+    "name": "dns",
+    "lines": ["nameserver dns1 1.1.1.1:53", "resolve_retries 3", "timeout resolve 1s", "hold valid 10s"]
+  },
+  "userlist": {
+    "name": "usuarios",
+    "lines": ["user admin insecure-password CAMBIAR"]
+  },
+  "cache": {
+    "name": "cache",
+    "lines": ["total-max-size 64", "max-age 60"]
+  },
+  "peers": {
+    "name": "cluster",
+    "lines": ["peer haproxy1 127.0.0.1:10000"]
+  },
+  "mailers": {
+    "name": "alertas",
+    "lines": ["mailer smtp1 127.0.0.1:25"]
+  }
+}

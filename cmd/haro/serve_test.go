@@ -118,3 +118,40 @@ func TestExpandPaths(t *testing.T) {
 		t.Errorf("expandPaths = %v", names)
 	}
 }
+
+func TestApplyEndpoint(t *testing.T) {
+	ts := newTestServer(t, &server{})
+	files := []map[string]string{
+		{"path": "a.cfg", "text": "backend a  \r\n    server s 1.1.1.1:80\n"},
+		{"path": "b.cfg", "text": "backend b\n    server s 2.2.2.2:80  \n"},
+	}
+	res := do(t, "POST", ts.URL+"/api/v1/apply", map[string]any{
+		"files": files,
+		"ops":   []map[string]any{{"op": "add_directive", "section": 1, "text": "balance leastconn"}},
+	})
+	if res.StatusCode != 200 {
+		t.Fatalf("apply debería responder 200, respondió %d", res.StatusCode)
+	}
+	var out struct {
+		Files   []struct{ Path, Text string } `json:"files"`
+		Changes []struct{ File int }          `json:"changes"`
+	}
+	json.NewDecoder(res.Body).Decode(&out)
+	if len(out.Changes) != 1 || out.Changes[0].File != 1 {
+		t.Errorf("solo debía cambiar el segundo archivo: %+v", out.Changes)
+	}
+	if out.Files[0].Text != files[0]["text"] {
+		t.Errorf("el archivo sin cambios debe volver byte a byte: %q", out.Files[0].Text)
+	}
+	if !strings.Contains(out.Files[1].Text, "    balance leastconn\n") {
+		t.Errorf("falta la directiva: %q", out.Files[1].Text)
+	}
+
+	res = do(t, "POST", ts.URL+"/api/v1/apply", map[string]any{
+		"files": files,
+		"ops":   []map[string]any{{"op": "add_directive", "section": 0, "text": "backend x"}},
+	})
+	if res.StatusCode != 422 {
+		t.Errorf("una operación inválida debería responder 422, respondió %d", res.StatusCode)
+	}
+}

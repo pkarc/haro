@@ -18,7 +18,7 @@ haro (*HAProxy readout*) es una herramienta open source para leer, explicar, val
 ## Estructura
 
 ```
-core/                 parser, serializer, knowledge, describe, lint, model (herencia, topología), diff, config (varios archivos)
+core/                 parser, serializer, knowledge, describe, lint, model (herencia, topología), diff, config (varios archivos), edit (Op/Apply)
 core/knowledge/       knowledge.json: secciones, directivas, opciones, fetches… (datos, no código)
 core/testdata/        *.cfg + *.golden.json; cada subdirectorio es un caso de varios archivos
 cmd/haro/             main, cli (lint/explain/diff), files (expansión de rutas), serve (API)

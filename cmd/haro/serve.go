@@ -103,6 +103,7 @@ func (s *server) routes() *http.ServeMux {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/v1/capabilities", s.handleCapabilities)
 	mux.HandleFunc("POST /api/v1/analyze", s.handleAnalyze)
+	mux.HandleFunc("POST /api/v1/apply", s.handleApply)
 	mux.HandleFunc("POST /api/v1/diff", s.handleDiff)
 	mux.HandleFunc("POST /api/v1/check", s.handleCheck)
 	mux.HandleFunc("GET /api/v1/config", s.handleGetConfig)
@@ -183,6 +184,40 @@ func (s *server) handleDiff(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, map[string]any{"ops": core.DiffLines(core.Normalize(req.Before), core.Normalize(req.After))})
+}
+
+// handleApply aplica operaciones de edición sobre los archivos recibidos y
+// devuelve los archivos resultantes, sin tocar el disco: guardar sigue siendo
+// PUT /api/v1/config, con todas sus validaciones. files lleva todos los
+// archivos de la configuración; changes, solo los que cambiaron.
+func (s *server) handleApply(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		analyzeRequest
+		Ops []core.Op `json:"ops"`
+	}
+	if err := decode(r, &req); err != nil {
+		writeErr(w, 400, "petición inválida")
+		return
+	}
+	_, changes, err := core.Apply(core.NewConfig(req.sources()), req.Ops...)
+	if err != nil {
+		var ae *core.ApplyError
+		if errors.As(err, &ae) {
+			writeJSON(w, 422, map[string]any{"error": ae.Error(), "index": ae.Index, "op": ae.Op, "message": ae.Msg})
+			return
+		}
+		writeErr(w, 500, err.Error())
+		return
+	}
+	// Los archivos sin cambios se devuelven con su texto original, byte a byte.
+	files := append([]core.Source{}, req.sources()...)
+	for _, c := range changes {
+		files[c.File].Text = c.Text
+	}
+	if changes == nil {
+		changes = []core.FileChange{}
+	}
+	writeJSON(w, 200, map[string]any{"files": files, "changes": changes})
 }
 
 type checkResult struct {

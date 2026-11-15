@@ -217,3 +217,73 @@ func (c *Cond) ACLNames() []string {
 	}
 	return names
 }
+
+// Span es la posición de un token dentro de una línea (desplazamientos en
+// bytes). Value es el token ya sin comillas ni escapes, igual que en Tokenize.
+type Span struct {
+	Start, End int
+	Value      string
+}
+
+// TokenSpans hace lo mismo que Tokenize, pero devuelve dónde empieza y acaba
+// cada token en el texto. Permite reescribir un token sin tocar el resto de la
+// línea.
+func TokenSpans(s string) []Span {
+	var out []Span
+	var cur []byte
+	has := false
+	start := 0
+	var quote byte
+	flush := func(end int) {
+		out = append(out, Span{Start: start, End: end, Value: string(cur)})
+		cur = cur[:0]
+		has = false
+	}
+	for i := 0; i < len(s); i++ {
+		ch := s[i]
+		if quote != 0 {
+			if ch == '\\' && quote == '"' && i+1 < len(s) {
+				cur = append(cur, s[i+1])
+				i++
+				continue
+			}
+			if ch == quote {
+				quote = 0
+				continue
+			}
+			cur = append(cur, ch)
+			continue
+		}
+		switch {
+		case ch == '"' || ch == '\'':
+			if !has {
+				start = i
+			}
+			quote = ch
+			has = true
+		case ch == '\\' && i+1 < len(s):
+			if !has {
+				start = i
+			}
+			cur = append(cur, s[i+1])
+			has = true
+			i++
+		case ch == '#' && !has:
+			return out
+		case ch == ' ' || ch == '\t':
+			if has {
+				flush(i)
+			}
+		default:
+			if !has {
+				start = i
+			}
+			cur = append(cur, ch)
+			has = true
+		}
+	}
+	if has {
+		flush(len(s))
+	}
+	return out
+}
