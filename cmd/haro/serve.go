@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/haro/haro/core"
-	"github.com/haro/haro/web"
+	"github.com/pkarc/haro/core"
+	"github.com/pkarc/haro/web"
 )
 
 // El API local usa JSON sobre HTTP con las mismas rutas y mensajes que el

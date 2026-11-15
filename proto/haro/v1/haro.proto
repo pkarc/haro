@@ -8,7 +8,7 @@ syntax = "proto3";
 
 package haro.v1;
 
-option go_package = "github.com/haro/haro/gen/haro/v1;harov1";
+option go_package = "github.com/pkarc/haro/gen/haro/v1;harov1";
 
 service CoreService {
   // Analiza una configuración: árbol, problemas, explicaciones, herencia y topología.

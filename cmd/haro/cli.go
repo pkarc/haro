@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/haro/haro/core"
+	"github.com/pkarc/haro/core"
 )
 
 const defaultConfigPath = "/etc/haproxy/haproxy.cfg"

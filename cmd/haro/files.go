@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/haro/haro/core"
+	"github.com/pkarc/haro/core"
 )
 
 // expandPaths reproduce cómo carga HAProxy los argumentos de -f: cada

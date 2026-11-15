@@ -1,3 +1,3 @@
-module github.com/haro/haro
+module github.com/pkarc/haro
 
 go 1.24.7

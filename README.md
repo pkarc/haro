@@ -25,7 +25,7 @@ backend api_servers  Grupo de servidores
 ## Instalación
 
 ```sh
-go install github.com/haro/haro/cmd/haro@latest
+go install github.com/pkarc/haro/cmd/haro@latest
 ```
 
 ## Uso

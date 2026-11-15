@@ -62,7 +62,7 @@ Hecho: núcleo con tests golden, varios archivos, CLI (`lint`, `explain`, `diff`
 7. Base de conocimiento ampliada e idiomas (inglés y español).
 8. Plantillas, asistente, WASM y web pública.
 
-## Pendiente de decidir por el autor
+## Licencia y módulo
 
-- Licencia (Apache-2.0 o MIT).
-- Ruta definitiva del módulo: hoy `github.com/haro/haro`, suponiendo la organización `haro` en GitHub.
+- Licencia **MIT** (titular: Ivan Jaramillo). Si se usa el catálogo de `client-native` (Apache-2.0) como referencia, citar el origen en un `NOTICE`.
+- Ruta del módulo: `github.com/pkarc/haro`.

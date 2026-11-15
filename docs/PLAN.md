@@ -17,8 +17,8 @@ Reglas generales para todas las fases:
 
 Tareas:
 
-1. Confirmar con el autor la **licencia** (Apache-2.0 recomendada, la misma que client-native) y añadir `LICENSE`.
-2. Confirmar la **ruta del módulo** (`github.com/haro/haro` si la organización `haro` está reservada) y ajustar `go.mod`, imports y `proto` (`go_package`).
+1. ~~Licencia~~: hecho, MIT con `LICENSE` (Ivan Jaramillo).
+2. ~~Ruta del módulo~~: hecho, `github.com/pkarc/haro` en `go.mod`, imports y `proto` (`go_package`).
 3. **CI en GitHub Actions** (`.github/workflows/ci.yml`):
    - `go vet ./...`, `go test ./...` y `gofmt -l .` (falla si hay archivos sin formatear) en Linux y macOS.
    - Job opcional que ejecuta `scripts/fetch-corpus.sh` y `go test ./core -run TestCorpus -v`, y publica la cobertura en el resumen del job.
@@ -176,14 +176,14 @@ Aceptación: registrado en Claude Code, una petición como «revisa /etc/haproxy
 Tareas:
 
 1. **GoReleaser** (`.goreleaser.yaml`): Linux, macOS (y Windows si no cuesta) en amd64 y arm64; checksums; `-ldflags "-X main.version=…"`; changelog desde los commits. Workflow que publica al crear una etiqueta `v*`.
-2. **Homebrew tap** (`haro/homebrew-tap`) generado por GoReleaser.
+2. **Homebrew tap** (`pkarc/homebrew-tap`) generado por GoReleaser.
 3. **Imagen Docker** mínima (`FROM scratch` o `distroless`) con el binario; ejemplo `docker run -v /etc/haproxy:/cfg:ro haro lint /cfg`.
-4. **GitHub Action** (`haro/lint-action` o `action.yml` en el repo): ejecuta `haro lint --format sarif` y sube el resultado; comenta en el PR.
+4. **GitHub Action** (`pkarc/haro` (`action.yml`) o `action.yml` en el repo): ejecuta `haro lint --format sarif` y sube el resultado; comenta en el PR.
 5. **Salida SARIF** en `haro lint --format sarif` (reglas con `Rules` como descripción).
 6. **Hook de pre-commit** (`.pre-commit-hooks.yaml`).
 7. Paquetes `.deb`/`.rpm` con nfpm (opcional).
 
-Aceptación: `brew install haro/tap/haro`, `docker run …` y la Action funcionan en un repo de prueba.
+Aceptación: `brew install pkarc/tap/haro`, `docker run …` y la Action funcionan en un repo de prueba.
 
 ---
 
