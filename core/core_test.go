@@ -188,6 +188,8 @@ func TestACLPhrase(t *testing.T) {
 		"src 10.0.0.0/8":               "la IP de origen está en `10.0.0.0/8`",
 		"ssl_fc":                       "la conexión entrante es TLS",
 		"sc_http_req_rate(0) gt 20":    "el ritmo de peticiones del cliente (contador 0) es mayor que **20**",
+		"path_len gt 100":              "la longitud de la ruta es mayor que **100**",
+		"hdr_len(host) gt 10":          "la longitud del Host es mayor que **10**",
 		"hdr_dom(host) -i example.com": "el Host contiene el dominio `example.com` (sin distinguir mayúsculas)",
 	}
 	for in, want := range cases {

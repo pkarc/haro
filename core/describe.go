@@ -51,7 +51,11 @@ func (x tr) dur(v, defUnit string) string {
 		}
 		unit = defUnit
 	}
-	names := map[string]string{"us": "µs", "ms": "ms", "s": "s", "m": "min", "h": "h", "d": x.t("días", "days")}
+	day := x.t("días", "days")
+	if m[1] == "1" {
+		day = x.t("día", "day")
+	}
+	names := map[string]string{"us": "µs", "ms": "ms", "s": "s", "m": "min", "h": "h", "d": day}
 	return b(m[1] + " " + names[unit])
 }
 
@@ -388,7 +392,17 @@ func (x tr) aclPhrase(t []string) string {
 	case flags["-M"] != "":
 		out = subject + x.t(" está en el mapa ", " is in the map ") + c(flags["-M"])
 	case len(vals) > 0 && text.Operators[vals[0]] != "":
-		out = subject + x.t(" es ", " is ") + text.Operators[vals[0]] + " " + b(arg(vals, 1))
+		// Con un operador de comparación, lo que se compara es el número: la
+		// longitud (path_len) o el recuento (hdr_cnt), no el sujeto en sí.
+		subj := subject
+		switch match {
+		case "len":
+			subj = x.t("la longitud de "+subject, "the length of "+subject)
+		case "cnt":
+			subj = x.t("el nº de apariciones de "+subject, "the number of occurrences of "+subject)
+		}
+		subj = strings.NewReplacer("de el ", "del ").Replace(subj)
+		out = subj + x.t(" es ", " is ") + text.Operators[vals[0]] + " " + b(arg(vals, 1))
 	case len(vals) == 0:
 		if match == "found" {
 			out = subject + x.t(" existe", " exists")
@@ -628,6 +642,9 @@ func (x tr) actionPhrase(act string, r []string) string {
 	if strings.HasPrefix(name, "lua.") {
 		return x.t("Ejecuta la acción Lua ", "Runs the Lua action ") + c(name[4:])
 	}
+	if act == "" {
+		return x.t("Acción incompleta", "Incomplete action")
+	}
 	if rs != "" {
 		return x.t("Acción ", "Action ") + c(act) + " " + c(rs)
 	}
@@ -826,7 +843,8 @@ func init() {
 				"session":    x.t("Sesión TCP:", "TCP session:"),
 			}[arg(a, 0)]
 			if label == "" {
-				label = "TCP:"
+				// Sin fase conocida, todo lo que sigue es la acción.
+				return x.ruleDesc(a, "TCP:"), true
 			}
 			return x.ruleDesc(rest(a, 1), label), true
 		},
@@ -930,7 +948,7 @@ func init() {
 		"stick-table": func(x tr, a []string, _ string) (string, bool) {
 			s := x.f("Tabla de seguimiento: clave %s, %s entradas", "Stick table: key %s, %s entries", c(kv(a, "type")), kv(a, "size"))
 			if e := kv(a, "expire"); e != "" {
-				s += x.t(", caducan a los ", ", entries expire after ") + x.dur(e, "ms")
+				s += x.t(", caducan tras ", ", entries expire after ") + x.dur(e, "ms")
 			}
 			if st := kv(a, "store"); st != "" {
 				var names []string

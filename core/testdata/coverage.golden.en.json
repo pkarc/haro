@@ -529,7 +529,7 @@
       "line": 84,
       "keyword": "acl",
       "args": "lenacl path_len gt 100",
-      "text": "Defines the condition `lenacl`: the path is greater than **100**",
+      "text": "Defines the condition `lenacl`: the length of the path is greater than **100**",
       "known": true
     },
     {
@@ -900,7 +900,7 @@
       "line": 137,
       "keyword": "tcp-request",
       "args": "other",
-      "text": "TCP: Action ``",
+      "text": "TCP: Action `other`",
       "known": true
     },
     {
@@ -1145,7 +1145,7 @@
       "line": 174,
       "keyword": "stick-table",
       "args": "type string len 32 size 1m expire 1d",
-      "text": "Stick table: key `string`, 1m entries, entries expire after **1 days**",
+      "text": "Stick table: key `string`, 1m entries, entries expire after **1 day**",
       "known": true
     },
     {

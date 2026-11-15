@@ -417,7 +417,7 @@
       "line": 68,
       "keyword": "stick-table",
       "args": "type ip size 100k expire 30s store http_req_rate(10s),conn_cur,gpc0,unknownstore peers mypeers",
-      "text": "Tabla de seguimiento: clave `ip`, 100k entradas, caducan a los **30 s** · guarda ritmo de peticiones (10s), conexiones abiertas, contador gpc0, unknownstore · replicada con `mypeers`",
+      "text": "Tabla de seguimiento: clave `ip`, 100k entradas, caducan tras **30 s** · guarda ritmo de peticiones (10s), conexiones abiertas, contador gpc0, unknownstore · replicada con `mypeers`",
       "known": true
     },
     {
@@ -529,7 +529,7 @@
       "line": 84,
       "keyword": "acl",
       "args": "lenacl path_len gt 100",
-      "text": "Define la condición `lenacl`: la ruta es mayor que **100**",
+      "text": "Define la condición `lenacl`: la longitud de la ruta es mayor que **100**",
       "known": true
     },
     {
@@ -900,7 +900,7 @@
       "line": 137,
       "keyword": "tcp-request",
       "args": "other",
-      "text": "TCP: Acción ``",
+      "text": "TCP: Acción `other`",
       "known": true
     },
     {
@@ -1145,7 +1145,7 @@
       "line": 174,
       "keyword": "stick-table",
       "args": "type string len 32 size 1m expire 1d",
-      "text": "Tabla de seguimiento: clave `string`, 1m entradas, caducan a los **1 días**",
+      "text": "Tabla de seguimiento: clave `string`, 1m entradas, caducan tras **1 día**",
       "known": true
     },
     {
