@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  go:
+    name: Go (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: |
+          test -z "$(gofmt -l .)" || { gofmt -l .; exit 1; }
+      - run: go vet ./...
+      - run: go test ./...
+
+  haproxy:
+    name: Validación con haproxy -c
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Instalar haproxy
+        run: sudo apt-get update && sudo apt-get install -y haproxy
+      - name: Tests de integración
+        env:
+          HARO_REQUIRE_HAPROXY: "1"
+        run: go test ./core -run HAProxy -v
+
+  corpus:
+    name: Corpus de configuraciones reales
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: scripts/fetch-corpus.sh
+      - name: Test y cobertura
+        run: |
+          go test ./core -run TestCorpus -v | tee corpus.txt
+          { echo '### Corpus'; echo '```'; tail -n 40 corpus.txt; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
