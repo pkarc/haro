@@ -21,7 +21,8 @@ haro (*HAProxy readout*) es una herramienta open source para leer, explicar, val
 core/                 parser, serializer, knowledge, describe, lint, model (herencia, topología), diff, config (varios archivos), edit (Op/Apply)
 core/knowledge/       knowledge.json: secciones, directivas, opciones, fetches… (datos, no código)
 core/testdata/        *.cfg + *.golden.json; cada subdirectorio es un caso de varios archivos
-cmd/haro/             main, cli (lint/explain/diff), files (expansión de rutas), serve (API)
+cmd/haro/             main, cli (lint/explain/diff), files (expansión de rutas), serve + rpc (API Connect), tui (arranque)
+internal/tui/         interfaz de terminal (Bubble Tea); solo presenta, la lógica es de core
 proto/haro/v1/        contrato del API
 web/                  React + Vite + TS (esqueleto); web/placeholder.html se sirve si no hay build
 docs/prototype/       prototipo completo de la interfaz en un solo HTML (referencia para portar)

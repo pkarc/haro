@@ -12,6 +12,8 @@ var version = "dev"
 const usage = `haro — readout para configuraciones de HAProxy
 
 Uso:
+  haro                          Interfaz de terminal (en un terminal interactivo)
+  haro tui     [rutas...]       Interfaz de terminal para navegar la configuración
   haro lint    [rutas...]       Detecta problemas (código de salida 1 si hay errores)
   haro explain [rutas...]       Explica cada sección y directiva en lenguaje humano
   haro diff    <antes> <después> Compara dos configuraciones
@@ -26,6 +28,15 @@ Ejecuta "haro <comando> -h" para ver las opciones de cada comando.
 
 func main() {
 	if len(os.Args) < 2 {
+		// Sin argumentos: la interfaz de terminal si hay terminal; si no (un
+		// pipe, un script), la ayuda de siempre.
+		if isTerminal(os.Stdin) && isTerminal(os.Stdout) {
+			if err := runTUI(nil); err != nil {
+				fmt.Fprintln(os.Stderr, "haro:", err)
+				os.Exit(1)
+			}
+			return
+		}
 		fmt.Print(usage)
 		return
 	}
@@ -38,6 +49,8 @@ func main() {
 		err = runExplain(args)
 	case "diff":
 		err = runDiff(args)
+	case "tui":
+		err = runTUI(args)
 	case "serve":
 		err = runServe(args)
 	case "version", "--version", "-v":

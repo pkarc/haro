@@ -20,6 +20,7 @@ backend api_servers  Grupo de servidores
 - **`haro explain`**: explica cada sección y directiva en lenguaje humano, incluida la herencia de `defaults`.
 - **`haro lint`**: detecta problemas (backends inexistentes, ACLs sin definir, timeouts que faltan, modos http/tcp incompatibles…). Devuelve código 1 si hay errores, así que sirve en CI.
 - **`haro diff`**: compara dos configuraciones.
+- **`haro` / `haro tui`**: interfaz de terminal: secciones con sus explicaciones, problemas navegables (`p`), mapa del tráfico (`m`), edición en tu `$EDITOR` en la línea exacta (`e`) y recarga automática al cambiar los archivos. Sin terminal interactivo (un pipe) `haro` muestra la ayuda.
 - **`haro serve`**: abre una interfaz web local con modo código, modo visual y mapa del tráfico.
 
 ## Instalación
@@ -31,6 +32,8 @@ go install github.com/pkarc/haro/cmd/haro@latest
 ## Uso
 
 ```sh
+haro                                    # interfaz de terminal (en un terminal)
+haro tui haproxy.cfg conf.d/            # con rutas, como haproxy -f
 haro lint                               # /etc/haproxy/haproxy.cfg por defecto
 haro lint haproxy.cfg conf.d/           # varios archivos, como haproxy -f
 haro lint --format json mi.cfg          # salida para CI
@@ -120,7 +123,7 @@ El plan detallado está en [`docs/PLAN.md`](docs/PLAN.md).
 - [x] Servidor y cliente Connect generados desde `proto/` con buf (`make proto`)
 - [x] Web: modo código (CodeMirror 6), modo visual, mapa (React Flow) y panel de problemas
 - [ ] Web: asistente
-- [ ] Interfaz de terminal con Bubble Tea (`haro` sin argumentos)
+- [x] Interfaz de terminal con Bubble Tea (`haro` sin argumentos)
 - [x] Operaciones de edición en el núcleo (`apply`)
 - [ ] Asistente: construcción de contexto en el núcleo, llamada a la API en cada cliente
 - [ ] Módulo WASM y web pública
