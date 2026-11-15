@@ -1,0 +1,184 @@
+// Contrato del núcleo de haro. Es la fuente de verdad de los tipos que
+// comparten el servidor Go (`haro serve`) y la web en TypeScript.
+//
+// Hoy `haro serve` expone estas mismas rutas como JSON sobre HTTP
+// (/api/v1/...). El siguiente paso es generar con buf el servidor Connect en
+// Go y el cliente en TypeScript a partir de este archivo.
+syntax = "proto3";
+
+package haro.v1;
+
+option go_package = "github.com/haro/haro/gen/haro/v1;harov1";
+
+service CoreService {
+  // Analiza una configuración: árbol, problemas, explicaciones, herencia y topología.
+  rpc Analyze(AnalyzeRequest) returns (Analysis);
+  // Compara dos configuraciones línea a línea.
+  rpc Diff(DiffRequest) returns (DiffResponse);
+  // Valida con el binario real de HAProxy (`haproxy -c`), si está disponible.
+  rpc Check(CheckRequest) returns (CheckResult);
+}
+
+service ConfigService {
+  rpc GetCapabilities(GetCapabilitiesRequest) returns (Capabilities);
+  rpc GetConfig(GetConfigRequest) returns (ConfigFile);
+  // Guarda solo si --allow-write está activo y la validación pasa.
+  rpc PutConfig(PutConfigRequest) returns (PutConfigResponse);
+}
+
+message AnalyzeRequest { string text = 1; }
+
+message Analysis {
+  Doc doc = 1;
+  repeated Issue issues = 2;
+  repeated LineExplanation explanations = 3;
+  repeated Effective effective = 4;
+  Topology topology = 5;
+}
+
+message Doc {
+  repeated Line pre = 1;
+  repeated Section sections = 2;
+}
+
+message Section {
+  string type = 1;
+  string name = 2;
+  int32 line = 3;
+  string indent = 4;
+  string text = 5;
+  repeated string tokens = 6;
+  string comment = 7;
+  repeated Line lines = 8;
+}
+
+message Line {
+  string kind = 1; // blank | comment | directive
+  int32 line = 2;
+  string indent = 3;
+  string text = 4;
+  string keyword = 5;
+  repeated string args = 6;
+  string comment = 7;
+}
+
+message Issue {
+  string rule = 1;
+  string severity = 2; // error | warn | info
+  int32 line = 3;
+  int32 section = 4;
+  string message = 5;
+}
+
+message Explanation {
+  string text = 1; // markdown mínimo: **negrita** y `código`
+  string category = 2;
+  bool known = 3;
+}
+
+message LineExplanation {
+  int32 line = 1;
+  int32 section = 2;
+  string keyword = 3;
+  string args = 4;
+  Explanation explanation = 5;
+}
+
+message Effective {
+  string mode = 1;
+  string mode_from = 2; // own | defaults | implicit
+  map<string, bool> timeouts = 3;
+  int32 defaults = 4;
+}
+
+message Topology {
+  repeated EntryNode entries = 1;
+  repeated BackendNode backends = 2;
+  repeated Edge edges = 3;
+  repeated string missing = 4;
+}
+
+message Bind {
+  string address = 1;
+  bool tls = 2;
+}
+
+message ServerNode {
+  string name = 1;
+  string address = 2;
+  bool backup = 3;
+  bool check = 4;
+  bool disabled = 5;
+  bool template = 6;
+}
+
+message EntryNode {
+  int32 section = 1;
+  string type = 2;
+  string name = 3;
+  repeated Bind binds = 4;
+  repeated ServerNode servers = 5;
+}
+
+message BackendNode {
+  int32 section = 1;
+  string name = 2;
+  string balance = 3;
+  repeated ServerNode servers = 4;
+}
+
+message Edge {
+  int32 from = 1;
+  int32 to = 2;
+  string to_name = 3;
+  bool default = 4;
+  string condition = 5;
+  int32 line = 6;
+}
+
+message DiffRequest {
+  string before = 1;
+  string after = 2;
+}
+
+message DiffOp {
+  string op = 1; // = | - | +
+  string text = 2;
+}
+
+message DiffResponse { repeated DiffOp ops = 1; }
+
+message CheckRequest { string text = 1; }
+
+message CheckResult {
+  bool available = 1;
+  bool ok = 2;
+  string output = 3;
+}
+
+message GetCapabilitiesRequest {}
+
+message Capabilities {
+  string version = 1;
+  string file = 2;
+  bool can_read = 3;
+  bool can_write = 4;
+  bool can_check = 5;
+  string haproxy_bin = 6;
+}
+
+message GetConfigRequest {}
+
+message ConfigFile {
+  string path = 1;
+  string text = 2;
+}
+
+message PutConfigRequest { string text = 1; }
+
+message PutConfigResponse {
+  bool saved = 1;
+  string path = 2;
+  string backup = 3;
+  CheckResult check = 4;
+}

@@ -1,0 +1,395 @@
+{
+  "issues": [
+    {
+      "rule": "outside-section",
+      "severity": "error",
+      "line": 1,
+      "section": -1,
+      "message": "«maxconn» está fuera de cualquier sección. Toda directiva debe ir dentro de global, defaults, frontend, backend…"
+    },
+    {
+      "rule": "no-global",
+      "severity": "info",
+      "line": 1,
+      "section": -1,
+      "message": "No hay sección global (es opcional, pero suele usarse para logs, usuario y límites)."
+    },
+    {
+      "rule": "timeout-missing",
+      "severity": "warn",
+      "line": 7,
+      "section": 1,
+      "message": "frontend «web»: falta «timeout client» (ni aquí ni en defaults)."
+    },
+    {
+      "rule": "tls-no-alpn",
+      "severity": "info",
+      "line": 8,
+      "section": 1,
+      "message": "Este bind TLS no declara «alpn h2,http/1.1»: los clientes no podrán usar HTTP/2."
+    },
+    {
+      "rule": "acl-undefined",
+      "severity": "error",
+      "line": 12,
+      "section": 1,
+      "message": "La ACL «is_admin» no está definida en esta sección."
+    },
+    {
+      "rule": "acl-undefined",
+      "severity": "error",
+      "line": 12,
+      "section": 1,
+      "message": "La ACL «missing_acl» no está definida en esta sección."
+    },
+    {
+      "rule": "backend-missing",
+      "severity": "error",
+      "line": 13,
+      "section": 1,
+      "message": "El backend «nope» no existe."
+    },
+    {
+      "rule": "no-bind",
+      "severity": "error",
+      "line": 15,
+      "section": 2,
+      "message": "frontend «sinbind» no tiene ninguna línea bind: no escucha en ningún puerto."
+    },
+    {
+      "rule": "timeout-missing",
+      "severity": "warn",
+      "line": 15,
+      "section": 2,
+      "message": "frontend «sinbind»: falta «timeout client» (ni aquí ni en defaults)."
+    },
+    {
+      "rule": "timeout-missing",
+      "severity": "warn",
+      "line": 18,
+      "section": 3,
+      "message": "backend «api»: falta «timeout server» (ni aquí ni en defaults)."
+    },
+    {
+      "rule": "misplaced",
+      "severity": "warn",
+      "line": 20,
+      "section": 3,
+      "message": "«bind» no es válida en una sección backend."
+    },
+    {
+      "rule": "tls-no-verify",
+      "severity": "info",
+      "line": 21,
+      "section": 3,
+      "message": "El servidor «a1» usa TLS sin verificar el certificado."
+    },
+    {
+      "rule": "timeout-missing",
+      "severity": "warn",
+      "line": 24,
+      "section": 4,
+      "message": "backend «tcpbe»: falta «timeout server» (ni aquí ni en defaults)."
+    },
+    {
+      "rule": "timeout-missing",
+      "severity": "warn",
+      "line": 28,
+      "section": 5,
+      "message": "frontend «mezcla»: falta «timeout client» (ni aquí ni en defaults)."
+    },
+    {
+      "rule": "mode-mismatch",
+      "severity": "error",
+      "line": 30,
+      "section": 5,
+      "message": "Un frontend en modo http no puede enviar tráfico al backend «tcpbe», que está en modo tcp."
+    },
+    {
+      "rule": "timeout-missing",
+      "severity": "warn",
+      "line": 32,
+      "section": 6,
+      "message": "listen «stats»: falta «timeout client» (ni aquí ni en defaults)."
+    },
+    {
+      "rule": "timeout-missing",
+      "severity": "warn",
+      "line": 32,
+      "section": 6,
+      "message": "listen «stats»: falta «timeout server» (ni aquí ni en defaults)."
+    },
+    {
+      "rule": "weak-stats-auth",
+      "severity": "info",
+      "line": 35,
+      "section": 6,
+      "message": "La contraseña de la página de estadísticas parece de ejemplo. Cámbiala."
+    },
+    {
+      "rule": "unknown-section",
+      "severity": "error",
+      "line": 36,
+      "section": 6,
+      "message": "«fronted» al inicio de línea no es una sección conocida. ¿Está mal escrita?"
+    }
+  ],
+  "explanations": [
+    {
+      "line": 4,
+      "keyword": "mode",
+      "args": "http",
+      "text": "**Modo HTTP** (capa 7): HAProxy interpreta peticiones, cabeceras y rutas, y puede aplicar reglas sobre ellas.",
+      "known": true
+    },
+    {
+      "line": 5,
+      "keyword": "timeout",
+      "args": "connect 5s",
+      "text": "Tiempo máximo para establecer la conexión TCP con un servidor: **5 s**",
+      "known": true
+    },
+    {
+      "line": 8,
+      "keyword": "bind",
+      "args": "*:443 ssl crt /etc/haproxy/certs/site.pem",
+      "text": "Escucha en todas las interfaces, puerto `443` · **TLS / HTTPS** · certificado `/etc/haproxy/certs/site.pem`",
+      "known": true
+    },
+    {
+      "line": 9,
+      "keyword": "acl",
+      "args": "is_api path_beg -i /api /v2",
+      "text": "Define la condición `is_api`: la ruta empieza por `/api` o `/v2` (sin distinguir mayúsculas)",
+      "known": true
+    },
+    {
+      "line": 10,
+      "keyword": "http-request",
+      "args": "redirect scheme https code 301 unless { ssl_fc }",
+      "text": "Petición: Redirige a **HTTPS** (301 permanente) — salvo si «la conexión entrante es TLS»",
+      "known": true
+    },
+    {
+      "line": 11,
+      "keyword": "http-request",
+      "args": "deny deny_status 429 if { sc_http_req_rate(0) gt 20 }",
+      "text": "Petición: **Rechaza** la petición (429) — si «el ritmo de peticiones del cliente (contador 0) es mayor que **20**»",
+      "known": true
+    },
+    {
+      "line": 12,
+      "keyword": "use_backend",
+      "args": "api if is_api !is_admin || missing_acl",
+      "text": "Envía al backend **api** — si `is_api` y **no** `is_admin` o `missing_acl`",
+      "known": true
+    },
+    {
+      "line": 13,
+      "keyword": "default_backend",
+      "args": "nope",
+      "text": "Backend por defecto: **nope** — recibe todo lo que no coincide con ninguna regla `use_backend`",
+      "known": true
+    },
+    {
+      "line": 16,
+      "keyword": "default_backend",
+      "args": "api",
+      "text": "Backend por defecto: **api** — recibe todo lo que no coincide con ninguna regla `use_backend`",
+      "known": true
+    },
+    {
+      "line": 19,
+      "keyword": "balance",
+      "args": "leastconn",
+      "text": "Reparto de carga: al servidor con **menos conexiones activas** (ideal para sesiones largas)",
+      "known": true
+    },
+    {
+      "line": 20,
+      "keyword": "bind",
+      "args": "*:9000",
+      "text": "Escucha en todas las interfaces, puerto `9000`",
+      "known": true
+    },
+    {
+      "line": 21,
+      "keyword": "server",
+      "args": "a1 10.0.0.1:443 ssl verify none check inter 2s fall 3 rise 2 backup",
+      "text": "Servidor **a1** en `10.0.0.1:443` · conexión **TLS** hacia el servidor · ⚠ sin verificar su certificado · health checks activos · check cada **2 s** · se marca caído tras **3** fallos · vuelve a estar sano tras **2** checks OK · **respaldo**: solo recibe tráfico si caen los demás",
+      "known": true
+    },
+    {
+      "line": 22,
+      "keyword": "server-template",
+      "args": "web 1-5 web.local:8080 check",
+      "text": "Genera **5** servidores `web1`…`web5` a partir de `web.local:8080` · health checks activos",
+      "known": true
+    },
+    {
+      "line": 25,
+      "keyword": "mode",
+      "args": "tcp",
+      "text": "**Modo TCP** (capa 4): reenvía los bytes tal cual, sin inspeccionar HTTP.",
+      "known": true
+    },
+    {
+      "line": 26,
+      "keyword": "server",
+      "args": "t1 10.0.0.9:5432",
+      "text": "Servidor **t1** en `10.0.0.9:5432`",
+      "known": true
+    },
+    {
+      "line": 29,
+      "keyword": "bind",
+      "args": "*:8080",
+      "text": "Escucha en todas las interfaces, puerto `8080`",
+      "known": true
+    },
+    {
+      "line": 30,
+      "keyword": "default_backend",
+      "args": "tcpbe",
+      "text": "Backend por defecto: **tcpbe** — recibe todo lo que no coincide con ninguna regla `use_backend`",
+      "known": true
+    },
+    {
+      "line": 33,
+      "keyword": "bind",
+      "args": "*:8404",
+      "text": "Escucha en todas las interfaces, puerto `8404`",
+      "known": true
+    },
+    {
+      "line": 34,
+      "keyword": "stats",
+      "args": "enable",
+      "text": "Activa la **página web de estadísticas**",
+      "known": true
+    },
+    {
+      "line": 35,
+      "keyword": "stats",
+      "args": "auth admin:••••••",
+      "text": "Protegida con el usuario **admin** y contraseña",
+      "known": true
+    },
+    {
+      "line": 36,
+      "keyword": "fronted",
+      "args": "oops",
+      "text": "Directiva que haro no reconoce (puede ser válida en tu versión; revisa la documentación).",
+      "known": false
+    }
+  ],
+  "topology": {
+    "entries": [
+      {
+        "section": 1,
+        "type": "frontend",
+        "name": "web",
+        "binds": [
+          {
+            "address": "*:443",
+            "tls": true
+          }
+        ]
+      },
+      {
+        "section": 2,
+        "type": "frontend",
+        "name": "sinbind",
+        "binds": []
+      },
+      {
+        "section": 5,
+        "type": "frontend",
+        "name": "mezcla",
+        "binds": [
+          {
+            "address": "*:8080",
+            "tls": false
+          }
+        ]
+      },
+      {
+        "section": 6,
+        "type": "listen",
+        "name": "stats",
+        "binds": [
+          {
+            "address": "*:8404",
+            "tls": false
+          }
+        ]
+      }
+    ],
+    "backends": [
+      {
+        "section": 3,
+        "name": "api",
+        "balance": "leastconn",
+        "servers": [
+          {
+            "name": "a1",
+            "address": "10.0.0.1:443",
+            "backup": true,
+            "check": true
+          },
+          {
+            "name": "web×1-5",
+            "address": "web.local:8080",
+            "check": true,
+            "template": true
+          }
+        ]
+      },
+      {
+        "section": 4,
+        "name": "tcpbe",
+        "balance": "roundrobin",
+        "servers": [
+          {
+            "name": "t1",
+            "address": "10.0.0.9:5432"
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "from": 1,
+        "to": 3,
+        "toName": "api",
+        "default": false,
+        "condition": "is_api !is_admin || missing_acl",
+        "line": 12
+      },
+      {
+        "from": 1,
+        "to": -1,
+        "toName": "nope",
+        "default": true,
+        "line": 13
+      },
+      {
+        "from": 2,
+        "to": 3,
+        "toName": "api",
+        "default": true,
+        "line": 16
+      },
+      {
+        "from": 5,
+        "to": 4,
+        "toName": "tcpbe",
+        "default": true,
+        "line": 30
+      }
+    ],
+    "missing": [
+      "nope"
+    ]
+  }
+}

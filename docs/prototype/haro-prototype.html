@@ -1,0 +1,1977 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>HAProxy Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c0f14;--panel:#12161d;--panel2:#171c25;--panel3:#1d2330;--line:#242c39;--line2:#2f3948;
+  --text:#d9e0ea;--muted:#8592a5;--dim:#5d6a7d;--accent:#5eead4;--accent2:#2dd4bf;
+  --err:#f87171;--warn:#fbbf24;--info:#60a5fa;--ok:#4ade80;--add:#4ade80;--del:#f87171;
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;--sans:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  --r:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:disabled{opacity:.35;cursor:default}
+code{font-family:var(--mono);font-size:.92em}
+input,select,textarea{font:inherit;color:var(--text)}
+[hidden]{display:none!important}
+.muted{color:var(--muted)}.sm{font-size:12px}.pad{padding:12px}
+.warn{color:var(--warn)}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 14px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,#10141b,#0d1117)}
+.brand{display:flex;align-items:center;gap:9px;font-size:15px;letter-spacing:.2px;white-space:nowrap}
+.brand b{color:var(--accent);font-weight:600}
+.top-actions{display:flex;align-items:center;gap:4px}
+.sep{width:1px;height:20px;background:var(--line);margin:0 4px}
+.icon{width:32px;height:32px;border-radius:8px;display:inline-grid;place-items:center;color:var(--muted);font-size:15px;transition:background .15s,color .15s}
+.icon:hover:not(:disabled){background:var(--panel3);color:var(--text)}
+.icon.danger:hover{color:var(--err)}
+.tbtn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:8px;color:var(--muted);font-size:13px}
+.tbtn:hover{background:var(--panel3);color:var(--text)}
+.tbtn.on{color:var(--accent);background:rgba(94,234,212,.08)}
+.tbtn .ic{font-size:14px}
+
+/* layout */
+.layout{flex:1;min-height:0;display:grid;grid-template-columns:1fr}
+#app.chat-open .layout{grid-template-columns:minmax(0,1fr) 420px}
+.pane{display:flex;flex-direction:column;min-height:0;min-width:0}
+.chat-pane{display:none;border-left:1px solid var(--line);background:var(--panel)}
+#app.chat-open .chat-pane{display:flex}
+.pane-head{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);min-height:46px;background:var(--panel)}
+.pane-body{flex:1;min-height:0;position:relative}
+.seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:2px}
+.seg button{padding:5px 14px;border-radius:7px;color:var(--muted);font-size:13px;font-weight:500}
+.seg button.on{background:var(--panel3);color:var(--text);box-shadow:0 0 0 1px var(--line2)}
+.probs-btn{margin-left:auto;display:flex;gap:8px;font-size:12px;padding:5px 10px;border-radius:8px}
+.probs-btn:hover{background:var(--panel3)}
+.ok-t{color:var(--ok)}
+.cnt{font-weight:600}.cnt.sev-error{color:var(--err)}.cnt.sev-warn{color:var(--warn)}.cnt.sev-info{color:var(--info)}
+.probs{max-height:38vh;overflow:auto;border-bottom:1px solid var(--line);background:var(--panel2)}
+.probs.hidden{display:none}
+.probs-h{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;position:sticky;top:0;background:var(--panel2);border-bottom:1px solid var(--line)}
+.prob{display:grid;grid-template-columns:auto auto 1fr auto auto;gap:10px;align-items:baseline;padding:6px 12px;font-size:13px;border-bottom:1px solid var(--line)}
+.prob .sv{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.prob.sev-error .sv{color:var(--err)}.prob.sev-warn .sv{color:var(--warn)}.prob.sev-info .sv{color:var(--info)}
+.prob .pl{font-family:var(--mono);color:var(--dim);font-size:12px}
+.link{color:var(--accent);font-size:12px;padding:2px 4px;border-radius:5px}
+.link:hover{background:rgba(94,234,212,.1)}
+
+/* buttons */
+.btn{height:32px;padding:0 12px;border-radius:8px;background:var(--panel3);border:1px solid var(--line2);font-size:13px;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:#3d4a5c}
+.btn.sm{height:28px;padding:0 10px;font-size:12px}
+.btn.primary{background:var(--accent);color:#06221e;border-color:transparent}
+.btn.primary:hover{background:#7ff0de}
+.btn.danger{color:var(--err);border-color:rgba(248,113,113,.35)}
+.btn.primary.danger{background:var(--err);color:#2a0b0b}
+
+/* code editor */
+.code-view{position:absolute;inset:0;display:flex;flex-direction:column}
+.editor{flex:1;min-height:0;display:flex;background:var(--bg);font:13px/20px var(--mono)}
+.gutter{width:52px;flex:none;overflow:hidden;border-right:1px solid var(--line);background:var(--panel);padding-top:12px;user-select:none}
+.ln{height:20px;text-align:right;padding-right:10px;color:var(--dim);font-size:12px;position:relative}
+.ln.m-error,.ln.m-warn,.ln.m-info{color:var(--text)}
+.ln.m-error::before,.ln.m-warn::before,.ln.m-info::before{content:'';position:absolute;left:7px;top:7px;width:6px;height:6px;border-radius:50%}
+.ln.m-error::before{background:var(--err)}.ln.m-warn::before{background:var(--warn)}.ln.m-info::before{background:var(--info)}
+.code-wrap{flex:1;min-width:0;position:relative}
+.hl,#codeTa{position:absolute;inset:0;margin:0;padding:12px 16px 40px;font:inherit;white-space:pre;tab-size:4;border:0;letter-spacing:0}
+.hl{overflow:hidden;pointer-events:none;color:var(--text)}
+.hl code{font:inherit}
+#codeTa{background:transparent;color:transparent;caret-color:var(--accent);resize:none;outline:none;overflow:auto;-webkit-text-fill-color:transparent}
+#codeTa::selection{background:rgba(94,234,212,.22);-webkit-text-fill-color:transparent}
+.t-cm{color:#64748b;font-style:italic}
+.t-sec{color:var(--c);font-weight:600}
+.t-name{color:#f8fafc;font-weight:600}
+.t-kw{color:#7dd3fc}
+.t-kw2{color:#c4b5fd}
+.t-cond{color:#f472b6;font-weight:500}
+.t-op{color:#f472b6}
+.t-str{color:#86efac}
+.t-var{color:#fcd34d}
+.t-flag{color:#fda4af}
+.t-num{color:#fdba74}
+.t-addr{color:#5eead4}
+.t-path{color:#a5b4fc}
+.t-arg{color:#cbd5e1}
+.status{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 12px;border-top:1px solid var(--line);background:var(--panel);font-size:12.5px;min-height:40px;max-height:30%;overflow:auto}
+.st-ln{font-family:var(--mono);color:var(--dim)}
+.st-x{color:var(--text)}
+.st-iss{font-size:12px;padding:1px 6px;border-radius:5px}
+.st-iss.sev-error{color:var(--err);background:rgba(248,113,113,.1)}.st-iss.sev-warn{color:var(--warn);background:rgba(251,191,36,.1)}.st-iss.sev-info{color:var(--info);background:rgba(96,165,250,.1)}
+.status code.kw{color:#7dd3fc}
+
+/* shared bits */
+.badge{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:6px;font:600 11.5px var(--mono);color:var(--c);background:color-mix(in srgb,var(--c) 14%,transparent);border:1px solid color-mix(in srgb,var(--c) 35%,transparent);text-transform:lowercase}
+.badge.sm{height:20px;font-size:11px}
+.acl{font-family:var(--mono);font-size:.9em;color:#f9a8d4;background:rgba(244,114,182,.1);padding:0 4px;border-radius:4px}
+.cond{color:#f472b6}
+.phase{color:var(--muted);font-size:.92em}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.dot.ok{background:var(--ok)}.dot.off{background:var(--dim)}.dot.wait{background:var(--warn);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.3}}
+
+/* visual */
+.visual-view{position:absolute;inset:0;overflow:auto;padding:14px 16px 80px;scroll-behavior:auto}
+.v-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:12px;font-size:12px}
+.chip{height:28px;padding:0 10px;border-radius:999px;border:1px solid color-mix(in srgb,var(--c,#5eead4) 35%,var(--line));color:var(--c,var(--text));font:500 12px var(--mono);background:color-mix(in srgb,var(--c,#5eead4) 7%,transparent)}
+.chip:hover{background:color-mix(in srgb,var(--c,#5eead4) 16%,transparent)}
+.map{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);margin-bottom:14px}
+.map summary{cursor:pointer;padding:10px 14px;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;list-style:none;font-weight:600}
+.map summary::-webkit-details-marker{display:none}
+.map summary::before{content:'▸';color:var(--muted);transition:transform .15s}
+.map[open] summary::before{transform:rotate(90deg)}
+.map-scroll{overflow-x:auto;padding:0 14px 12px}
+.map-grid{position:relative;display:grid;grid-template-columns:repeat(3,minmax(170px,1fr));gap:28px 64px;min-width:640px}
+.map-svg{position:absolute;inset:0;pointer-events:none;overflow:visible}
+.map-svg path{fill:none;stroke-width:1.6;pointer-events:stroke}
+.e-def{stroke:#38bdf8}.e-cond{stroke:#f472b6;stroke-dasharray:5 4}.e-srv{stroke:#475569}.e-srv.backup{stroke-dasharray:2 4}.e-missing{stroke:var(--err);stroke-dasharray:3 3}
+.map-col{display:flex;flex-direction:column;gap:10px;position:relative;z-index:1}
+.map-col h4{margin:0 0 2px;font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--dim);font-weight:600}
+.node{border:1px solid var(--line2);background:var(--panel2);border-radius:9px;padding:7px 10px;cursor:pointer;transition:border-color .15s}
+.node:hover{border-color:#4b5a70}
+.node-t{font:600 13px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.node-s{font:12px var(--mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.node-c{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}
+.node-c span{font-size:11px;padding:0 6px;border-radius:5px;font-family:var(--mono)}
+.node-c .def{color:#7dd3fc;background:rgba(56,189,248,.1)}.node-c .cnd{color:#f9a8d4;background:rgba(244,114,182,.1)}
+.node.fe{border-left:3px solid var(--c)}
+.node.be{border-left:3px solid #fbbf24}
+.node.srv{padding:5px 9px}.node.srv .node-t{font-size:12.5px}
+.node.srv.backup{border-style:dashed}.node.srv.disabled{opacity:.5}
+.node.missing{border-color:rgba(248,113,113,.5);background:rgba(248,113,113,.06);cursor:default}.node.missing .node-s{color:var(--err)}
+.mini{font-size:10px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.5px}
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:11.5px;color:var(--muted)}
+.lg{display:inline-block;width:22px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}
+.lg.solid{border-color:#38bdf8}.lg.dash{border-color:#f472b6;border-top-style:dashed}.lg.srvl{border-color:#475569}
+.pre-notes{margin-bottom:12px}
+.sec{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);margin-bottom:12px;overflow:hidden;border-top:2px solid var(--c);transition:box-shadow .3s}
+.sec.has-error{border-color:rgba(248,113,113,.45);border-top-color:var(--c)}
+.sec-h{display:flex;align-items:center;gap:8px;padding:8px 10px 8px 6px;background:color-mix(in srgb,var(--c) 5%,var(--panel))}
+.tog{transition:transform .15s}
+.sec.collapsed .tog{transform:rotate(-90deg)}
+.sec.collapsed .sec-b{display:none}
+.sec-name{font:600 14px var(--mono);color:#f8fafc;padding:2px 6px;border-radius:6px;max-width:40%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sec-name:hover{background:var(--panel3)}
+.sec-title{color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sec-count{font:11px var(--mono);color:var(--dim);background:var(--bg);border-radius:10px;padding:0 7px}
+.sec-act{margin-left:auto;display:flex;gap:0;flex:none}
+.sec-act .icon{width:28px;height:28px;font-size:13px}
+.sec-b{padding:2px 12px 12px}
+.sec-desc{margin:6px 0 8px;color:var(--muted);font-size:13px}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.pill{font:11.5px var(--mono);color:var(--muted);border:1px solid var(--line2);border-radius:999px;padding:1px 8px}
+.dirs{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.row{display:flex;align-items:stretch;border-bottom:1px solid var(--line);background:var(--panel2);transition:background .3s}
+.row:last-child{border-bottom:0}
+.dir-main{flex:1;min-width:0;padding:8px 10px;cursor:text}
+.dir-main:hover{background:var(--panel3)}
+.dir-code{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px;font-family:var(--mono);font-size:13px}
+.dir-code .kw{color:#7dd3fc;font-weight:600}
+.dir-code .args{color:#cbd5e1;word-break:break-all}
+.dir-exp{font-size:13px;color:#b8c2d0;margin-top:3px;line-height:1.5}
+.dir-exp b{color:#eef2f7;font-weight:600}
+.dir-exp code{color:#5eead4;background:rgba(94,234,212,.07);padding:0 3px;border-radius:3px}
+.dir-cmt{font:12px var(--mono);color:#64748b;font-style:italic;margin-top:2px}
+.row.unknown .dir-exp{color:var(--muted);font-style:italic}
+.row.sev-error{box-shadow:inset 3px 0 var(--err)}.row.sev-warn{box-shadow:inset 3px 0 var(--warn)}.row.sev-info{box-shadow:inset 3px 0 var(--info)}
+.dir-act{display:flex;align-items:center;padding:0 4px;opacity:.35;transition:opacity .15s}
+.row:hover .dir-act,.row:focus-within .dir-act{opacity:1}
+.dir-act .icon{width:26px;height:26px;font-size:12px}
+.cat{font:600 9.5px var(--sans);letter-spacing:.5px;text-transform:uppercase;padding:1px 6px;border-radius:4px;color:var(--cc);background:color-mix(in srgb,var(--cc) 13%,transparent);align-self:center}
+.cat-net{--cc:#38bdf8}.cat-route{--cc:#f472b6}.cat-srv{--cc:#fbbf24}.cat-health{--cc:#4ade80}.cat-time{--cc:#fdba74}.cat-log{--cc:#94a3b8}.cat-sec{--cc:#f87171}.cat-tls{--cc:#a78bfa}.cat-perf{--cc:#2dd4bf}.cat-proc{--cc:#94a3b8}.cat-http{--cc:#60a5fa}.cat-persist{--cc:#e879f9}.cat-stats{--cc:#a3e635}.cat-misc{--cc:#94a3b8}
+.cmt{font:12.5px var(--mono);color:#64748b;font-style:italic}
+.cmt.row{padding:0}.cmt-t{flex:1;padding:6px 10px;cursor:text}
+.pre-notes .cmt{padding:2px 0}
+.iss{font-size:12.5px;margin-top:6px;padding:5px 8px;border-radius:6px}
+.iss span{font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.4px;margin-right:4px}
+.iss.sev-error{background:rgba(248,113,113,.09);color:#fca5a5}.iss.sev-warn{background:rgba(251,191,36,.08);color:#fcd34d}.iss.sev-info{background:rgba(96,165,250,.08);color:#93c5fd}
+form.dir.editing{display:block;padding:8px 10px;background:var(--panel3);border-bottom:1px solid var(--line)}
+form.dir.editing input,.add-dir input{width:100%;height:34px;padding:0 10px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);font:13px var(--mono);outline:none}
+form.dir.editing input:focus,.add-dir input:focus{border-color:var(--accent)}
+.ed-act{display:flex;gap:6px;margin:6px 0 4px}
+.add-dir{display:flex;gap:6px;margin-top:8px}
+.add-dir input{flex:1;min-width:0;background:transparent;border-style:dashed}
+.flash{animation:flash 1.3s}
+@keyframes flash{0%,40%{box-shadow:0 0 0 2px var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
+.empty{text-align:center;padding:48px 16px}
+
+/* chat */
+.chat-title{font-weight:600;color:var(--accent);white-space:nowrap}
+.ai-status{font-size:12px;color:var(--muted);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chat-log{flex:1;overflow:auto;padding:14px 12px;display:flex;flex-direction:column;gap:12px}
+.chat-empty{margin:auto 0;text-align:center;padding:10px}
+.chat-empty .spark{font-size:28px;color:var(--accent)}
+.chat-empty h3{margin:6px 0 4px;font-size:16px}
+.chat-empty p{font-size:13px;margin:0 0 14px}
+.starters{display:flex;flex-direction:column;gap:6px}
+.starters .chip{height:auto;padding:8px 12px;border-radius:9px;text-align:left;font:13px/1.4 var(--sans);color:var(--text);--c:#5eead4}
+.msg{display:flex}
+.msg.user{justify-content:flex-end}
+.bubble{max-width:100%;font-size:13.5px;line-height:1.55;overflow-wrap:anywhere}
+.msg.user .bubble{background:var(--panel3);border:1px solid var(--line2);padding:8px 12px;border-radius:12px 12px 3px 12px;max-width:88%}
+.msg.ai .bubble{width:100%}
+.msg.err .bubble{color:#fca5a5}
+.md p{margin:0 0 8px}.md ul,.md ol{margin:0 0 8px;padding-left:20px}.md li{margin:2px 0}.md h4{margin:10px 0 6px;font-size:13.5px}
+.md code{background:var(--panel3);padding:1px 4px;border-radius:4px;color:#e2e8f0}
+.cb{border:1px solid var(--line2);border-radius:9px;margin:8px 0;overflow:hidden;background:var(--bg)}
+.cb-h{display:flex;justify-content:space-between;align-items:center;padding:4px 6px 4px 10px;font:11.5px var(--mono);color:var(--dim);border-bottom:1px solid var(--line);background:var(--panel2)}
+.cb-pre{margin:0;padding:10px 12px;overflow:auto;font:12px/18px var(--mono);white-space:pre}
+.cb-pre code{background:none;padding:0;color:var(--text)}
+.cb-pre.long{max-height:290px}
+.expand{display:block;width:100%;text-align:center;padding:5px;border-top:1px solid var(--line);border-radius:0}
+.cfg-prop{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:8px 10px;border-top:1px solid var(--line);background:rgba(94,234,212,.05)}
+.cfg-prop.same{background:transparent;color:var(--muted)}
+.cfg-prop-t{font-size:12.5px;font-weight:600}
+.cfg-prop-b{display:flex;gap:6px}
+.add{color:var(--add)}.del{color:var(--del)}
+.typing{display:inline-flex;gap:4px;padding:6px 0}.typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:pulse 1s infinite}.typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+.chat-input{display:flex;gap:8px;align-items:flex-end;padding:10px;border-top:1px solid var(--line);background:var(--panel)}
+.chat-input textarea{flex:1;resize:none;min-height:40px;max-height:160px;padding:9px 12px;border-radius:10px;border:1px solid var(--line2);background:var(--bg);outline:none;line-height:1.45}
+.chat-input textarea:focus{border-color:var(--accent)}
+.chat-input .btn{height:40px}
+
+/* modals / toasts */
+.modal-bg{position:fixed;inset:0;background:rgba(3,6,10,.7);display:grid;place-items:center;z-index:50;padding:16px;backdrop-filter:blur(2px)}
+.modal{width:min(480px,100%);max-height:calc(100dvh - 32px);display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line2);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modal.wide{width:min(900px,100%)}
+.modal header{display:flex;align-items:center;justify-content:space-between;padding:12px 14px 6px}
+.modal h3{margin:0;font-size:15px}
+.modal-b{padding:6px 14px 12px;overflow:auto}
+.modal footer{display:flex;justify-content:flex-end;gap:8px;padding:10px 14px;border-top:1px solid var(--line)}
+.fld{display:flex;flex-direction:column;gap:5px;margin:10px 0}
+.fld span{font-size:12px;color:var(--muted);font-weight:500}
+.fld input,.fld select{height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--line2);background:var(--bg);outline:none}
+.fld input:focus,.fld select:focus{border-color:var(--accent)}
+textarea.mono{width:100%;font:12.5px/1.5 var(--mono);background:var(--bg);border:1px solid var(--line2);border-radius:8px;padding:10px;outline:none;resize:vertical}
+textarea.big{min-height:46vh}
+.row-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+.diff-sum{font-size:13px;margin-bottom:8px}.sev-error-t{color:var(--err)}
+.diff{border:1px solid var(--line);border-radius:8px;overflow:auto;max-height:60vh;background:var(--bg);font:12px/19px var(--mono)}
+.dl{display:grid;grid-template-columns:36px 36px 16px 1fr;white-space:pre;min-width:max-content}
+.dl .n{color:var(--dim);text-align:right;padding-right:6px;user-select:none}
+.dl .s{text-align:center;user-select:none}
+.dl.da{background:rgba(74,222,128,.09)}.dl.da .s{color:var(--add)}
+.dl.dd{background:rgba(248,113,113,.09)}.dl.dd .s{color:var(--del)}.dl.dd .c{opacity:.75}
+.dl.skip{display:block;color:var(--dim);padding:2px 12px;background:var(--panel2);font-style:italic}
+.hist-save{display:flex;gap:8px;margin-bottom:12px}
+.hist-save input{flex:1;height:30px;padding:0 10px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);outline:none}
+.hist{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.hist-b{display:flex;gap:6px;align-items:center;flex:none}
+#toastRoot{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:60;width:max-content;max-width:calc(100vw - 24px)}
+.toast{display:flex;align-items:center;gap:12px;background:#1f2633;border:1px solid var(--line2);padding:9px 14px;border-radius:10px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.4);transition:opacity .4s,transform .4s}
+.toast.out{opacity:0;transform:translateY(8px)}
+
+/* mobile */
+.mobile-tabs{display:none}
+@media (max-width:899px){
+  .desk-only{display:none!important}
+  #app.chat-open .layout{grid-template-columns:1fr}
+  #app.main-hidden .main-pane{display:none}
+  .chat-pane{border-left:0}
+  .mobile-tabs{display:flex;border-top:1px solid var(--line);background:var(--panel);padding-bottom:env(safe-area-inset-bottom)}
+  .mobile-tabs button{flex:1;height:50px;font-size:13px;color:var(--muted);font-weight:500}
+  .mobile-tabs button.on{color:var(--accent);box-shadow:inset 0 2px var(--accent)}
+  .main-pane .seg{display:none}
+  .tbtn .lbl{display:none}
+  .tbtn{padding:0 8px}
+  .top{padding:6px 8px}
+  .brand span{font-size:14px}
+  .editor{font-size:13px}
+  .gutter{width:40px}.ln{padding-right:6px;font-size:11px}
+  .hl,#codeTa{padding:12px 10px 40px}
+  .visual-view{padding:10px 10px 60px}
+  .sec-title{display:none}
+  .dir-act{opacity:1}
+  .chat-input textarea{font-size:16px}
+  .add-dir input,form.dir.editing input{font-size:16px}
+  #toastRoot{bottom:70px}
+}
+@media (max-width:420px){.brand span{display:none}}
+
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <div class="brand">
+      <svg viewBox="0 0 32 32" width="22" height="22" aria-hidden="true"><circle cx="6" cy="16" r="3.2" fill="#38bdf8"/><circle cx="26" cy="7" r="3" fill="#fbbf24"/><circle cx="26" cy="16" r="3" fill="#fbbf24"/><circle cx="26" cy="25" r="3" fill="#fbbf24"/><path d="M9 16 C16 16 16 7 23 7 M9 16 H23 M9 16 C16 16 16 25 23 25" stroke="#5eead4" stroke-width="1.8" fill="none"/></svg>
+      <span>HAProxy <b>Studio</b></span>
+    </div>
+    <div class="top-actions">
+      <button class="icon" id="btnUndo" title="Deshacer (Ctrl+Z)" aria-label="Deshacer">↶</button>
+      <button class="icon" id="btnRedo" title="Rehacer (Ctrl+Shift+Z)" aria-label="Rehacer">↷</button>
+      <span class="sep"></span>
+      <button class="tbtn" id="btnHistory" title="Historial de versiones"><span class="ic">⟲</span><span class="lbl">Historial</span></button>
+      <button class="tbtn" id="btnImport" title="Importar"><span class="ic">⇣</span><span class="lbl">Importar</span></button>
+      <button class="tbtn" id="btnExport" title="Exportar"><span class="ic">⇡</span><span class="lbl">Exportar</span></button>
+      <button class="icon" id="btnSettings" title="Ajustes" aria-label="Ajustes">⚙</button>
+      <button class="tbtn desk-only" id="btnChatToggle" title="Mostrar u ocultar el asistente"><span class="ic">✦</span><span class="lbl">Asistente</span></button>
+    </div>
+  </header>
+  <main class="layout">
+    <section class="pane main-pane">
+      <div class="pane-head">
+        <div class="seg" id="modeSeg" role="tablist"><button data-mode="code">Código</button><button data-mode="visual">Visual</button></div>
+        <button class="probs-btn" id="probsBtn"></button>
+      </div>
+      <div class="probs hidden" id="probsPanel"></div>
+      <div class="pane-body">
+        <div id="codeView" class="code-view">
+          <div class="editor">
+            <div class="gutter"><div id="gutterInner"></div></div>
+            <div class="code-wrap">
+              <pre id="codeHl" class="hl" aria-hidden="true"><code></code></pre>
+              <textarea id="codeTa" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="Configuración de HAProxy"></textarea>
+            </div>
+          </div>
+          <div class="status" id="codeStatus"></div>
+        </div>
+        <div id="visualView" class="visual-view" hidden></div>
+      </div>
+    </section>
+    <aside class="pane chat-pane" id="chatPane">
+      <div class="pane-head"><b class="chat-title">✦ Asistente</b><span id="aiStatus" class="ai-status"></span><button class="link" id="btnClearChat">Limpiar</button></div>
+      <div class="chat-log" id="chatLog"></div>
+      <form class="chat-input" id="chatForm"><textarea id="chatText" rows="1" placeholder="Describe lo que necesitas…"></textarea><button class="btn primary" id="chatSend">Enviar</button></form>
+    </aside>
+  </main>
+  <nav class="mobile-tabs"><button data-tab="code">‹/› Código</button><button data-tab="visual">◫ Visual</button><button data-tab="chat">✦ Asistente</button></nav>
+</div>
+<div id="modalRoot"></div><div id="toastRoot"></div><div id="datalists"></div>
+<input type="file" id="fileInput" accept=".cfg,.conf,.txt,text/plain" hidden>
+<script>
+'use strict';
+/* ===================== HAProxy Studio — núcleo (parser, explicaciones, lint) ===================== */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const C = s => `<code>${esc(s)}</code>`;
+const B = s => `<b>${esc(s)}</b>`;
+
+const SECTIONS = {
+  global:   { color: '#a78bfa', named: false, title: 'Configuración global', desc: 'Ajustes de todo el proceso HAProxy: usuario y grupo, logs, límite de conexiones, socket de administración y TLS por defecto.' },
+  defaults: { color: '#94a3b8', named: 'opt', title: 'Valores por defecto', desc: 'Todo lo que pongas aquí lo heredan los frontend, backend y listen que aparecen después (hasta el siguiente defaults).' },
+  frontend: { color: '#38bdf8', named: true, title: 'Entrada de tráfico', desc: 'Dónde escucha HAProxy (bind) y qué reglas deciden a qué backend va cada petición.' },
+  backend:  { color: '#fbbf24', named: true, title: 'Grupo de servidores', desc: 'Los servidores destino, cómo se reparte la carga entre ellos y cómo se comprueba su salud.' },
+  listen:   { color: '#4ade80', named: true, title: 'Entrada + servidores', desc: 'Frontend y backend en una sola sección. Típico para servicios TCP o la página de estadísticas.' },
+  resolvers:{ color: '#f472b6', named: true, title: 'Resolución DNS', desc: 'Servidores DNS que HAProxy consulta para resolver en caliente los nombres de los servidores.' },
+  peers:    { color: '#fb923c', named: true, title: 'Réplicas (peers)', desc: 'Otras instancias de HAProxy con las que sincronizar stick-tables (persistencia, rate limits).' },
+  userlist: { color: '#e879f9', named: true, title: 'Usuarios', desc: 'Usuarios y grupos para autenticación HTTP básica.' },
+  mailers:  { color: '#f472b6', named: true, title: 'Alertas por email', desc: 'Servidores SMTP para avisar de cambios de estado de los servidores.' },
+  cache:    { color: '#2dd4bf', named: true, title: 'Caché HTTP', desc: 'Caché en memoria para respuestas HTTP pequeñas y frecuentes.' },
+  'http-errors': { color: '#f87171', named: true, title: 'Páginas de error', desc: 'Conjunto reutilizable de páginas de error personalizadas.' },
+  ring:     { color: '#94a3b8', named: true, title: 'Buffer de logs', desc: 'Buffer circular en memoria para logs o trazas.' },
+  program:  { color: '#94a3b8', named: true, title: 'Programa externo', desc: 'Proceso externo que el maestro de HAProxy arranca y supervisa.' },
+};
+const PROXY_SECS = new Set(['global', 'defaults', 'frontend', 'backend', 'listen']);
+const SEC_CODE = { global: 'G', defaults: 'D', frontend: 'F', backend: 'B', listen: 'L', resolvers: 'R', peers: 'P', userlist: 'U', mailers: 'M', cache: 'C', 'http-errors': 'E', ring: 'N', program: 'X' };
+
+const CATS = { net: 'Red', route: 'Enrutado', srv: 'Servidores', health: 'Salud', time: 'Timeout', log: 'Logs', sec: 'Seguridad', tls: 'TLS', perf: 'Rendimiento', proc: 'Proceso', http: 'HTTP', persist: 'Persistencia', stats: 'Stats', misc: 'Otros' };
+
+/* ---------- Tokenizer / parser / serializer ---------- */
+function tokenize(str) {
+  const tokens = []; let i = 0, cur = '', has = false, q = null;
+  while (i < str.length) {
+    const ch = str[i];
+    if (q) {
+      if (ch === '\\' && q === '"' && i + 1 < str.length) { cur += str[i + 1]; i += 2; continue; }
+      if (ch === q) { q = null; i++; continue; }
+      cur += ch; i++; continue;
+    }
+    if (ch === '"' || ch === "'") { q = ch; has = true; i++; continue; }
+    if (ch === '\\' && i + 1 < str.length) { cur += str[i + 1]; has = true; i += 2; continue; }
+    if (ch === '#' && !has) return { tokens, comment: str.slice(i) };
+    if (ch === ' ' || ch === '\t') { if (has) { tokens.push(cur); cur = ''; has = false; } i++; continue; }
+    cur += ch; has = true; i++;
+  }
+  if (has) tokens.push(cur);
+  return { tokens, comment: '' };
+}
+
+function parseLine(raw, ln) {
+  const indent = raw.match(/^[ \t]*/)[0];
+  const t = raw.slice(indent.length).replace(/\s+$/, '');
+  if (!t) return { kind: 'blank', line: ln, indent: '' };
+  if (t[0] === '#') return { kind: 'comment', text: t, line: ln, indent };
+  const { tokens, comment } = tokenize(t);
+  const kw = (tokens[0] || '').toLowerCase();
+  if (SECTIONS[kw] && (!indent || PROXY_SECS.has(kw))) {
+    return { kind: 'section', type: kw, name: tokens[1] || '', tokens, comment, text: t, indent, line: ln, lines: [] };
+  }
+  return { kind: 'dir', kw, tokens, args: tokens.slice(1), comment, text: t, line: ln, indent };
+}
+
+function parse(text) {
+  const raws = String(text ?? '').replace(/\r\n?/g, '\n').split('\n');
+  const doc = { pre: [], sections: [] }; let cur = null;
+  raws.forEach((raw, i) => {
+    const L = parseLine(raw, i + 1);
+    if (L.kind === 'section') { cur = L; doc.sections.push(L); return; }
+    (cur ? cur.lines : doc.pre).push(L);
+  });
+  return doc;
+}
+
+function serialize(doc) {
+  const out = [];
+  const ln = (l, def) => l.kind === 'blank' ? '' : (l.indent ?? def) + l.text;
+  doc.pre.forEach(l => out.push(ln(l, '')));
+  doc.sections.forEach(s => { out.push((s.indent || '') + s.text); s.lines.forEach(l => out.push(ln(l, '    '))); });
+  return out.join('\n');
+}
+
+function ensureSeparation(doc) {
+  const blank = () => ({ kind: 'blank', indent: '' });
+  if (doc.sections.length && doc.pre.some(l => l.kind !== 'blank') && doc.pre[doc.pre.length - 1].kind !== 'blank') doc.pre.push(blank());
+  doc.sections.forEach(s => { if (!s.lines.length || s.lines[s.lines.length - 1].kind !== 'blank') s.lines.push(blank()); });
+}
+
+function rebuildHeader(s, newName) {
+  const rest = s.tokens.slice(2).map(quoteTok);
+  s.name = newName; s.tokens = [s.type, newName, ...s.tokens.slice(2)];
+  s.text = [s.type, newName, ...rest].filter(Boolean).join(' ') + (s.comment ? ' ' + s.comment : '');
+}
+const quoteTok = t => (t === '' || /[\s#"'\\]/.test(t)) ? `"${t.replace(/(["\\])/g, '\\$1')}"` : t;
+
+/* ---------- Diccionario de directivas ---------- */
+const DIRS = {};
+[
+  ['daemon', 'G', 'proc', 'Ejecuta HAProxy en segundo plano (como demonio).'],
+  ['master-worker', 'G', 'proc', 'Modo master-worker: un proceso maestro supervisa a los workers y permite recargas sin cortes.'],
+  ['user', 'GU', 'proc', ''], ['group', 'GU', 'proc', ''],
+  ['uid', 'G', 'proc', 'UID numérico con el que corre el proceso.'],
+  ['gid', 'G', 'proc', 'GID numérico con el que corre el proceso.'],
+  ['chroot', 'G', 'sec', 'Encierra el proceso en un directorio (chroot) para limitar el daño de una intrusión:'],
+  ['pidfile', 'G', 'proc', 'Fichero donde se escribe el PID:'],
+  ['nbthread', 'G', 'perf', ''],
+  ['cpu-map', 'G', 'perf', 'Fija hilos a núcleos de CPU concretos:'],
+  ['hard-stop-after', 'G', 'proc', ''],
+  ['ca-base', 'G', 'tls', 'Directorio base para las rutas relativas de ficheros CA:'],
+  ['crt-base', 'G', 'tls', 'Directorio base para las rutas relativas de certificados:'],
+  ['ssl-default-bind-ciphers', 'G', 'tls', 'Cifrados para TLS ≤ 1.2 en todos los bind con ssl.'],
+  ['ssl-default-bind-ciphersuites', 'G', 'tls', 'Cifrados para TLS 1.3 en todos los bind con ssl.'],
+  ['ssl-default-bind-options', 'G', 'tls', ''],
+  ['ssl-default-server-ciphers', 'G', 'tls', 'Cifrados para TLS ≤ 1.2 hacia los servidores.'],
+  ['ssl-default-server-ciphersuites', 'G', 'tls', 'Cifrados para TLS 1.3 hacia los servidores.'],
+  ['ssl-default-server-options', 'G', 'tls', ''],
+  ['ssl-dh-param-file', 'G', 'tls', 'Fichero de parámetros Diffie-Hellman:'],
+  ['ssl-server-verify', 'G', 'tls', 'Si se verifican por defecto los certificados de los servidores:'],
+  ['lua-load', 'G', 'misc', 'Carga un script Lua al arrancar:'],
+  ['lua-prepend-path', 'G', 'misc', 'Añade una ruta de búsqueda para módulos Lua:'],
+  ['setenv', 'G', 'proc', 'Define una variable de entorno:'],
+  ['presetenv', 'G', 'proc', 'Define una variable de entorno si no existe ya:'],
+  ['server-state-file', 'G', 'proc', 'Fichero donde se guarda el estado de los servidores entre recargas:'],
+  ['server-state-base', 'G', 'proc', 'Directorio base de los ficheros de estado:'],
+  ['spread-checks', 'G', 'health', ''],
+  ['insecure-fork-wanted', 'G', 'sec', 'Permite crear procesos hijos (checks externos, Lua). Reduce la seguridad.'],
+  ['localpeer', 'G', 'proc', 'Nombre de esta instancia dentro de la sección peers:'],
+  ['node', 'G', 'proc', 'Nombre del nodo que aparece en estadísticas:'],
+  ['log-send-hostname', 'G', 'log', 'Incluye el hostname en los mensajes syslog.'],
+  ['log-tag', 'GDFBL', 'log', 'Etiqueta de los mensajes de log:'],
+  ['expose-experimental-directives', 'G', 'misc', 'Permite usar directivas experimentales.'],
+  ['h1-case-adjust', 'G', 'http', 'Ajusta mayúsculas de una cabecera HTTP/1 concreta:'],
+  ['mode', 'DFBL', 'net', ''],
+  ['bind', 'FLP', 'net', ''],
+  ['default_backend', 'DFL', 'route', ''],
+  ['use_backend', 'FL', 'route', ''],
+  ['use-server', 'BL', 'route', ''],
+  ['balance', 'DBL', 'srv', ''],
+  ['hash-type', 'DBL', 'srv', ''],
+  ['hash-balance-factor', 'DBL', 'srv', 'Límite de carga relativa con hash consistente:'],
+  ['server', 'BLP', 'srv', ''],
+  ['server-template', 'BL', 'srv', ''],
+  ['default-server', 'DBLP', 'srv', ''],
+  ['dispatch', 'BL', 'srv', 'Envía todo el tráfico a una única dirección (modo antiguo):'],
+  ['fullconn', 'DBL', 'perf', 'Conexiones a partir de las cuales los servidores alcanzan su maxconn dinámico:'],
+  ['maxconn', 'GDFL', 'perf', ''],
+  ['backlog', 'DFL', 'perf', 'Cola del sistema para conexiones pendientes:'],
+  ['rate-limit', 'DFL', 'perf', ''],
+  ['retries', 'DBL', 'health', ''],
+  ['retry-on', 'DBL', 'health', 'Casos en los que se reintenta la petición en otro servidor (reintentos de capa 7):'],
+  ['timeout', 'DFBLRMP', 'time', ''],
+  ['option', 'DFBL', 'http', ''],
+  ['no', 'DFBL', 'http', ''],
+  ['acl', 'FBL', 'route', ''],
+  ['http-request', 'DFBL', 'http', ''],
+  ['http-response', 'DFBL', 'http', ''],
+  ['http-after-response', 'DFBL', 'http', ''],
+  ['tcp-request', 'DFBL', 'net', ''],
+  ['tcp-response', 'DBL', 'net', ''],
+  ['redirect', 'FBL', 'http', ''],
+  ['http-check', 'DBL', 'health', ''],
+  ['tcp-check', 'DBL', 'health', ''],
+  ['cookie', 'DBL', 'persist', ''],
+  ['stick-table', 'FBLP', 'persist', ''],
+  ['stick', 'BL', 'persist', ''],
+  ['persist', 'DBL', 'persist', 'Persistencia especial:'],
+  ['force-persist', 'FBL', 'persist', ''],
+  ['ignore-persist', 'FBL', 'persist', ''],
+  ['log', 'GDFBLP', 'log', ''],
+  ['log-format', 'DFL', 'log', 'Formato personalizado de cada línea de log.'],
+  ['log-format-sd', 'DFL', 'log', 'Datos estructurados (RFC 5424) de cada línea de log.'],
+  ['error-log-format', 'DFL', 'log', 'Formato de log para errores de conexión.'],
+  ['unique-id-format', 'DFL', 'log', 'Formato del identificador único de cada petición:'],
+  ['unique-id-header', 'DFL', 'log', 'Cabecera con la que se envía el identificador único al servidor:'],
+  ['capture', 'FL', 'log', ''],
+  ['declare', 'FL', 'log', 'Declara un hueco de captura:'],
+  ['errorfile', 'DFBLE', 'http', ''],
+  ['errorfiles', 'DFBL', 'http', 'Usa las páginas de error de una sección http-errors:'],
+  ['errorloc', 'DFBL', 'http', 'Redirige a otra URL en lugar de mostrar una página de error:'],
+  ['errorloc302', 'DFBL', 'http', 'Redirige (302) a otra URL en lugar de mostrar una página de error:'],
+  ['errorloc303', 'DFBL', 'http', 'Redirige (303) a otra URL en lugar de mostrar una página de error:'],
+  ['http-error', 'DFBL', 'http', ''],
+  ['compression', 'DFBL', 'perf', ''],
+  ['filter', 'FBL', 'misc', ''],
+  ['http-reuse', 'DBL', 'perf', ''],
+  ['monitor-uri', 'DFL', 'health', 'Ruta que siempre responde 200 (para sondas de balanceadores externos):'],
+  ['monitor', 'FL', 'health', 'Condición para que monitor-uri responda fallo:'],
+  ['description', 'FBL', 'misc', ''],
+  ['stats', 'GDFBL', 'stats', ''],
+  ['source', 'DBL', 'net', 'IP de origen para conectar con los servidores:'],
+  ['email-alert', 'DBL', 'log', 'Alertas por email al cambiar el estado de los servidores:'],
+  ['load-server-state-from-file', 'DBL', 'proc', 'Carga el estado guardado de los servidores al recargar:'],
+  ['id', 'FBL', 'misc', 'Identificador numérico del proxy:'],
+  ['disabled', 'FBL', 'misc', 'Desactiva esta sección.'],
+  ['enabled', 'FBL', 'misc', 'Activa esta sección.'],
+  ['grace', 'DFBL', 'proc', 'Tiempo de gracia antes de dejar de aceptar conexiones al parar:'],
+  ['http-send-name-header', 'DBL', 'http', 'Envía al servidor una cabecera con el nombre del servidor elegido:'],
+  ['max-keep-alive-queue', 'DBL', 'perf', 'Cola máxima para reutilizar conexiones keep-alive:'],
+  ['nameserver', 'R', 'net', ''],
+  ['parse-resolv-conf', 'R', 'net', 'Usa los servidores DNS de /etc/resolv.conf.'],
+  ['resolve_retries', 'R', 'net', 'Reintentos de cada consulta DNS antes de rendirse:'],
+  ['hold', 'R', 'net', ''],
+  ['accepted_payload_size', 'R', 'net', 'Tamaño máximo de respuesta DNS aceptado (EDNS):'],
+  ['peer', 'P', 'net', ''],
+  ['mailer', 'M', 'net', ''],
+  ['total-max-size', 'C', 'perf', ''],
+  ['max-age', 'C', 'perf', ''],
+  ['max-object-size', 'C', 'perf', ''],
+  ['process-vary', 'C', 'perf', 'Tiene en cuenta la cabecera Vary al cachear:'],
+  ['max-secondary-entries', 'C', 'perf', 'Máximo de variantes por objeto (con Vary):'],
+  ['format', 'N', 'log', 'Formato de los mensajes del buffer:'],
+  ['size', 'N', 'log', 'Tamaño del buffer circular:'],
+  ['command', 'X', 'proc', 'Comando que se ejecuta:'],
+].forEach(([k, s, cat, d]) => { DIRS[k] = { s, cat, d }; });
+
+/* ---------- Ayudantes de explicación ---------- */
+function dur(v, defUnit = 'ms') {
+  const m = /^(\d+(?:\.\d+)?)(us|ms|s|m|h|d)?$/.exec(v || '');
+  if (!m) return C(v);
+  if (!m[2] && !defUnit) return B(m[1]);
+  const u = { us: 'µs', ms: 'ms', s: 's', m: 'min', h: 'h', d: 'días' }[m[2] || defUnit];
+  return `<b>${m[1]} ${u}</b>`;
+}
+
+function addr(s) {
+  if (s == null || s === '') return '<i>(sin dirección)</i>';
+  let x = s, pre = '';
+  const m = /^([a-z0-9]+)@(.*)$/i.exec(x);
+  if (m) {
+    pre = m[1].toLowerCase(); x = m[2];
+    if (pre === 'unix') return `socket Unix ${C(x)}`;
+    if (pre === 'abns' || pre === 'abnsz') return `socket abstracto ${C(x)}`;
+    if (pre === 'fd') return `descriptor ${C(x)}`;
+    if (pre === 'sockpair') return `socketpair ${C(x)}`;
+  }
+  if (x.startsWith('/')) return `socket Unix ${C(x)}`;
+  const proto = /^quic/.test(pre) ? ' (QUIC / HTTP/3)' : /^udp/.test(pre) ? ' (UDP)' : '';
+  let host = x, port = '';
+  if (x.startsWith('[')) { const e = x.indexOf(']'); host = x.slice(1, e); port = x.slice(e + 2); }
+  else { const i = x.lastIndexOf(':'); if (i >= 0) { host = x.slice(0, i); port = x.slice(i + 1); } }
+  let h;
+  if (host === '' || host === '*' || host === '0.0.0.0') h = 'todas las interfaces';
+  else if (host === '::' || host === '[::]') h = 'todas las interfaces (IPv4 + IPv6)';
+  else h = C(host);
+  return port ? `${h}, puerto ${C(port)}${proto}` : h + proto;
+}
+const addrList = s => String(s || '').split(',').map(addr).join(' y ');
+
+const VALUED = new Set(['crt', 'crt-list', 'ca-file', 'crl-file', 'alpn', 'npn', 'ciphers', 'ciphersuites', 'curves', 'ecdhe', 'inter', 'fastinter', 'downinter', 'rise', 'fall', 'weight', 'maxconn', 'maxqueue', 'minconn', 'cookie', 'port', 'addr', 'check-sni', 'sni', 'resolvers', 'init-addr', 'resolve-prefer', 'resolve-opts', 'slowstart', 'on-marked-down', 'on-marked-up', 'on-error', 'verify', 'ssl-min-ver', 'ssl-max-ver', 'name', 'id', 'process', 'thread', 'interface', 'user', 'group', 'mode', 'level', 'uid', 'gid', 'source', 'track', 'agent-port', 'agent-inter', 'agent-addr', 'agent-send', 'proto', 'check-proto', 'check-alpn', 'pool-max-conn', 'pool-purge-delay', 'pool-low-conn', 'max-reuse', 'ws', 'observe', 'error-limit', 'namespace', 'tcp-ut', 'nice', 'backlog', 'mss', 'shards', 'quic-cc-algo', 'severity-output', 'tcp-md5sig', 'redir', 'set-proxy-v2-tlv-fmt', 'log-proto', 'ca-sign-file', 'tls-ticket-keys', 'crt-ignore-err', 'ca-ignore-err', 'sigalgs', 'client-sigalgs', 'accept-netscaler-cip', 'label', 'hash-key', 'guid']);
+function parseOpts(args) {
+  const out = [];
+  for (let i = 0; i < args.length; i++) {
+    const k = args[i];
+    if (VALUED.has(k) && i + 1 < args.length) out.push([k, args[++i]]); else out.push([k, null]);
+  }
+  return out;
+}
+const rawOpt = (k, v) => C(v != null ? `${k} ${v}` : k);
+
+function serverOpts(args) {
+  const p = [];
+  for (const [k, v] of parseOpts(args)) {
+    switch (k) {
+      case 'check': p.push('health checks activos'); break;
+      case 'no-check': p.push('sin health checks'); break;
+      case 'inter': p.push(`check cada ${dur(v)}`); break;
+      case 'fastinter': p.push(`check cada ${dur(v)} mientras cambia de estado`); break;
+      case 'downinter': p.push(`check cada ${dur(v)} si está caído`); break;
+      case 'rise': p.push(`vuelve a estar sano tras <b>${esc(v)}</b> checks OK`); break;
+      case 'fall': p.push(`se marca caído tras <b>${esc(v)}</b> fallos`); break;
+      case 'weight': p.push(`peso <b>${esc(v)}</b>`); break;
+      case 'backup': p.push('<b>respaldo</b>: solo recibe tráfico si caen los demás'); break;
+      case 'maxconn': p.push(`máx. <b>${esc(v)}</b> conexiones`); break;
+      case 'maxqueue': p.push(`cola máx. <b>${esc(v)}</b>`); break;
+      case 'minconn': p.push(`mín. ${esc(v)} conexiones dinámicas`); break;
+      case 'ssl': p.push('conexión <b>TLS</b> hacia el servidor'); break;
+      case 'verify': p.push(v === 'none' ? '<span class="warn">⚠ sin verificar su certificado</span>' : `verificación TLS ${C(v)}`); break;
+      case 'ca-file': p.push(`CA ${C(v)}`); break;
+      case 'sni': p.push(`SNI ${C(v)}`); break;
+      case 'cookie': p.push(`valor de cookie ${C(v)}`); break;
+      case 'send-proxy': case 'send-proxy-v2': case 'send-proxy-v2-ssl': p.push('envía protocolo PROXY (IP real del cliente)'); break;
+      case 'disabled': p.push('<b>deshabilitado</b>'); break;
+      case 'enabled': p.push('habilitado'); break;
+      case 'resolvers': p.push(`resuelve su nombre por DNS con ${C(v)}`); break;
+      case 'init-addr': p.push(`resolución al arrancar: ${C(v)}`); break;
+      case 'resolve-prefer': p.push(`prefiere ${C(v)}`); break;
+      case 'slowstart': p.push(`arranque progresivo durante ${dur(v)}`); break;
+      case 'port': p.push(`checks al puerto ${C(v)}`); break;
+      case 'addr': p.push(`checks a ${C(v)}`); break;
+      case 'check-ssl': p.push('checks por TLS'); break;
+      case 'agent-check': p.push('agent-check activo'); break;
+      case 'on-marked-down': p.push(`al caer: ${C(v)}`); break;
+      case 'on-marked-up': p.push(`al recuperarse: ${C(v)}`); break;
+      case 'proto': p.push(`protocolo ${C(v)}`); break;
+      case 'alpn': p.push(`ALPN ${C(v)}`); break;
+      case 'observe': p.push(`detecta errores en tráfico real (${C(v)})`); break;
+      case 'track': p.push(`copia el estado de ${C(v)}`); break;
+      case 'non-stick': p.push('excluido de la persistencia'); break;
+      default: p.push(rawOpt(k, v));
+    }
+  }
+  return p;
+}
+function describeServer(a) {
+  const o = serverOpts(a.slice(2));
+  return `Servidor ${B(a[0])} en ${C(a[1] || '?')}` + (o.length ? ' · ' + o.join(' · ') : '');
+}
+function describeBind(a) {
+  const p = [`Escucha en ${addrList(a[0])}`];
+  for (const [k, v] of parseOpts(a.slice(1))) {
+    switch (k) {
+      case 'ssl': p.push('<b>TLS / HTTPS</b>'); break;
+      case 'crt': p.push(`certificado ${C(v)}`); break;
+      case 'crt-list': p.push(`lista de certificados ${C(v)}`); break;
+      case 'alpn': p.push(`ALPN ${C(v)}${/\bh2\b/.test(v) ? ' (habilita HTTP/2)' : ''}`); break;
+      case 'accept-proxy': p.push('acepta protocolo PROXY'); break;
+      case 'v4v6': p.push('IPv4 e IPv6'); break;
+      case 'v6only': p.push('solo IPv6'); break;
+      case 'transparent': p.push('modo transparente'); break;
+      case 'ssl-min-ver': p.push(`TLS mínimo ${C(v)}`); break;
+      case 'ssl-max-ver': p.push(`TLS máximo ${C(v)}`); break;
+      case 'strict-sni': p.push('rechaza SNI sin certificado'); break;
+      case 'verify': p.push(v === 'required' ? '<b>exige certificado de cliente</b> (mTLS)' : v === 'optional' ? 'certificado de cliente opcional' : `verify ${C(v)}`); break;
+      case 'ca-file': p.push(`CA de clientes ${C(v)}`); break;
+      case 'name': p.push(`nombre ${C(v)}`); break;
+      case 'interface': p.push(`solo en la interfaz ${C(v)}`); break;
+      case 'tfo': p.push('TCP Fast Open'); break;
+      case 'defer-accept': p.push('defer-accept'); break;
+      case 'allow-0rtt': p.push('permite 0-RTT'); break;
+      case 'mode': p.push(`permisos ${C(v)}`); break;
+      case 'level': p.push(`nivel ${C(v)}`); break;
+      case 'thread': p.push(`hilos ${C(v)}`); break;
+      default: p.push(rawOpt(k, v));
+    }
+  }
+  return p.join(' · ');
+}
+
+function splitCond(args) {
+  const i = args.findIndex(t => t === 'if' || t === 'unless');
+  if (i < 0) return { main: args, cond: null };
+  return { main: args.slice(0, i), cond: { neg: args[i] === 'unless', tokens: args.slice(i + 1) } };
+}
+
+const FETCH = {
+  path: 'la ruta', url: 'la URL', base: 'Host + ruta', query: 'la query string', method: 'el método HTTP', 'req.ver': 'la versión HTTP', 'req.len': 'el tamaño de la petición', 'req.body': 'el cuerpo de la petición',
+  hdr: a => /^host$/i.test(a) ? 'el Host' : `la cabecera ${C(a)}`, 'req.hdr': a => /^host$/i.test(a) ? 'el Host' : `la cabecera ${C(a)}`, 'req.fhdr': a => `la cabecera ${C(a)}`,
+  'res.hdr': a => `la cabecera de respuesta ${C(a)}`, shdr: a => `la cabecera de respuesta ${C(a)}`,
+  src: 'la IP de origen', dst: 'la IP de destino', dst_port: 'el puerto de destino', src_port: 'el puerto de origen', so_id: 'el id del socket',
+  ssl_fc: 'la conexión entrante es TLS', ssl_fc_sni: 'el SNI TLS', 'req.ssl_sni': 'el SNI TLS', req_ssl_sni: 'el SNI TLS', ssl_c_used: 'el cliente presentó certificado', ssl_c_verify: 'el resultado de verificar el certificado cliente', ssl_fc_protocol: 'la versión TLS', 'req.ssl_ver': 'la versión TLS',
+  urlp: a => `el parámetro ${C(a)} de la URL`, url_param: a => `el parámetro ${C(a)} de la URL`, cook: a => `la cookie ${C(a)}`, 'req.cook': a => `la cookie ${C(a)}`, status: 'el código de estado',
+  nbsrv: a => `el nº de servidores activos en ${C(a)}`, http_auth: a => `hay credenciales válidas de ${C(a)}`, http_auth_group: a => `el grupo del usuario en ${C(a)}`,
+  src_conn_rate: 'el ritmo de conexiones de esa IP', src_conn_cur: 'las conexiones abiertas de esa IP', src_http_req_rate: 'el ritmo de peticiones de esa IP', src_http_err_rate: 'el ritmo de errores de esa IP',
+  sc_http_req_rate: a => `el ritmo de peticiones del cliente (contador ${esc(a || 0)})`, sc_conn_cur: a => `las conexiones abiertas del cliente (contador ${esc(a || 0)})`, sc_conn_rate: a => `el ritmo de conexiones del cliente (contador ${esc(a || 0)})`, sc_http_err_rate: a => `el ritmo de errores del cliente (contador ${esc(a || 0)})`,
+  sc0_http_req_rate: 'el ritmo de peticiones del cliente', sc1_http_req_rate: 'el ritmo de peticiones del cliente (contador 1)', sc0_conn_cur: 'las conexiones abiertas del cliente', sc0_conn_rate: 'el ritmo de conexiones del cliente', sc0_http_err_rate: 'el ritmo de errores del cliente', sc0_gpc0: 'el contador gpc0 del cliente',
+  be_conn: a => `las conexiones del backend ${C(a)}`, fe_conn: 'las conexiones del frontend', connslots: a => `los huecos libres del backend ${C(a)}`, queue: a => `la cola del backend ${C(a)}`,
+  always_true: 'siempre', always_false: 'nunca', var: a => `la variable ${C(a)}`, env: a => `la variable de entorno ${C(a)}`, 'req.proto_http': 'la petición es HTTP', 'req.len': 'el tamaño de la petición', capture: 'la captura',
+};
+const MATCH = { '': 'es', str: 'es', beg: 'empieza por', end: 'termina en', sub: 'contiene', reg: 'cumple la regex', dom: 'contiene el dominio', dir: 'contiene el segmento', len: 'tiene longitud', found: 'existe', ip: 'está en', int: 'vale', bool: 'es verdadero', cnt: 'aparece' };
+const OPS = { gt: 'mayor que', ge: 'mayor o igual que', lt: 'menor que', le: 'menor o igual que', eq: 'igual a' };
+const BOOLISH = new Set(['ssl_fc', 'ssl_c_used', 'always_true', 'always_false', 'req.proto_http', 'http_auth']);
+
+function aclPhrase(t) {
+  if (!t.length) return '';
+  const crit = t[0]; let i = 1; const flags = {};
+  while (i < t.length && /^-./.test(t[i]) && t[i] !== '--') {
+    const f = t[i];
+    if (['-m', '-f', '-M', '-u'].includes(f)) { flags[f] = t[i + 1]; i += 2; } else { flags[f] = true; i++; }
+  }
+  if (t[i] === '--') i++;
+  const vals = t.slice(i);
+  let fn = crit, arg = '', conv = '';
+  const pm = /^([\w.\-]+)\(([^)]*)\)(.*)$/.exec(crit);
+  if (pm) { fn = pm[1]; arg = pm[2]; conv = pm[3]; }
+  else { const ci = crit.indexOf(','); if (ci > 0) { fn = crit.slice(0, ci); conv = crit.slice(ci); } }
+  let match = flags['-m'] || '';
+  if (!FETCH[fn]) { const sm = /^(.*?)_(beg|end|sub|reg|dom|dir|len|found|str|ip|int|bool|cnt)$/.exec(fn); if (sm && FETCH[sm[1]]) { fn = sm[1]; match = match || sm[2]; } }
+  const f = FETCH[fn];
+  let subject = f ? (typeof f === 'function' ? f(arg) : f) : C(fn + (pm ? `(${arg})` : ''));
+  if (conv) subject += ` ${C(conv)}`;
+  let out;
+  if (flags['-f']) out = `${subject} ${MATCH[match] || (fn === 'src' || fn === 'dst' ? 'está en' : 'coincide con')} la lista del fichero ${C(flags['-f'])}`;
+  else if (flags['-M']) out = `${subject} está en el mapa ${C(flags['-M'])}`;
+  else if (vals.length && OPS[vals[0]]) out = `${subject} es ${OPS[vals[0]]} ${B(vals[1] ?? '?')}`;
+  else if (!vals.length) out = match === 'found' ? `${subject} existe` : (BOOLISH.has(fn) || !f ? subject : `${subject} existe`);
+  else {
+    const mw = MATCH[match] ?? ('coincide (' + esc(match) + ') con');
+    const verb = !match && (fn === 'src' || fn === 'dst') ? 'está en' : mw;
+    out = `${subject} ${verb} ${vals.map(C).join(' o ')}`;
+  }
+  if (flags['-i']) out += ' <i>(sin distinguir mayúsculas)</i>';
+  return out;
+}
+
+function condHtml(c) {
+  const t = c.tokens; const out = []; let prevTerm = false;
+  for (let i = 0; i < t.length; i++) {
+    let tok = t[i];
+    if (tok === '||' || tok.toLowerCase() === 'or') { out.push('<i>o</i>'); prevTerm = false; continue; }
+    let neg = false;
+    if (tok.startsWith('!')) { neg = true; tok = tok.slice(1); if (!tok) { tok = t[++i]; if (tok === undefined) break; } }
+    let term;
+    if (tok.startsWith('{')) {
+      const inner = []; if (tok.length > 1) inner.push(tok.slice(1));
+      i++; while (i < t.length && t[i] !== '}') { inner.push(t[i]); i++; }
+      term = `«${aclPhrase(inner)}»`;
+    } else term = `<span class="acl">${esc(tok)}</span>`;
+    if (prevTerm) out.push('<i>y</i>');
+    out.push((neg ? '<b>no</b> ' : '') + term); prevTerm = true;
+  }
+  return out.join(' ');
+}
+const condSuffix = c => c ? ` <span class="cond">— ${c.neg ? 'salvo si' : 'si'}</span> ${condHtml(c)}` : '';
+
+function aclNamesIn(tokens) {
+  const names = []; let depth = 0;
+  for (let tok of tokens) {
+    if (tok === '||' || tok.toLowerCase() === 'or') continue;
+    if (tok.startsWith('!')) tok = tok.slice(1);
+    if (!tok) continue;
+    if (tok.startsWith('{')) { depth++; continue; }
+    if (tok === '}') { depth = Math.max(0, depth - 1); continue; }
+    if (depth) continue;
+    names.push(tok);
+  }
+  return names;
+}
+
+const CODES = { 301: 'permanente', 302: 'temporal', 303: 'ver otro', 307: 'temporal, conserva el método', 308: 'permanente, conserva el método' };
+function redirectPhrase(r) {
+  const o = {};
+  for (let i = 0; i < r.length; i++) { const k = r[i]; if (['location', 'prefix', 'scheme', 'code', 'set-cookie', 'clear-cookie'].includes(k)) { o[k] = r[i + 1]; i++; } else o[k] = true; }
+  let s = o.scheme ? `Redirige a <b>${esc(String(o.scheme).toUpperCase())}</b>` : o.location ? `Redirige a ${C(o.location)}` : o.prefix ? `Redirige anteponiendo ${C(o.prefix)}` : 'Redirige';
+  if (o.code) s += ` (${esc(o.code)}${CODES[o.code] ? ' ' + CODES[o.code] : ''})`;
+  if (o['drop-query']) s += ', sin la query string';
+  if (o['append-slash']) s += ', añadiendo «/»';
+  return s;
+}
+
+function actionPhrase(act, r) {
+  const name = act.replace(/\(.*$/, ''); const inner = (act.match(/\((.*)\)/) || [])[1] || '';
+  const rest = r.join(' ');
+  const kv = k => { const i = r.indexOf(k); return i >= 0 ? r[i + 1] : null; };
+  switch (name) {
+    case 'redirect': return redirectPhrase(r);
+    case 'deny': return `<b>Rechaza</b> la petición (${esc(kv('deny_status') || kv('status') || '403')})`;
+    case 'allow': return 'Permite y deja de evaluar reglas';
+    case 'accept': return 'Acepta';
+    case 'auth': return 'Pide usuario y contraseña (HTTP Basic)' + (kv('realm') ? ` · realm ${C(kv('realm'))}` : '');
+    case 'tarpit': return 'Retiene y luego rechaza (tarpit, frena abusos)';
+    case 'reject': return '<b>Corta</b> la conexión sin responder';
+    case 'silent-drop': return 'Descarta la conexión en silencio';
+    case 'set-header': return `Fija la cabecera ${C(r[0])} = ${C(r.slice(1).join(' '))}`;
+    case 'add-header': return `Añade la cabecera ${C(r[0])}: ${C(r.slice(1).join(' '))}`;
+    case 'del-header': return `Elimina la cabecera ${C(r[0])}`;
+    case 'replace-header': return `Reescribe la cabecera ${C(r[0])} (${C(r[1])} → ${C(r[2])})`;
+    case 'replace-value': return `Reescribe valores de la cabecera ${C(r[0])}`;
+    case 'set-path': return `Cambia la ruta a ${C(rest)}`;
+    case 'set-pathq': return `Cambia ruta y query a ${C(rest)}`;
+    case 'replace-path': return `Reescribe la ruta (${C(r[0])} → ${C(r[1])})`;
+    case 'replace-pathq': return `Reescribe ruta y query (${C(r[0])} → ${C(r[1])})`;
+    case 'set-uri': return `Cambia la URI a ${C(rest)}`;
+    case 'replace-uri': return `Reescribe la URI (${C(r[0])} → ${C(r[1])})`;
+    case 'set-query': return `Cambia la query string a ${C(rest)}`;
+    case 'set-method': return `Cambia el método a ${C(rest)}`;
+    case 'set-status': return `Cambia el código de estado a ${B(r[0])}`;
+    case 'return': return `Responde directamente${kv('status') ? ` con estado ${B(kv('status'))}` : ''}${kv('content-type') ? ` (${esc(kv('content-type'))})` : ''}`;
+    case 'track-sc0': case 'track-sc1': case 'track-sc2': return `Cuenta al cliente en la stick-table (contador ${name.slice(-1)}) usando ${C(r[0])}${kv('table') ? ` de ${C(kv('table'))}` : ''}`;
+    case 'set-var': return `Guarda en la variable ${C(inner)} ${C(rest)}`;
+    case 'set-var-fmt': return `Guarda en la variable ${C(inner)} el formato ${C(rest)}`;
+    case 'unset-var': return `Borra la variable ${C(inner)}`;
+    case 'cache-use': return `Sirve desde la caché ${C(r[0])} si la tiene`;
+    case 'cache-store': return `Guarda la respuesta en la caché ${C(r[0])}`;
+    case 'capture': return `Captura ${C(r[0])} para los logs`;
+    case 'set-log-level': return `Cambia el nivel de log a ${C(r[0])}`;
+    case 'use-service': return `Responde con el servicio ${C(r[0])}`;
+    case 'normalize-uri': return `Normaliza la URI (${C(rest)})`;
+    case 'wait-for-body': return 'Espera a recibir el cuerpo de la petición';
+    case 'set-timeout': return `Ajusta el timeout ${C(r[0])} a ${dur(r[1])}`;
+    case 'set-src': return `Usa como IP de origen ${C(rest)}`;
+    case 'set-dst': return `Cambia el destino a ${C(rest)}`;
+    case 'early-hint': return `Envía un 103 Early Hint ${C(rest)}`;
+    case 'disable-l7-retry': return 'Desactiva los reintentos de capa 7';
+    case 'sc-inc-gpc0': case 'sc-inc-gpc1': case 'sc-inc-gpc': return 'Incrementa un contador del cliente';
+    case 'set-bandwidth-limit': return `Limita el ancho de banda (${C(rest)})`;
+    case 'do-resolve': return `Resuelve por DNS ${C(inner)}`;
+    case 'send-spoe-group': return `Envía al agente SPOE ${C(rest)}`;
+    case 'strict-mode': return `Modo estricto ${C(rest)}`;
+    case 'set-mark': case 'set-tos': return `Marca los paquetes (${C(name + ' ' + rest)})`;
+    case 'set-nice': return `Cambia la prioridad de procesado a ${C(rest)}`;
+    case 'add-acl': case 'del-acl': case 'set-map': case 'del-map': return `${name.startsWith('del') ? 'Borra de' : 'Añade a'} ${C(inner)} ${C(rest)}`;
+    case 'expect-proxy': return 'Espera el protocolo PROXY';
+    case 'expect-netscaler-cip': return 'Espera NetScaler CIP';
+    case 'set-retries': return `Ajusta los reintentos a ${C(rest)}`;
+  }
+  if (name.startsWith('lua.')) return `Ejecuta la acción Lua ${C(name.slice(4))}`;
+  return `Acción ${C(act)}${rest ? ' ' + C(rest) : ''}`;
+}
+
+function ruleDesc(a, label) {
+  const { main, cond } = splitCond(a);
+  return `<span class="phase">${label}</span> ${actionPhrase(main[0] || '', main.slice(1))}${condSuffix(cond)}`;
+}
+
+const BAL = {
+  roundrobin: '<b>turno rotativo</b> ponderado por pesos (dinámico)', 'static-rr': '<b>turno rotativo estático</b>', leastconn: 'al servidor con <b>menos conexiones activas</b> (ideal para sesiones largas)',
+  first: 'llena el primer servidor hasta su maxconn antes de pasar al siguiente', source: '<b>hash de la IP</b> del cliente: el mismo cliente va siempre al mismo servidor', uri: '<b>hash de la URI</b> (bueno para cachés)',
+  url_param: 'hash de un parámetro de la URL', random: '<b>aleatorio</b> (power of two choices)', 'rdp-cookie': 'según la cookie RDP', hash: 'hash de una expresión',
+};
+const TMO = {
+  connect: 'para establecer la conexión TCP con un servidor', client: 'de inactividad del cliente', server: 'esperando datos del servidor', 'http-request': 'para recibir la petición HTTP completa (protege contra slowloris)',
+  'http-keep-alive': 'esperando la siguiente petición en keep-alive', queue: 'que una petición puede esperar en cola', check: 'adicional para completar un health check', tunnel: 'de inactividad en túneles (WebSocket, CONNECT)',
+  'client-fin': 'de cierre del lado del cliente', 'server-fin': 'de cierre del lado del servidor', tarpit: 'que se retiene una petición en tarpit', resolve: 'entre resoluciones DNS', retry: 'antes de reintentar una consulta DNS', mail: 'para enviar un email', connect_peers: 'para conectar con los peers', peers: 'para los peers',
+};
+const OPT = {
+  httplog: '<b>Logs HTTP</b> detallados (método, ruta, código, tiempos)', httpslog: '<b>Logs HTTP</b> detallados con datos TLS', tcplog: '<b>Logs TCP</b> detallados (tiempos, bytes, estado)', dontlognull: 'No registra conexiones que no envían datos (sondas, escáneres)',
+  dontlog: 'No registra conexiones normales', forwardfor: 'Añade la cabecera <b>X-Forwarded-For</b> con la IP real del cliente', 'http-server-close': 'Cierra la conexión con el servidor tras cada respuesta (mantiene keep-alive con el cliente)',
+  httpclose: 'Cierra la conexión tras cada petición', 'http-keep-alive': 'Keep-alive en ambos lados (por defecto)', redispatch: 'Si el servidor elegido por persistencia está caído, reenvía la petición a otro',
+  'ssl-hello-chk': 'Health checks con un saludo SSLv3', 'tcp-check': 'Health checks TCP personalizados (reglas tcp-check)', 'abortonclose': 'Cancela peticiones en cola si el cliente se va', 'log-health-checks': 'Registra los cambios de estado de los health checks',
+  allbackups: 'Usa todos los servidores de respaldo a la vez', 'splice-auto': 'Usa splice del kernel cuando conviene', 'http-buffer-request': 'Espera el cuerpo de la petición antes de decidir el backend', tcpka: 'TCP keep-alive en ambos lados', clitcpka: 'TCP keep-alive con el cliente', srvtcpka: 'TCP keep-alive con el servidor',
+  logasap: 'Registra la petición sin esperar a que termine', 'mysql-check': 'Health checks de MySQL', 'pgsql-check': 'Health checks de PostgreSQL', 'redis-check': 'Health checks de Redis', smtpchk: 'Health checks SMTP', 'ldap-check': 'Health checks LDAP', 'spop-check': 'Health checks SPOP',
+  'log-separate-errors': 'Registra los errores con más prioridad', persist: 'Mantiene la persistencia aunque el servidor caiga', 'prefer-last-server': 'Intenta reutilizar el último servidor usado', nolinger: 'Cierra conexiones sin esperar (sin linger)',
+  'accept-invalid-http-request': '<span class="warn">⚠ Acepta peticiones HTTP no conformes</span>', 'accept-invalid-http-response': '<span class="warn">⚠ Acepta respuestas HTTP no conformes</span>', originalto: 'Añade la cabecera X-Original-To', 'socket-stats': 'Estadísticas por socket de escucha',
+  'independent-streams': 'Timeouts independientes por sentido', 'disable-h2-upgrade': 'No permite actualizar a HTTP/2 en claro', 'h1-case-adjust-bogus-client': 'Ajusta mayúsculas de cabeceras para clientes antiguos', 'h1-case-adjust-bogus-server': 'Ajusta mayúsculas de cabeceras para servidores antiguos',
+  'http-ignore-probes': 'Ignora conexiones de pre-conexión del navegador', 'http-no-delay': 'Minimiza la latencia HTTP', 'http-pretend-keepalive': 'Simula keep-alive con el servidor', 'http-restrict-req-hdr-names': 'Restringe los nombres de cabecera válidos', 'idle-close-on-response': 'Cierra conexiones ociosas al responder',
+  contstats: 'Estadísticas continuas', checkcache: 'Evita cachear respuestas con cookies', 'external-check': 'Health checks con un comando externo', transparent: 'Conecta a la IP de destino original', 'tcp-smart-accept': 'Optimiza el accept TCP', 'tcp-smart-connect': 'Optimiza el connect TCP', 'dontlog-normal': 'Solo registra errores',
+};
+const STORE = { http_req_rate: 'ritmo de peticiones', http_req_cnt: 'nº de peticiones', http_err_rate: 'ritmo de errores', http_err_cnt: 'nº de errores', conn_cur: 'conexiones abiertas', conn_rate: 'ritmo de conexiones', conn_cnt: 'nº de conexiones', sess_rate: 'ritmo de sesiones', sess_cnt: 'nº de sesiones', bytes_in_rate: 'tráfico de entrada', bytes_out_rate: 'tráfico de salida', gpc0: 'contador gpc0', gpc0_rate: 'ritmo de gpc0', gpc: 'contadores gpc', server_id: 'servidor asignado', glitch_rate: 'ritmo de anomalías' };
+const tlsOpts = a => a.map(o => ({ 'no-sslv3': 'sin SSLv3', 'no-tlsv10': 'sin TLS 1.0', 'no-tlsv11': 'sin TLS 1.1', 'no-tlsv12': 'sin TLS 1.2', 'no-tlsv13': 'sin TLS 1.3', 'no-tls-tickets': 'sin tickets TLS', 'prefer-client-ciphers': 'prefiere los cifrados del cliente', 'force-tlsv12': 'solo TLS 1.2', 'force-tlsv13': 'solo TLS 1.3' }[o] || (o === 'ssl-min-ver' || o === 'ssl-max-ver' ? null : C(o)))).filter(Boolean);
+
+const DESCRIBERS = {
+  mode: a => ({ http: '<b>Modo HTTP</b> (capa 7): HAProxy interpreta peticiones, cabeceras y rutas, y puede aplicar reglas sobre ellas.', tcp: '<b>Modo TCP</b> (capa 4): reenvía los bytes tal cual, sin inspeccionar HTTP.', log: 'Modo log: reenvía mensajes syslog.' })[a[0]] || `Modo ${C(a[0])}`,
+  bind: (a, t) => t === 'peers' ? `Esta instancia peer escucha en ${addrList(a[0])}` : describeBind(a),
+  server: (a, t) => t === 'peers' ? `Peer ${B(a[0])} en ${C(a[1] || 'local')}` : describeServer(a),
+  'server-template': a => { const m = /^(\d+)-(\d+)$/.exec(a[1] || ''); const first = m ? +m[1] : 1, last = m ? +m[2] : +a[1]; return `Genera ${B(String(last - first + 1))} servidores ${C(a[0] + first)}…${C(a[0] + last)} a partir de ${C(a[2])}` + (a.length > 3 ? ' · ' + serverOpts(a.slice(3)).join(' · ') : ''); },
+  'default-server': a => 'Opciones por defecto para todos los <code>server</code>: ' + (serverOpts(a).join(' · ') || '—'),
+  balance: a => {
+    const k = a[0] || '';
+    if (k.startsWith('hdr(')) return `Reparto: <b>hash de la cabecera</b> ${C(k.slice(4, -1))}`;
+    if (k === 'url_param') return `Reparto: hash del parámetro de URL ${C(a[1])}`;
+    return BAL[k] ? `Reparto de carga: ${BAL[k]}` : { html: `Reparto de carga: ${C(a.join(' '))}`, known: false };
+  },
+  'hash-type': a => a[0] === 'consistent' ? '<b>Hash consistente</b>: al quitar o añadir un servidor solo se reasignan sus clientes' : a[0] === 'map-based' ? 'Hash basado en mapa (estático)' : `Tipo de hash ${C(a.join(' '))}`,
+  timeout: a => `Tiempo máximo ${TMO[a[0]] ? TMO[a[0]] : C(a[0])}: ${dur(a[1])}`,
+  option: a => {
+    const o = a[0]; const extra = a.slice(1);
+    if (o === 'httpchk') { let m = 'OPTIONS', u = '/'; if (extra.length === 1) u = extra[0]; else if (extra.length >= 2) { m = extra[0]; u = extra[1]; } return `Health checks <b>HTTP</b>: envía ${C(m + ' ' + u)} a cada servidor en lugar de solo abrir TCP`; }
+    if (o === 'forwardfor' && extra.length) return OPT.forwardfor + ' ' + C(extra.join(' '));
+    return OPT[o] ? OPT[o] + (extra.length ? ' ' + C(extra.join(' ')) : '') : { html: `Opción ${C(a.join(' '))}`, known: false };
+  },
+  no: a => a[0] === 'option' ? `<b>Desactiva:</b> ${OPT[a[1]] || C(a[1])}` : `Desactiva ${C(a.join(' '))}`,
+  maxconn: (a, t) => t === 'global' ? `Máximo de conexiones simultáneas de todo el proceso: <b>${esc(a[0])}</b>` : t === 'defaults' ? `Máximo de conexiones simultáneas por defecto en cada entrada: <b>${esc(a[0])}</b>` : `Máximo de conexiones simultáneas en esta entrada: <b>${esc(a[0])}</b>`,
+  retries: a => `Reintentos de conexión a un servidor antes de fallar: <b>${esc(a[0])}</b>`,
+  default_backend: a => `Backend por defecto: ${B(a[0])} — recibe todo lo que no coincide con ninguna regla <code>use_backend</code>`,
+  use_backend: a => { const { main, cond } = splitCond(a); return `Envía al backend ${B(main[0])}${condSuffix(cond)}`; },
+  'use-server': a => { const { main, cond } = splitCond(a); return `Fuerza el servidor ${B(main[0])}${condSuffix(cond)}`; },
+  acl: a => `Define la condición <span class="acl">${esc(a[0])}</span>: ${aclPhrase(a.slice(1))}`,
+  'http-request': a => ruleDesc(a, 'Petición:'),
+  'http-response': a => ruleDesc(a, 'Respuesta:'),
+  'http-after-response': a => ruleDesc(a, 'Respuesta final:'),
+  'tcp-request': a => {
+    if (a[0] === 'inspect-delay') return `Espera hasta ${dur(a[1])} para poder inspeccionar el contenido TCP`;
+    const ph = { connection: 'Conexión TCP:', content: 'Contenido TCP:', session: 'Sesión TCP:' }[a[0]] || 'TCP:';
+    return ruleDesc(a.slice(1), ph);
+  },
+  'tcp-response': a => a[0] === 'inspect-delay' ? `Espera hasta ${dur(a[1])} para inspeccionar la respuesta` : ruleDesc(a.slice(1), 'Respuesta TCP:'),
+  redirect: a => { const { main, cond } = splitCond(a); return redirectPhrase(main) + condSuffix(cond); },
+  'force-persist': a => 'Fuerza la persistencia aunque el servidor esté caído' + condSuffix(splitCond(a).cond),
+  'ignore-persist': a => 'Ignora la persistencia' + condSuffix(splitCond(a).cond),
+  log: a => {
+    if (a[0] === 'global') return 'Usa los destinos de log definidos en <code>global</code>';
+    const tgt = a[0] === '/dev/log' ? 'al syslog local (<code>/dev/log</code>)' : a[0] === 'stdout' ? 'a la salida estándar' : a[0] === 'stderr' ? 'a la salida de error' : String(a[0]).startsWith('ring@') ? `al buffer ${C(a[0].slice(5))}` : `al syslog ${C(a[0])}`;
+    const rest = []; for (let i = 1; i < a.length; i++) { if (['len', 'format', 'sample'].includes(a[i])) { i++; continue; } rest.push(a[i]); }
+    return `Envía logs ${tgt}` + (rest[0] ? ` · facility ${C(rest[0])}` : '') + (rest[1] ? ` · solo nivel ${C(rest[1])} o más grave` : '');
+  },
+  stats: (a, t) => {
+    const k = a[0], r = a.slice(1);
+    switch (k) {
+      case 'socket': {
+        const o = parseOpts(r.slice(1)); let s = `Socket de administración en ${addr(r[0])}`;
+        const lv = o.find(x => x[0] === 'level'); if (lv) s += lv[1] === 'admin' ? ' con <b>permisos de administrador</b>' : ` (nivel ${C(lv[1])})`;
+        const md = o.find(x => x[0] === 'mode'); if (md) s += `, permisos de fichero ${C(md[1])}`;
+        if (o.find(x => x[0] === 'expose-fd')) s += ', permite recargas sin cortes';
+        return s;
+      }
+      case 'timeout': return `Timeout del socket de estadísticas: ${dur(r[0])}`;
+      case 'enable': return 'Activa la <b>página web de estadísticas</b>';
+      case 'uri': return `Página de estadísticas en la ruta ${C(r[0])}`;
+      case 'auth': return `Protegida con el usuario ${B(String(r[0] || '').split(':')[0])} y contraseña`;
+      case 'realm': return `Texto del diálogo de login: ${C(r.join(' '))}`;
+      case 'refresh': return `La página se recarga cada ${dur(r[0], 's')}`;
+      case 'admin': return 'Permite acciones de administración desde la web' + condSuffix(splitCond(r).cond);
+      case 'hide-version': return 'Oculta la versión de HAProxy en la página';
+      case 'show-legends': return 'Muestra leyendas en la página';
+      case 'show-node': return 'Muestra el nombre del nodo';
+      case 'show-desc': return 'Muestra la descripción';
+      case 'scope': return `Limita la página al proxy ${C(r[0])}`;
+      case 'maxconn': return `Máx. conexiones al socket de stats: ${B(r[0])}`;
+      case 'http-request': return ruleDesc(r, 'Stats:');
+    }
+    return { html: `Estadísticas: ${C(a.join(' '))}`, known: false };
+  },
+  cookie: a => {
+    const f = new Set(a.slice(1)); const p = [`Persistencia por cookie ${B(a[0])}`];
+    if (f.has('insert')) p.push('HAProxy la crea'); if (f.has('rewrite')) p.push('reescribe la del servidor'); if (f.has('prefix')) p.push('prefija la del servidor');
+    if (f.has('indirect')) p.push('no se reenvía al servidor'); if (f.has('nocache')) p.push('evita que se cachee'); if (f.has('httponly')) p.push('HttpOnly'); if (f.has('secure')) p.push('Secure');
+    if (f.has('dynamic')) p.push('valor dinámico');
+    return p.join(' · ') + ' — el cliente vuelve siempre al mismo servidor';
+  },
+  'stick-table': a => {
+    const g = k => { const i = a.indexOf(k); return i >= 0 ? a[i + 1] : null; };
+    const store = (g('store') || '').split(',').filter(Boolean).map(s => { const m = /^([\w]+)(?:\(([^)]*)\))?$/.exec(s); return m ? (STORE[m[1]] || m[1]) + (m[2] ? ` (${m[2]})` : '') : s; });
+    return `Tabla de seguimiento: clave ${C(g('type') || '?')}, ${esc(g('size') || '?')} entradas` + (g('expire') ? `, caducan a los ${dur(g('expire'))}` : '') + (store.length ? ` · guarda ${store.map(esc).join(', ')}` : '') + (g('peers') ? ` · replicada con ${C(g('peers'))}` : '');
+  },
+  stick: a => { const { main, cond } = splitCond(a); return `Persistencia (${esc(main[0])}) por ${C(main.slice(1).join(' '))}${condSuffix(cond)}`; },
+  capture: a => {
+    const g = k => { const i = a.indexOf(k); return i >= 0 ? a[i + 1] : null; };
+    if (a[0] === 'cookie') return `Captura la cookie ${C(a[1])} en los logs`;
+    return `Captura la cabecera ${C(a[2])} de la ${a[0] === 'response' ? 'respuesta' : 'petición'} en los logs` + (g('len') ? ` (máx. ${esc(g('len'))} caracteres)` : '');
+  },
+  errorfile: a => `Página personalizada para el error ${B(a[0])} desde ${C(a[1])}`,
+  'http-error': a => `Respuesta personalizada para el error ${B(a[a.indexOf('status') + 1] || '?')}`,
+  compression: a => {
+    if (a[0] === 'algo' || a[0] === 'algo-res') return `Comprime las respuestas con ${a.slice(1).map(C).join(', ')}`;
+    if (a[0] === 'type' || a[0] === 'type-res') return `Tipos de contenido que se comprimen: ${a.slice(1).map(C).join(', ')}`;
+    if (a[0] === 'offload') return 'Comprime en HAProxy y quita Accept-Encoding al servidor';
+    return `Compresión: ${C(a.join(' '))}`;
+  },
+  filter: a => `Filtro ${C(a[0])}` + (a.length > 1 ? ' ' + C(a.slice(1).join(' ')) : ''),
+  'http-reuse': a => ({ never: 'Nunca reutiliza conexiones a servidores', safe: 'Reutiliza conexiones a servidores de forma segura (por defecto)', aggressive: 'Reutiliza conexiones a servidores de forma agresiva', always: 'Reutiliza siempre las conexiones a servidores' })[a[0]] || `Reutilización ${C(a[0])}`,
+  'rate-limit': a => a[0] === 'sessions' ? `Máximo ${B(a[1])} sesiones nuevas por segundo` : `Límite ${C(a.join(' '))}`,
+  'http-check': a => {
+    const r = a.slice(1);
+    switch (a[0]) {
+      case 'expect': {
+        const neg = (r[0] || '').startsWith('!'); const k = (r[0] || '').replace(/^!/, ''); const v = r.slice(1).join(' ');
+        const what = { status: `responde con estado ${B(v)}`, rstatus: `el estado cumple ${C(v)}`, string: `el cuerpo contiene ${C(v)}`, rstring: `el cuerpo cumple ${C(v)}`, hdr: `la cabecera cumple ${C(v)}` }[k] || C(r.join(' '));
+        return `El check es correcto si ${neg ? '<b>no</b> ' : ''}${what}`;
+      }
+      case 'send': {
+        const g = k => { const i = r.indexOf(k); return i >= 0 ? r[i + 1] : null; };
+        return `El check envía ${C((g('meth') || 'GET') + ' ' + (g('uri') || '/'))}` + (g('ver') ? ` ${esc(g('ver'))}` : '') + (r.includes('hdr') ? ' con cabeceras' : '');
+      }
+      case 'connect': return 'El check abre una conexión' + (r.length ? ' ' + C(r.join(' ')) : '');
+      case 'disable-on-404': return 'Si el check recibe 404, el servidor pasa a modo drenaje (no recibe nuevos clientes)';
+      case 'send-state': return 'Envía al servidor su estado en una cabecera';
+      case 'comment': return `Comentario del check: ${esc(r.join(' '))}`;
+    }
+    return `Check HTTP: ${C(a.join(' '))}`;
+  },
+  'tcp-check': a => ({ connect: 'El check abre una conexión TCP', send: `El check envía ${C(a.slice(1).join(' '))}`, 'send-binary': 'El check envía datos binarios', expect: `El check espera ${C(a.slice(1).join(' '))}`, comment: 'Comentario del check' })[a[0]] || `Check TCP: ${C(a.join(' '))}`,
+  user: (a, t) => {
+    if (t !== 'userlist') return `Ejecuta HAProxy como el usuario ${B(a[0])}`;
+    const p = [`Usuario ${B(a[0])}`];
+    if (a.includes('password')) p.push('contraseña cifrada'); if (a.includes('insecure-password')) p.push('<span class="warn">⚠ contraseña en texto plano</span>');
+    const gi = a.indexOf('groups'); if (gi >= 0) p.push(`grupos ${C(a[gi + 1])}`);
+    return p.join(' · ');
+  },
+  group: (a, t) => t !== 'userlist' ? `Ejecuta HAProxy con el grupo ${B(a[0])}` : `Grupo ${B(a[0])}` + (a.indexOf('users') >= 0 ? ` con los usuarios ${C(a[a.indexOf('users') + 1])}` : ''),
+  nameserver: a => `Servidor DNS ${B(a[0])} en ${C(a[1])}`,
+  hold: a => `Conserva las respuestas DNS «${esc(a[0])}» durante ${dur(a[1])}`,
+  peer: a => `Instancia peer ${B(a[0])} en ${C(a[1])}`,
+  mailer: a => `Servidor SMTP ${B(a[0])} en ${C(a[1])}`,
+  'total-max-size': a => `Tamaño total de la caché: <b>${esc(a[0])} MB</b>`,
+  'max-age': a => `Cada respuesta se guarda como máximo <b>${esc(a[0])} s</b>`,
+  'max-object-size': a => `Tamaño máximo por objeto: <b>${esc(a[0])} bytes</b>`,
+  nbthread: a => `Usa ${B(a[0])} hilos de trabajo`,
+  'hard-stop-after': a => `Al recargar, corta las conexiones antiguas tras ${dur(a[0])} como máximo`,
+  'spread-checks': a => `Dispersa los health checks un ${B(a[0] + '%')} para no lanzarlos todos a la vez`,
+  'ssl-default-bind-options': a => `Opciones TLS por defecto en los bind: ${[...(a.includes('ssl-min-ver') ? [`TLS mínimo ${C(a[a.indexOf('ssl-min-ver') + 1])}`] : []), ...tlsOpts(a.filter((x, i) => a[i - 1] !== 'ssl-min-ver' && a[i - 1] !== 'ssl-max-ver'))].join(', ')}`,
+  'ssl-default-server-options': a => `Opciones TLS por defecto hacia servidores: ${[...(a.includes('ssl-min-ver') ? [`TLS mínimo ${C(a[a.indexOf('ssl-min-ver') + 1])}`] : []), ...tlsOpts(a.filter((x, i) => a[i - 1] !== 'ssl-min-ver' && a[i - 1] !== 'ssl-max-ver'))].join(', ')}`,
+  description: a => `Descripción: ${esc(a.join(' '))}`,
+  'tune.ssl.default-dh-param': a => `Tamaño de los parámetros Diffie-Hellman: <b>${esc(a[0])} bits</b>`,
+  'tune.bufsize': a => `Tamaño de buffer por petición: <b>${esc(a[0])} bytes</b>`,
+  'tune.maxrewrite': a => `Espacio reservado para reescribir cabeceras: <b>${esc(a[0])} bytes</b>`,
+  'tune.ssl.cachesize': a => `Tamaño de la caché de sesiones TLS: ${B(a[0])} entradas`,
+};
+
+function describe(L, type) {
+  const kw = L.kw, a = L.args, entry = DIRS[kw];
+  let html = '', cat = entry ? entry.cat : 'misc', known = !!entry;
+  const f = DESCRIBERS[kw];
+  if (f) {
+    let r; try { r = f(a, type, L); } catch (e) { r = null; }
+    if (r) { if (typeof r === 'string') html = r; else { html = r.html; if (r.known === false) known = false; } }
+    if (kw.startsWith('tune.')) { cat = 'perf'; known = true; }
+  }
+  if (!html && entry && entry.d) html = esc(entry.d) + (a.length && entry.d.endsWith(':') ? ' ' + C(a.join(' ')) : '');
+  if (!html && kw.startsWith('tune.')) { html = `Ajuste fino interno de rendimiento (${C(kw.slice(5))} = ${C(a.join(' '))})`; cat = 'perf'; known = true; }
+  if (!html && /^(ssl-|quic|httpclient\.|h1-|h2-|ocsp)/.test(kw)) { html = `Ajuste global ${C(kw)}${a.length ? ' = ' + C(a.join(' ')) : ''}`; cat = kw.startsWith('ssl') ? 'tls' : 'misc'; known = true; }
+  if (!html) { html = 'Directiva que el editor no reconoce (puede ser válida en tu versión; revisa la documentación).'; known = false; }
+  return { html, cat, known };
+}
+
+function displayArgs(L) {
+  let t = L.text;
+  if (L.comment) t = t.slice(0, t.length - L.comment.length).trimEnd();
+  const k = (t.match(/^\S+/) || [''])[0];
+  let rest = t.slice(k.length).trim();
+  if (L.kw === 'stats') rest = rest.replace(/^(auth\s+[^:\s]+:)\S+/, '$1••••••');
+  if (L.kw === 'user') rest = rest.replace(/((?:insecure-)?password\s+)\S+/, '$1••••••');
+  return rest;
+}
+
+/* ---------- Lint ---------- */
+const BUILTIN_ACL = new Set(['TRUE', 'FALSE', 'HTTP', 'HTTP_1.0', 'HTTP_1.1', 'HTTP_2.0', 'HTTP_3.0', 'HTTP_CONTENT', 'HTTP_URL_ABS', 'HTTP_URL_SLASH', 'HTTP_URL_STAR', 'LOCALHOST', 'METH_CONNECT', 'METH_DELETE', 'METH_GET', 'METH_HEAD', 'METH_OPTIONS', 'METH_POST', 'METH_PUT', 'METH_TRACE', 'RDP_COOKIE', 'REQ_CONTENT', 'WAIT_END']);
+const dirsOf = s => s.lines.filter(l => l.kind === 'dir');
+
+function effective(doc) {
+  let defs = { mode: null, tmo: new Set(), si: -1 };
+  return doc.sections.map((s, si) => {
+    const dirs = dirsOf(s);
+    const ownMode = (dirs.filter(l => l.kw === 'mode').pop() || {}).args?.[0] || null;
+    const ownTmo = dirs.filter(l => l.kw === 'timeout').map(l => l.args[0]);
+    if (s.type === 'defaults') { defs = { mode: ownMode, tmo: new Set(ownTmo), si }; return { mode: ownMode, modeFrom: 'own', tmo: new Set(ownTmo) }; }
+    const mode = ownMode || defs.mode || 'tcp';
+    return { mode, modeFrom: ownMode ? 'own' : defs.mode ? 'defaults' : 'implicit', tmo: new Set([...defs.tmo, ...ownTmo]), defSi: defs.si };
+  });
+}
+
+function lint(doc) {
+  const issues = []; const add = (sev, line, msg, sec) => issues.push({ sev, line, msg, sec });
+  doc.pre.forEach(l => { if (l.kind === 'dir') add('error', l.line, `«${l.kw}» está fuera de cualquier sección. Toda directiva debe ir dentro de global, defaults, frontend, backend…`); });
+  const seen = new Map(); const targets = new Map(); const eff = effective(doc);
+  doc.sections.forEach((s, si) => {
+    const meta = SECTIONS[s.type];
+    if (meta.named === true && !s.name) add('error', s.line, `La sección ${s.type} necesita un nombre.`, si);
+    if (s.name) {
+      const keys = s.type === 'listen' ? ['frontend', 'backend'] : [s.type];
+      keys.forEach(k => { const key = k + ':' + s.name; if (seen.has(key)) add('error', s.line, `Ya existe otra sección ${k === s.type ? s.type : 'con capacidad de ' + k} llamada «${s.name}» (línea ${seen.get(key)}).`, si); else seen.set(key, s.line); });
+    }
+    if ((s.type === 'backend' || s.type === 'listen') && s.name) targets.set(s.name, si);
+  });
+  if (doc.sections.filter(s => s.type === 'global').length > 1) add('warn', doc.sections.filter(s => s.type === 'global')[1].line, 'Hay más de una sección global; se combinan, pero es mejor tener una sola.');
+
+  doc.sections.forEach((s, si) => {
+    const dirs = dirsOf(s); const code = SEC_CODE[s.type]; const e = eff[si];
+    dirs.forEach(l => {
+      const d = DIRS[l.kw];
+      if (d && 'GDFBL'.includes(code) && !d.s.includes(code)) add('warn', l.line, `«${l.kw}» no es válida en una sección ${s.type}.`, si);
+      if (!d && !l.indent && !/^(tune\.|ssl-|quic|httpclient|h1-|h2-|ocsp)/.test(l.kw)) add('error', l.line, `«${l.kw}» al inicio de línea no es una sección conocida. ¿Está mal escrita?`, si);
+    });
+    if (!['frontend', 'backend', 'listen'].includes(s.type)) return;
+    const isFE = s.type !== 'backend', isBE = s.type !== 'frontend', label = `${s.type} «${s.name}»`;
+    if (isFE && !dirs.some(l => l.kw === 'bind')) add('error', s.line, `${label} no tiene ninguna línea bind: no escucha en ningún puerto.`, si);
+    if (isFE && !e.tmo.has('client')) add('warn', s.line, `${label}: falta «timeout client» (ni aquí ni en defaults). Las conexiones inactivas podrían no cerrarse nunca.`, si);
+    if (isBE && !e.tmo.has('connect')) add('warn', s.line, `${label}: falta «timeout connect» (ni aquí ni en defaults).`, si);
+    if (isBE && !e.tmo.has('server')) add('warn', s.line, `${label}: falta «timeout server» (ni aquí ni en defaults).`, si);
+    const hasServers = dirs.some(l => ['server', 'server-template', 'dispatch'].includes(l.kw));
+    const selfAnswers = dirs.some(l => (l.kw === 'stats' && l.args[0] === 'enable') || l.kw === 'redirect' || (l.kw === 'http-request' && /^(return|redirect|use-service|deny)/.test(l.args[0] || '')));
+    if (s.type === 'backend' && !hasServers) add('warn', s.line, `${label} no tiene servidores: responderá 503.`, si);
+    if (s.type === 'listen' && !hasServers && !selfAnswers) add('warn', s.line, `${label} no tiene servidores ni responde por sí mismo.`, si);
+    if (s.type === 'frontend' && !dirs.some(l => l.kw === 'default_backend' || l.kw === 'use_backend') && !selfAnswers) add('warn', s.line, `${label} no envía el tráfico a ningún backend.`, si);
+    const acls = new Set(dirs.filter(l => l.kw === 'acl').map(l => l.args[0]));
+    dirs.forEach(l => {
+      let target = null;
+      if (l.kw === 'default_backend') target = l.args[0];
+      if (l.kw === 'use_backend') target = splitCond(l.args).main[0];
+      if (target && !/%\[/.test(target)) {
+        if (!targets.has(target)) add('error', l.line, `El backend «${target}» no existe.`, si);
+        else if (e.mode === 'http' && eff[targets.get(target)].mode === 'tcp') add('error', l.line, `Un ${s.type} en modo http no puede enviar tráfico al backend «${target}», que está en modo tcp.`, si);
+      }
+      if (l.kw !== 'acl') {
+        const c = splitCond(l.args).cond;
+        if (c) aclNamesIn(c.tokens).forEach(n => { if (!acls.has(n) && !BUILTIN_ACL.has(n)) add('error', l.line, `La ACL «${n}» no está definida en esta sección.`, si); });
+      }
+      if (l.kw === 'stats' && l.args[0] === 'auth' && /:(admin|password|123456|cambiame|changeme|cambiar|secret)$/i.test(l.args[1] || '')) add('info', l.line, 'La contraseña de la página de estadísticas parece de ejemplo. Cámbiala.', si);
+      if (l.kw === 'server' && l.args.includes('ssl')) { const vi = l.args.indexOf('verify'); if (vi >= 0 && l.args[vi + 1] === 'none') add('info', l.line, `El servidor «${l.args[0]}» usa TLS sin verificar el certificado.`, si); }
+      if (l.kw === 'bind' && e.mode === 'http' && l.args.includes('ssl') && !l.args.includes('alpn')) add('info', l.line, 'Este bind TLS no declara «alpn h2,http/1.1»: los clientes no podrán usar HTTP/2.', si);
+    });
+  });
+  if (doc.sections.length && !doc.sections.some(s => s.type === 'global')) add('info', 1, 'No hay sección global (es opcional, pero suele usarse para logs, usuario y límites).');
+  const rank = { error: 0, warn: 1, info: 2 };
+  issues.sort((x, y) => x.line - y.line || rank[x.sev] - rank[y.sev]);
+  return issues;
+}
+
+/* ---------- Topología (para el mapa) ---------- */
+function topology(doc) {
+  const entries = [], backends = [], edges = [], missing = new Map();
+  const byName = new Map();
+  doc.sections.forEach((s, si) => { if ((s.type === 'backend' || s.type === 'listen') && s.name) byName.set(s.name, si); });
+  doc.sections.forEach((s, si) => {
+    const dirs = dirsOf(s);
+    const servers = dirs.filter(l => l.kw === 'server' || l.kw === 'server-template').map(l => l.kw === 'server'
+      ? { name: l.args[0], addr: l.args[1] || '', backup: l.args.includes('backup'), check: l.args.includes('check'), disabled: l.args.includes('disabled') }
+      : { name: `${l.args[0]}×${l.args[1]}`, addr: l.args[2] || '', template: true, check: l.args.includes('check') });
+    if (s.type === 'frontend' || s.type === 'listen') {
+      entries.push({ si, type: s.type, name: s.name, binds: dirs.filter(l => l.kw === 'bind').map(l => ({ a: l.args[0], tls: l.args.includes('ssl') })), servers: s.type === 'listen' ? servers : [] });
+      dirs.forEach(l => {
+        let target = null, cond = null, def = false;
+        if (l.kw === 'default_backend') { target = l.args[0]; def = true; }
+        if (l.kw === 'use_backend') { const sc = splitCond(l.args); target = sc.main[0]; cond = sc.cond; }
+        if (!target) return;
+        let to;
+        if (byName.has(target)) to = 's' + byName.get(target);
+        else { to = 'm-' + target; missing.set(target, to); }
+        edges.push({ from: 's' + si, to, def, cond: cond ? (cond.neg ? 'salvo ' : '') + cond.tokens.join(' ') : '' });
+      });
+    }
+    if (s.type === 'backend') {
+      const bal = (dirs.filter(l => l.kw === 'balance').pop() || {}).args?.[0] || 'roundrobin';
+      backends.push({ si, name: s.name, balance: bal, servers });
+    }
+  });
+  return { entries, backends, edges, missing: [...missing.entries()].map(([name, id]) => ({ name, id })) };
+}
+
+/* ---------- Diff de líneas ---------- */
+function diffLines(a, b) {
+  const A = a.split('\n'), Bv = b.split('\n'); let s = 0;
+  while (s < A.length && s < Bv.length && A[s] === Bv[s]) s++;
+  let ea = A.length, eb = Bv.length;
+  while (ea > s && eb > s && A[ea - 1] === Bv[eb - 1]) { ea--; eb--; }
+  const a2 = A.slice(s, ea), b2 = Bv.slice(s, eb), n = a2.length, m = b2.length, ops = [];
+  for (let i = 0; i < s; i++) ops.push({ t: '=', v: A[i] });
+  if (n * m > 4e6) { a2.forEach(v => ops.push({ t: '-', v })); b2.forEach(v => ops.push({ t: '+', v })); }
+  else {
+    const W = m + 1, dp = new Uint32Array((n + 1) * W);
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) dp[i * W + j] = a2[i] === b2[j] ? dp[(i + 1) * W + j + 1] + 1 : Math.max(dp[(i + 1) * W + j], dp[i * W + j + 1]);
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (a2[i] === b2[j]) { ops.push({ t: '=', v: a2[i] }); i++; j++; }
+      else if (dp[(i + 1) * W + j] >= dp[i * W + j + 1]) { ops.push({ t: '-', v: a2[i] }); i++; }
+      else { ops.push({ t: '+', v: b2[j] }); j++; }
+    }
+    while (i < n) ops.push({ t: '-', v: a2[i++] });
+    while (j < m) ops.push({ t: '+', v: b2[j++] });
+  }
+  for (let i = ea; i < A.length; i++) ops.push({ t: '=', v: A[i] });
+  return ops;
+}
+const normCfg = t => String(t ?? '').replace(/\r\n?/g, '\n').replace(/[ \t]+$/gm, '').replace(/\n*$/, '\n');
+
+if (typeof module !== 'undefined' && module.exports) module.exports = { parse, serialize, lint, describe, topology, diffLines, aclPhrase, condHtml, splitCond, displayArgs, ensureSeparation, effective, normCfg, rebuildHeader };
+
+</script>
+<script>
+/* ===================== HAProxy Studio — interfaz ===================== */
+const DEFAULT_CONFIG = `# Configuración de ejemplo de HAProxy Studio
+# Edítala en modo código o visual, o pídele cambios al asistente.
+
+global
+    log /dev/log local0
+    log /dev/log local1 notice
+    chroot /var/lib/haproxy
+    stats socket /run/haproxy/admin.sock mode 660 level admin
+    stats timeout 30s
+    user haproxy
+    group haproxy
+    daemon
+    maxconn 4096
+    ssl-default-bind-options ssl-min-ver TLSv1.2 no-tls-tickets
+
+defaults
+    log global
+    mode http
+    option httplog
+    option dontlognull
+    option forwardfor
+    timeout connect 5s
+    timeout client 30s
+    timeout server 30s
+    timeout http-request 10s
+    retries 3
+
+frontend http_in
+    bind *:80
+    http-request redirect scheme https code 301
+
+frontend https_in
+    bind *:443 ssl crt /etc/haproxy/certs/sitio.pem alpn h2,http/1.1
+    http-request set-header X-Forwarded-Proto https
+    acl is_api path_beg /api
+    acl is_static path_end .css .js .png .jpg .svg
+    use_backend api_servers if is_api
+    use_backend static_servers if is_static
+    default_backend web_servers
+
+backend web_servers
+    balance roundrobin
+    option httpchk GET /health
+    http-check expect status 200
+    cookie SERVERID insert indirect nocache
+    server web1 10.0.0.11:8080 check cookie web1
+    server web2 10.0.0.12:8080 check cookie web2
+
+backend api_servers
+    balance leastconn
+    server api1 10.0.0.21:9000 check inter 2s fall 3 rise 2
+    server api2 10.0.0.22:9000 check inter 2s fall 3 rise 2
+    server api3 10.0.0.23:9000 check backup
+
+backend static_servers
+    server cdn1 10.0.0.31:80 check
+
+listen stats
+    bind *:8404
+    stats enable
+    stats uri /stats
+    stats refresh 10s
+    stats auth admin:cambiame
+`;
+
+const SUGGEST = {
+  global: ['log /dev/log local0', 'maxconn 4096', 'user haproxy', 'group haproxy', 'daemon', 'chroot /var/lib/haproxy', 'stats socket /run/haproxy/admin.sock mode 660 level admin expose-fd listeners', 'stats timeout 30s', 'nbthread 4', 'master-worker', 'ssl-default-bind-options ssl-min-ver TLSv1.2 no-tls-tickets', 'ssl-default-bind-ciphersuites TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384:TLS_CHACHA20_POLY1305_SHA256', 'tune.ssl.default-dh-param 2048', 'hard-stop-after 30s', 'pidfile /run/haproxy.pid'],
+  defaults: ['mode http', 'mode tcp', 'log global', 'option httplog', 'option tcplog', 'option dontlognull', 'option forwardfor', 'option http-server-close', 'option redispatch', 'retries 3', 'timeout connect 5s', 'timeout client 30s', 'timeout server 30s', 'timeout http-request 10s', 'timeout http-keep-alive 2s', 'timeout queue 30s', 'timeout tunnel 1h', 'maxconn 3000', 'errorfile 503 /etc/haproxy/errors/503.http'],
+  frontend: ['bind *:80', 'bind *:443 ssl crt /etc/haproxy/certs/sitio.pem alpn h2,http/1.1', 'mode http', 'default_backend web_servers', 'acl is_api path_beg /api', 'acl is_admin src 10.0.0.0/8', 'use_backend api_servers if is_api', 'http-request redirect scheme https code 301 unless { ssl_fc }', 'http-request set-header X-Forwarded-Proto https', 'http-request deny if { src -f /etc/haproxy/blocklist.lst }', 'stick-table type ip size 100k expire 30s store http_req_rate(10s)', 'http-request track-sc0 src', 'http-request deny deny_status 429 if { sc_http_req_rate(0) gt 20 }', 'option forwardfor', 'maxconn 2000', 'compression algo gzip', 'compression type text/html text/css application/javascript application/json', 'capture request header Host len 64', 'timeout client 30s'],
+  backend: ['balance roundrobin', 'balance leastconn', 'balance source', 'server srv1 10.0.0.10:8080 check', 'server srv2 10.0.0.11:8080 check backup', 'default-server inter 3s fall 3 rise 2', 'option httpchk GET /health', 'http-check expect status 200', 'cookie SERVERID insert indirect nocache', 'http-request set-header X-Real-IP %[src]', 'http-reuse safe', 'retries 3', 'option redispatch', 'timeout server 30s', 'timeout connect 5s', 'hash-type consistent', 'server-template web 1-5 web.service.local:8080 check resolvers dns init-addr none'],
+  resolvers: ['nameserver dns1 1.1.1.1:53', 'nameserver dns2 8.8.8.8:53', 'parse-resolv-conf', 'resolve_retries 3', 'timeout resolve 1s', 'timeout retry 1s', 'hold valid 10s', 'accepted_payload_size 8192'],
+  userlist: ['user admin password $5$...', 'user admin insecure-password CAMBIAR', 'group admins users admin'],
+  peers: ['peer haproxy1 10.0.0.1:10000', 'peer haproxy2 10.0.0.2:10000'],
+  cache: ['total-max-size 64', 'max-object-size 1048576', 'max-age 60', 'process-vary on'],
+  mailers: ['mailer smtp1 10.0.0.25:25', 'timeout mail 20s'],
+};
+SUGGEST.listen = [...SUGGEST.frontend.slice(0, 4), ...SUGGEST.backend.slice(0, 6), 'stats enable', 'stats uri /stats', 'stats refresh 10s', 'stats auth admin:CAMBIAR', 'mode tcp'];
+const PLACEHOLDER = { global: 'maxconn 4096', defaults: 'timeout connect 5s', frontend: 'bind *:443 ssl crt …', backend: 'server web3 10.0.0.13:8080 check', listen: 'bind *:3306', resolvers: 'nameserver dns1 1.1.1.1:53', userlist: 'user admin password …', cache: 'max-age 60', peers: 'peer haproxy2 10.0.0.2:10000', mailers: 'mailer smtp1 10.0.0.25:25' };
+
+const SYSTEM_PROMPT = `Eres el asistente de HAProxy Studio, experto en HAProxy (2.8 LTS, 3.0 LTS y posteriores), especializado en escribir, revisar y explicar configuraciones haproxy.cfg.
+
+En cada mensaje recibes la configuración ACTIVA del usuario dentro de <config_actual> y los problemas que detectó el editor dentro de <problemas_detectados>. Esa configuración es tu memoria y la fuente de verdad, aunque el historial diga otra cosa: el usuario puede haberla editado a mano entre mensajes.
+
+Cómo responder:
+- Siempre en español, breve y directo.
+- Si el usuario pide crear o cambiar algo: primero una lista corta de los cambios y por qué; después la configuración COMPLETA resultante en un único bloque \`\`\`haproxy. Conserva todo lo que no haga falta tocar (comentarios, orden, nombres, indentación de 4 espacios). Nunca propongas fragmentos sueltos como cambio: el editor reemplaza la configuración entera con tu bloque, tras mostrar un diff al usuario.
+- Si solo pregunta o pide una explicación, no incluyas la configuración completa; puedes citar líneas sueltas en bloques \`\`\`text.
+- Usa solo directivas y sintaxis válidas de HAProxy, cada una en su sección correcta (bind en frontend/listen, server en backend/listen, etc.). Toda ACL usada en una condición debe estar definida en la misma sección.
+- Si faltan datos (IPs, puertos, dominios, rutas de certificados), usa valores de ejemplo evidentes (10.0.0.10, /etc/haproxy/certs/sitio.pem…) y dilo.
+- Señala riesgos de seguridad o rendimiento que veas (contraseñas de ejemplo, TLS sin verificar, timeouts ausentes, estadísticas expuestas).
+- Puedes añadir comentarios breves (# …) en las líneas nuevas que lo merezcan.
+- Si propones cambios, recuerda al final validar con: haproxy -c -f /etc/haproxy/haproxy.cfg`;
+
+const KEY = 'haproxy-studio.v1';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+
+/* ---------- Estado + persistencia ---------- */
+function loadStore() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch { return null; } }
+const saved = loadStore() || {};
+const S = {
+  config: typeof saved.config === 'string' ? saved.config : DEFAULT_CONFIG,
+  chat: Array.isArray(saved.chat) ? saved.chat.filter(m => !m.pending) : [],
+  versions: Array.isArray(saved.versions) ? saved.versions : [],
+  settings: Object.assign({ provider: 'auto', apiKey: '', model: 'claude-sonnet-5-5' }, saved.settings || {}),
+  ui: Object.assign({ mode: 'visual', tab: 'visual', chatOpen: true, collapsed: {}, mapOpen: true }, saved.ui || {}),
+};
+let DOC = parse(S.config), ISSUES = lint(DOC);
+let saveTimer = null, storageWarned = false;
+function persist() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try { localStorage.setItem(KEY, JSON.stringify(S)); }
+    catch { if (!storageWarned) { storageWarned = true; toast('No se pudo guardar la sesión en este navegador (almacenamiento lleno o bloqueado).'); } }
+  }, 250);
+}
+
+const undoStack = [], redoStack = []; let lastPush = 0;
+function setConfig(text, { source = 'code', record = true, coalesce = false } = {}) {
+  if (text === S.config) return;
+  if (record) {
+    const now = Date.now();
+    if (!(coalesce && now - lastPush < 1200 && undoStack.length)) { undoStack.push(S.config); if (undoStack.length > 200) undoStack.shift(); }
+    lastPush = now; redoStack.length = 0;
+  }
+  S.config = text; DOC = parse(text); ISSUES = lint(DOC); persist();
+  if (source !== 'code') Editor.setValue(text); else Editor.render();
+  visualDirty = true; if (isVisible('visual')) renderVisual();
+  renderProblems(); updateUndo(); scheduleChatRefresh();
+}
+function undo() { if (!undoStack.length) return; redoStack.push(S.config); const t = undoStack.pop(); setConfig(t, { source: 'undo', record: false }); }
+function redo() { if (!redoStack.length) return; undoStack.push(S.config); const t = redoStack.pop(); setConfig(t, { source: 'undo', record: false }); }
+function updateUndo() { $('#btnUndo').disabled = !undoStack.length; $('#btnRedo').disabled = !redoStack.length; }
+function mutate(fn) { const d = parse(S.config); if (fn(d) === false) return; ensureSeparation(d); setConfig(serialize(d), { source: 'visual' }); }
+function saveVersion(label, config = S.config) {
+  if (S.versions[0] && S.versions[0].config === config) return;
+  S.versions.unshift({ ts: Date.now(), label, config }); S.versions = S.versions.slice(0, 40); persist();
+}
+
+/* ---------- UI genérica ---------- */
+function toast(msg, action) {
+  const el = document.createElement('div'); el.className = 'toast';
+  el.innerHTML = `<span>${esc(msg)}</span>` + (action ? `<button class="link">${esc(action.label)}</button>` : '');
+  if (action) el.querySelector('button').onclick = () => { action.fn(); el.remove(); };
+  $('#toastRoot').appendChild(el); setTimeout(() => el.classList.add('out'), 4200); setTimeout(() => el.remove(), 4600);
+}
+function modal(title, body, buttons = [], { wide = false } = {}) {
+  const root = $('#modalRoot'); const wrap = document.createElement('div'); wrap.className = 'modal-bg';
+  wrap.innerHTML = `<div class="modal ${wide ? 'wide' : ''}" role="dialog" aria-label="${esc(title)}"><header><h3>${esc(title)}</h3><button class="icon x" aria-label="Cerrar">✕</button></header><div class="modal-b"></div><footer></footer></div>`;
+  const b = wrap.querySelector('.modal-b'); if (typeof body === 'string') b.innerHTML = body; else b.appendChild(body);
+  const close = () => { wrap.remove(); document.removeEventListener('keydown', onKey); };
+  const onKey = e => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+  wrap.querySelector('.x').onclick = close; wrap.addEventListener('mousedown', e => { if (e.target === wrap) close(); });
+  const f = wrap.querySelector('footer');
+  buttons.forEach(bt => { const el = document.createElement('button'); el.className = 'btn ' + (bt.cls || ''); el.textContent = bt.label; el.onclick = async () => { const r = await bt.fn?.(wrap); if (r !== false) close(); }; f.appendChild(el); });
+  if (!buttons.length) f.remove();
+  root.appendChild(wrap); setTimeout(() => wrap.querySelector('input,textarea,select')?.focus(), 30);
+  return { el: wrap, close };
+}
+const confirmBox = (msg, ok = 'Confirmar', danger = false) => new Promise(res => {
+  let done = false;
+  const m = modal('Confirmar', `<p>${esc(msg)}</p>`, [{ label: 'Cancelar', fn: () => { done = true; res(false); } }, { label: ok, cls: danger ? 'danger' : 'primary', fn: () => { done = true; res(true); } }]);
+  new MutationObserver((_, o) => { if (!document.body.contains(m.el)) { o.disconnect(); if (!done) res(false); } }).observe($('#modalRoot'), { childList: true });
+});
+const promptBox = (title, label, value = '') => new Promise(res => {
+  let done = false;
+  const body = document.createElement('div'); body.innerHTML = `<label class="fld"><span>${esc(label)}</span><input type="text" value="${esc(value)}" spellcheck="false" autocapitalize="off"></label>`;
+  const inp = body.querySelector('input');
+  const m = modal(title, body, [{ label: 'Cancelar', fn: () => { done = true; res(null); } }, { label: 'Aceptar', cls: 'primary', fn: () => { done = true; res(inp.value.trim()); } }]);
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') { done = true; res(inp.value.trim()); m.close(); } });
+  new MutationObserver((_, o) => { if (!document.body.contains(m.el)) { o.disconnect(); if (!done) res(null); } }).observe($('#modalRoot'), { childList: true });
+});
+async function copyText(t) { try { await navigator.clipboard.writeText(t); toast('Copiado al portapapeles'); } catch { toast('No se pudo copiar automáticamente; selecciona el texto y cópialo.'); } }
+
+/* ---------- Resaltado ---------- */
+const SUBKW = new Set(['timeout', 'option', 'no', 'stats', 'http-request', 'http-response', 'http-after-response', 'tcp-request', 'tcp-response', 'http-check', 'tcp-check', 'balance', 'mode', 'compression', 'capture', 'stick', 'hash-type', 'http-reuse']);
+function tokClass(v) {
+  if (v === 'if' || v === 'unless') return 't-cond';
+  if (/^(!?\{|\}|!|\|\||or)$/.test(v)) return 't-op';
+  if (/^["']/.test(v)) return 't-str';
+  if (/%\[/.test(v)) return 't-var';
+  if (/^-[a-zA-Z]/.test(v)) return 't-flag';
+  if (/^\d+(\.\d+)?(us|ms|s|m|h|d|k|K|M|g|G)?$/.test(v)) return 't-num';
+  if (/^(\[[0-9a-f:]*\]|[\w.\-*]*):\d+(-\d+)?$/i.test(v) || /^\d{1,3}(\.\d{1,3}){3}(\/\d+)?$/.test(v) || /^:::\d+$/.test(v)) return 't-addr';
+  if (/^(\/|unix@|ipv[46]@)/.test(v)) return 't-path';
+  return 't-arg';
+}
+function hlLine(raw) {
+  const m = /^(\s*)(.*)$/.exec(raw); const ind = m[1], body = m[2];
+  if (!body) return esc(raw);
+  if (body[0] === '#') return esc(ind) + `<span class="t-cm">${esc(body)}</span>`;
+  const segs = []; let i = 0;
+  while (i < body.length) {
+    const ch = body[i];
+    if (ch === ' ' || ch === '\t') { let j = i; while (j < body.length && (body[j] === ' ' || body[j] === '\t')) j++; segs.push({ ws: 1, v: body.slice(i, j) }); i = j; continue; }
+    if (ch === '#') { segs.push({ cm: 1, v: body.slice(i) }); break; }
+    let j = i, q = null;
+    while (j < body.length) { const c = body[j]; if (q) { if (c === '\\') { j += 2; continue; } if (c === q) q = null; j++; continue; } if (c === '"' || c === "'") { q = c; j++; continue; } if (c === '\\') { j += 2; continue; } if (c === ' ' || c === '\t') break; j++; }
+    segs.push({ v: body.slice(i, j) }); i = j;
+  }
+  const first = segs.find(s => !s.ws && !s.cm); const kw = first ? first.v.toLowerCase() : '';
+  const isSec = SECTIONS[kw] && (!ind || PROXY_SECS.has(kw));
+  let out = esc(ind), idx = 0;
+  for (const s of segs) {
+    if (s.ws) { out += s.v; continue; }
+    if (s.cm) { out += `<span class="t-cm">${esc(s.v)}</span>`; continue; }
+    let cls;
+    if (idx === 0) cls = isSec ? 't-sec' : 't-kw';
+    else if (idx === 1 && isSec) cls = 't-name';
+    else if (idx === 1 && SUBKW.has(kw)) cls = 't-kw2';
+    else cls = tokClass(s.v);
+    out += `<span class="${cls}"${idx === 0 && isSec ? ` style="--c:${SECTIONS[kw].color}"` : ''}>${esc(s.v)}</span>`; idx++;
+  }
+  return out;
+}
+
+/* ---------- Información de línea ---------- */
+function lineInfo(n) {
+  let sec = null;
+  for (const s of DOC.sections) { if (s.line <= n) sec = s; else break; }
+  if (sec && sec.line === n) return { sec, header: true };
+  const pool = sec ? sec.lines : DOC.pre;
+  return { sec, L: pool.find(l => l.line === n) };
+}
+const rankSev = { error: 3, warn: 2, info: 1 };
+const worstSev = list => list.reduce((w, i) => rankSev[i.sev] > rankSev[w] ? i.sev : w, 'info');
+const SEV_LABEL = { error: 'Error', warn: 'Aviso', info: 'Sugerencia' };
+
+/* ---------- Editor de código ---------- */
+const LH = 20;
+const Editor = (() => {
+  const ta = $('#codeTa'), pre = $('#codeHl code'), preEl = $('#codeHl'), gut = $('#gutterInner'), status = $('#codeStatus');
+  ta.value = S.config;
+  function render() {
+    const lines = ta.value.split('\n');
+    pre.innerHTML = lines.map(hlLine).join('\n') + '\n ';
+    const byLine = {}; ISSUES.forEach(i => (byLine[i.line] = byLine[i.line] || []).push(i));
+    let g = '';
+    for (let i = 1; i <= lines.length; i++) {
+      const iss = byLine[i];
+      g += iss ? `<div class="ln m-${worstSev(iss)}" title="${esc(iss.map(x => x.msg).join('\n'))}">${i}</div>` : `<div class="ln">${i}</div>`;
+    }
+    gut.innerHTML = g; sync(); updateStatus();
+  }
+  function sync() { preEl.scrollTop = ta.scrollTop; preEl.scrollLeft = ta.scrollLeft; gut.style.transform = `translateY(${-ta.scrollTop}px)`; }
+  function insertText(s) {
+    ta.focus();
+    if (!document.execCommand || !document.execCommand('insertText', false, s)) { ta.setRangeText(s, ta.selectionStart, ta.selectionEnd, 'end'); ta.dispatchEvent(new Event('input')); }
+  }
+  ta.addEventListener('input', () => setConfig(ta.value, { source: 'code', coalesce: true }));
+  ta.addEventListener('scroll', sync);
+  ta.addEventListener('keydown', e => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const v = ta.value, s = ta.selectionStart, en = ta.selectionEnd;
+      if (s === en && !e.shiftKey) { insertText('    '); return; }
+      const ls = v.lastIndexOf('\n', s - 1) + 1; const block = v.slice(ls, en);
+      const nb = e.shiftKey ? block.replace(/^( {1,4}|\t)/gm, '') : block.replace(/^/gm, '    ');
+      ta.setSelectionRange(ls, en); insertText(nb); ta.setSelectionRange(ls, ls + nb.length);
+    } else if (e.key === 'Enter' && !e.isComposing) {
+      const v = ta.value, s = ta.selectionStart; const ls = v.lastIndexOf('\n', s - 1) + 1; const line = v.slice(ls, s);
+      let ind = (line.match(/^[ \t]*/) || [''])[0];
+      const L = parseLine(line, 0); if (L.kind === 'section') ind = '    ';
+      e.preventDefault(); insertText('\n' + ind);
+    }
+  });
+  const updateStatusSoon = () => requestAnimationFrame(updateStatus);
+  ['keyup', 'click', 'focus'].forEach(ev => ta.addEventListener(ev, updateStatusSoon));
+  document.addEventListener('selectionchange', () => { if (document.activeElement === ta) updateStatusSoon(); });
+  function curLine() { return ta.value.slice(0, ta.selectionStart).split('\n').length; }
+  function updateStatus() {
+    const n = curLine(); const info = lineInfo(n); let h = `<span class="st-ln">L${n}</span>`;
+    if (info.sec) h += `<span class="badge sm" style="--c:${SECTIONS[info.sec.type].color}">${esc(info.sec.type)}${info.sec.name ? ' ' + esc(info.sec.name) : ''}</span>`;
+    if (info.header) h += `<span class="st-x"><b>${esc(SECTIONS[info.sec.type].title)}.</b> ${esc(SECTIONS[info.sec.type].desc)}</span>`;
+    else if (info.L && info.L.kind === 'dir') { const d = describe(info.L, info.sec?.type); h += `<code class="kw">${esc(info.L.kw)}</code><span class="st-x">${d.html}</span>`; }
+    else if (info.L && info.L.kind === 'comment') h += '<span class="st-x muted">Comentario</span>';
+    else h += '<span class="st-x muted">Sitúa el cursor sobre una línea para ver qué hace.</span>';
+    const iss = ISSUES.filter(i => i.line === n);
+    if (iss.length) h += iss.map(i => `<span class="st-iss sev-${i.sev}">${SEV_LABEL[i.sev]}: ${esc(i.msg)}</span>`).join('');
+    status.innerHTML = h;
+  }
+  function setValue(t) { if (ta.value !== t) ta.value = t; render(); }
+  function gotoLine(n) {
+    const lines = ta.value.split('\n'); let pos = 0;
+    for (let i = 0; i < n - 1 && i < lines.length; i++) pos += lines[i].length + 1;
+    ta.focus(); ta.setSelectionRange(pos, pos + (lines[n - 1] || '').length);
+    ta.scrollTop = Math.max(0, (n - 6) * LH); sync(); updateStatus();
+  }
+  return { render, setValue, gotoLine };
+})();
+
+/* ---------- Vista visual ---------- */
+let visualDirty = true, editing = null;
+const secKey = s => s.type + ':' + (s.name || '');
+const issueHtml = i => `<div class="iss sev-${i.sev}"><span>${SEV_LABEL[i.sev]}</span> ${esc(i.msg)}</div>`;
+
+function renderVisual() {
+  const root = $('#visualView'); const y = root.scrollTop; const eff = effective(DOC);
+  let h = `<div class="v-toolbar"><span class="muted">Añadir sección</span>${['frontend', 'backend', 'listen', 'defaults', 'global', 'resolvers', 'userlist', 'cache', 'peers'].map(t => `<button class="chip" data-add-sec="${t}" style="--c:${SECTIONS[t].color}">+ ${t}</button>`).join('')}</div>`;
+  h += `<details class="map" id="mapDetails" ${S.ui.mapOpen ? 'open' : ''}><summary><span>Mapa del tráfico</span><span class="muted sm">cómo fluye una petición: entrada → backend → servidor</span></summary><div class="map-scroll">${renderMap()}</div></details>`;
+  const preNon = DOC.pre.filter(l => l.kind !== 'blank');
+  if (preNon.length) h += `<div class="pre-notes">${preNon.map(l => l.kind === 'comment' ? `<div class="cmt">${esc(l.text)}</div>` : `<div class="iss sev-error"><span>Error</span> <code>${esc(l.text)}</code> está fuera de cualquier sección</div>`).join('')}</div>`;
+  DOC.sections.forEach((s, si) => { h += renderSection(s, si, eff[si]); });
+  if (!DOC.sections.length) h += `<div class="empty"><p>La configuración está vacía.</p><p class="muted">Añade una sección arriba, pega una configuración en «Importar» o pídesela al asistente.</p></div>`;
+  root.innerHTML = h; root.scrollTop = y; visualDirty = false;
+  const ed = root.querySelector('form.dir.editing input'); if (ed) { ed.focus(); ed.setSelectionRange(ed.value.length, ed.value.length); }
+  requestAnimationFrame(drawMapEdges);
+}
+
+function renderSection(s, si, e) {
+  const meta = SECTIONS[s.type]; const col = !!S.ui.collapsed[secKey(s)];
+  const items = s.lines.map((l, li) => ({ l, li })).filter(x => x.l.kind !== 'blank');
+  const nd = items.filter(x => x.l.kind === 'dir').length;
+  const headIss = ISSUES.filter(i => i.line === s.line);
+  let chips = '';
+  if (['frontend', 'backend', 'listen'].includes(s.type) && e) {
+    chips += `<span class="pill">modo ${esc(e.mode)}${e.modeFrom === 'defaults' ? ' · heredado' : e.modeFrom === 'implicit' ? ' · implícito' : ''}</span>`;
+    const inh = ['connect', 'client', 'server'].filter(k => e.tmo.has(k)); if (inh.length) chips += `<span class="pill">timeouts: ${inh.join(', ')}</span>`;
+  }
+  return `<article class="sec ${col ? 'collapsed' : ''} ${headIss.some(i => i.sev === 'error') ? 'has-error' : ''}" style="--c:${meta.color}" id="sec-${si}" data-si="${si}" data-line="${s.line}">
+    <header class="sec-h">
+      <button class="icon tog" data-act="toggle" aria-label="Plegar o desplegar">▾</button>
+      <span class="badge">${esc(s.type)}</span>
+      ${meta.named ? `<button class="sec-name" data-act="rename" title="Renombrar">${s.name ? esc(s.name) : '<i>sin nombre</i>'}</button>` : ''}
+      <span class="sec-title">${esc(meta.title)}</span>
+      <span class="sec-count" title="Directivas">${nd}</span>
+      <span class="sec-act">
+        <button class="icon" data-act="ask" title="Preguntar al asistente por esta sección">✦</button>
+        <button class="icon" data-act="sec-up" title="Subir sección">↑</button>
+        <button class="icon" data-act="sec-down" title="Bajar sección">↓</button>
+        <button class="icon danger" data-act="sec-del" title="Eliminar sección">✕</button>
+      </span>
+    </header>
+    <div class="sec-b">
+      <p class="sec-desc">${esc(meta.desc)}${s.comment ? ` <span class="t-cm">${esc(s.comment)}</span>` : ''}</p>
+      ${chips ? `<div class="pills">${chips}</div>` : ''}
+      ${headIss.map(issueHtml).join('')}
+      <div class="dirs">${items.map(x => renderLine(s, si, x.l, x.li)).join('') || '<div class="muted sm pad">Sin directivas todavía.</div>'}</div>
+      <form class="add-dir" data-si="${si}"><input list="dl-${esc(s.type)}" placeholder="Añadir directiva… p. ej. ${esc(PLACEHOLDER[s.type] || '')}" spellcheck="false" autocapitalize="off" autocomplete="off"><button class="btn sm">Añadir</button></form>
+    </div>
+  </article>`;
+}
+
+function renderLine(s, si, l, li) {
+  const isEd = editing && editing.si === si && editing.li === li;
+  if (isEd) return `<form class="dir editing" data-si="${si}" data-li="${li}"><input value="${esc(l.text)}" spellcheck="false" autocapitalize="off" autocomplete="off"><div class="ed-act"><button class="btn sm primary">Guardar</button><button type="button" class="btn sm" data-act="cancel">Cancelar</button></div><div class="muted sm">Enter guarda · Esc cancela · deja vacío para borrar</div></form>`;
+  if (l.kind === 'comment') return `<div class="cmt row" data-si="${si}" data-li="${li}" data-line="${l.line}"><span class="cmt-t" data-act="edit">${esc(l.text)}</span><span class="dir-act"><button class="icon" data-act="del" title="Eliminar">✕</button></span></div>`;
+  const d = describe(l, s.type); const iss = ISSUES.filter(i => i.line === l.line);
+  return `<div class="dir row ${iss.length ? 'sev-' + worstSev(iss) : ''} ${d.known ? '' : 'unknown'}" data-si="${si}" data-li="${li}" data-line="${l.line}">
+    <div class="dir-main" data-act="edit" title="Toca para editar">
+      <div class="dir-code"><span class="cat cat-${d.cat}">${CATS[d.cat] || 'Otros'}</span><code class="kw">${esc(l.kw)}</code> <code class="args">${esc(displayArgs(l))}</code></div>
+      <div class="dir-exp">${d.html}</div>
+      ${l.comment ? `<div class="dir-cmt">${esc(l.comment)}</div>` : ''}
+      ${iss.map(issueHtml).join('')}
+    </div>
+    <div class="dir-act"><button class="icon" data-act="up" title="Subir">↑</button><button class="icon" data-act="down" title="Bajar">↓</button><button class="icon danger" data-act="del" title="Eliminar">✕</button></div>
+  </div>`;
+}
+
+function renderMap() {
+  const T = topology(DOC);
+  if (!T.entries.length && !T.backends.length) return '<p class="muted pad">Añade un frontend y un backend para ver el flujo del tráfico.</p>';
+  const incoming = {}; T.edges.forEach(e => (incoming[e.to] = incoming[e.to] || []).push(e));
+  const bindShort = b => esc(b.a) + (b.tls ? ' <span title="TLS">🔒</span>' : '');
+  const srvNode = (owner, v, i) => `<div class="node srv ${v.backup ? 'backup' : ''} ${v.disabled ? 'disabled' : ''}" data-node="v${owner}-${i}" data-goto="${owner}"><div class="node-t">${esc(v.name)}${v.check ? ' <span class="dot ok" title="health check"></span>' : ''}</div><div class="node-s">${esc(v.addr)}${v.backup ? ' · respaldo' : ''}${v.disabled ? ' · deshabilitado' : ''}</div></div>`;
+  const col1 = T.entries.map(f => `<div class="node fe" data-node="s${f.si}" data-goto="${f.si}" style="--c:${SECTIONS[f.type].color}"><div class="node-t"><span class="mini">${f.type === 'listen' ? 'listen' : 'frontend'}</span> ${esc(f.name)}</div><div class="node-s">${f.binds.length ? f.binds.map(bindShort).join(', ') : '<span class="warn">sin bind</span>'}</div></div>`).join('') || '<p class="muted sm">—</p>';
+  const col2 = T.backends.map(b => { const inc = incoming['s' + b.si] || []; const conds = inc.map(e => e.def ? '<span class="def">por defecto</span>' : `<span class="cnd">si ${esc(e.cond)}</span>`).join(''); return `<div class="node be" data-node="s${b.si}" data-goto="${b.si}"><div class="node-t">${esc(b.name)}</div><div class="node-s">${esc(b.balance)}</div>${conds ? `<div class="node-c">${conds}</div>` : ''}${!inc.length ? '<div class="node-c"><span class="muted">sin tráfico entrante</span></div>' : ''}</div>`; }).join('')
+    + T.missing.map(m => `<div class="node missing" data-node="${esc(m.id)}"><div class="node-t">${esc(m.name)}</div><div class="node-s">⚠ no existe</div></div>`).join('') || '<p class="muted sm">—</p>';
+  const groups = [...T.backends.map(b => ({ owner: b.si, servers: b.servers })), ...T.entries.filter(f => f.type === 'listen').map(f => ({ owner: f.si, servers: f.servers }))];
+  const col3 = groups.map(g => g.servers.map((v, i) => srvNode(g.owner, v, i)).join('')).join('') || '<p class="muted sm">—</p>';
+  return `<div class="map-grid" id="mapGrid"><svg class="map-svg" id="mapSvg" aria-hidden="true"></svg>
+    <div class="map-col"><h4>Entradas</h4>${col1}</div><div class="map-col"><h4>Backends</h4>${col2}</div><div class="map-col"><h4>Servidores</h4>${col3}</div></div>
+    <div class="legend"><span><i class="lg solid"></i>backend por defecto</span><span><i class="lg dash"></i>regla condicional</span><span><i class="lg srvl"></i>servidor</span><span><span class="dot ok"></span> con health check</span></div>`;
+}
+function drawMapEdges() {
+  const grid = $('#mapGrid'), svg = $('#mapSvg'); if (!grid || !svg || !grid.offsetParent) return;
+  const T = topology(DOC), gr = grid.getBoundingClientRect();
+  svg.setAttribute('width', grid.scrollWidth); svg.setAttribute('height', grid.scrollHeight);
+  const pt = (id, side) => { const el = grid.querySelector(`[data-node="${CSS.escape(id)}"]`); if (!el) return null; const r = el.getBoundingClientRect(); return { x: (side === 'r' ? r.right : r.left) - gr.left, y: r.top + r.height / 2 - gr.top }; };
+  const path = (a, b, cls, title) => { if (!a || !b) return ''; const dx = Math.max(24, (b.x - a.x) / 2); return `<path class="${cls}" d="M${a.x},${a.y} C${a.x + dx},${a.y} ${b.x - dx},${b.y} ${b.x},${b.y}">${title ? `<title>${esc(title)}</title>` : ''}</path>`; };
+  let p = '';
+  T.edges.forEach(e => { p += path(pt(e.from, 'r'), pt(e.to, 'l'), e.to.startsWith('m-') ? 'e-missing' : e.def ? 'e-def' : 'e-cond', e.def ? 'por defecto' : 'si ' + e.cond); });
+  T.backends.forEach(b => b.servers.forEach((v, i) => { p += path(pt('s' + b.si, 'r'), pt(`v${b.si}-${i}`, 'l'), 'e-srv' + (v.backup ? ' backup' : '')); }));
+  T.entries.filter(f => f.type === 'listen').forEach(f => f.servers.forEach((v, i) => { p += path(pt('s' + f.si, 'r'), pt(`v${f.si}-${i}`, 'l'), 'e-srv'); }));
+  svg.innerHTML = p;
+}
+
+function nextName(base) { const names = new Set(DOC.sections.map(s => s.name)); if (!names.has(base)) return base; let i = 2; while (names.has(`${base}_${i}`)) i++; return `${base}_${i}`; }
+const TEMPLATES = {
+  global: () => `global\n    log /dev/log local0\n    maxconn 4096\n    user haproxy\n    group haproxy\n    daemon`,
+  defaults: () => `defaults\n    mode http\n    log global\n    option httplog\n    timeout connect 5s\n    timeout client 30s\n    timeout server 30s`,
+  frontend: n => { const be = DOC.sections.find(s => s.type === 'backend'); return `frontend ${n}\n    bind *:8080\n    mode http` + (be ? `\n    default_backend ${be.name}` : ''); },
+  backend: n => `backend ${n}\n    balance roundrobin\n    server srv1 127.0.0.1:8080 check`,
+  listen: n => `listen ${n}\n    bind *:8404\n    mode http\n    stats enable\n    stats uri /stats\n    stats refresh 10s`,
+  resolvers: n => `resolvers ${n}\n    nameserver dns1 1.1.1.1:53\n    resolve_retries 3\n    timeout resolve 1s\n    hold valid 10s`,
+  userlist: n => `userlist ${n}\n    user admin insecure-password CAMBIAR`,
+  cache: n => `cache ${n}\n    total-max-size 64\n    max-age 60`,
+  peers: n => `peers ${n}\n    peer haproxy1 127.0.0.1:10000`,
+};
+async function addSection(type) {
+  if (type === 'global' && DOC.sections.some(s => s.type === 'global')) { toast('Ya hay una sección global.'); document.getElementById('sec-' + DOC.sections.findIndex(s => s.type === 'global'))?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  let name = '';
+  if (SECTIONS[type].named === true) {
+    const def = nextName({ frontend: 'nuevo_frontend', backend: 'nuevo_backend', listen: 'nuevo_listen', resolvers: 'dns', userlist: 'usuarios', cache: 'cache', peers: 'cluster' }[type] || type);
+    name = await promptBox(`Nueva sección ${type}`, 'Nombre (sin espacios)', def); if (!name) return; name = name.replace(/\s+/g, '_');
+  }
+  const sec = parse(TEMPLATES[type](name)).sections[0];
+  let at;
+  mutate(d => {
+    if (type === 'global') at = 0;
+    else if (type === 'defaults') { const g = d.sections.findIndex(s => s.type === 'global'); at = g + 1; }
+    else at = d.sections.length;
+    d.sections.splice(at, 0, sec);
+  });
+  setTimeout(() => document.getElementById('sec-' + at)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+}
+
+$('#visualView').addEventListener('click', async e => {
+  const addSec = e.target.closest('[data-add-sec]'); if (addSec) return addSection(addSec.dataset.addSec);
+  const go = e.target.closest('[data-goto]'); if (go && !e.target.closest('[data-act]')) { const el = document.getElementById('sec-' + go.dataset.goto); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }); el?.classList.add('flash'); setTimeout(() => el?.classList.remove('flash'), 1200); return; }
+  const btn = e.target.closest('[data-act]'); if (!btn) return;
+  const act = btn.dataset.act; const secEl = btn.closest('.sec'); const si = secEl ? +secEl.dataset.si : -1;
+  const row = btn.closest('[data-li]'); const li = row ? +row.dataset.li : -1;
+  const s = DOC.sections[si];
+  switch (act) {
+    case 'toggle': S.ui.collapsed[secKey(s)] = !S.ui.collapsed[secKey(s)]; persist(); secEl.classList.toggle('collapsed'); requestAnimationFrame(drawMapEdges); break;
+    case 'rename': {
+      const nn = await promptBox(`Renombrar ${s.type}`, 'Nuevo nombre', s.name); if (!nn || nn === s.name) return;
+      const newName = nn.replace(/\s+/g, '_'); let refs = 0;
+      mutate(d => {
+        rebuildHeader(d.sections[si], newName);
+        if (s.type === 'backend' || s.type === 'listen') d.sections.forEach(x => x.lines.forEach(l => {
+          if (l.kind !== 'dir') return;
+          if ((l.kw === 'default_backend' || l.kw === 'use_backend') && l.args[0] === s.name) {
+            l.text = l.text.replace(new RegExp(`^(${l.kw}\\s+)${s.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?=\\s|$)`), `$1${newName}`); refs++;
+          }
+        }));
+      });
+      if (refs) toast(`Renombrado. Referencias actualizadas: ${refs}`);
+      break;
+    }
+    case 'sec-up': case 'sec-down': {
+      const j = act === 'sec-up' ? si - 1 : si + 1; if (j < 0 || j >= DOC.sections.length) return;
+      mutate(d => { [d.sections[si], d.sections[j]] = [d.sections[j], d.sections[si]]; }); break;
+    }
+    case 'sec-del': {
+      if (!await confirmBox(`¿Eliminar la sección ${s.type}${s.name ? ' «' + s.name + '»' : ''} y sus ${s.lines.filter(l => l.kind === 'dir').length} directivas?`, 'Eliminar', true)) return;
+      mutate(d => { d.sections.splice(si, 1); }); toast('Sección eliminada', { label: 'Deshacer', fn: undo }); break;
+    }
+    case 'ask': askAssistant(`Explícame la sección ${s.type}${s.name ? ' «' + s.name + '»' : ''} y dime qué mejorarías.`); break;
+    case 'edit': editing = { si, li }; renderVisual(); break;
+    case 'cancel': editing = null; renderVisual(); break;
+    case 'del': mutate(d => { d.sections[si].lines.splice(li, 1); }); toast('Directiva eliminada', { label: 'Deshacer', fn: undo }); break;
+    case 'up': case 'down': {
+      mutate(d => {
+        const ls = d.sections[si].lines; let j = li;
+        do { j += act === 'up' ? -1 : 1; } while (j >= 0 && j < ls.length && ls[j].kind === 'blank');
+        if (j < 0 || j >= ls.length) return false;
+        [ls[li], ls[j]] = [ls[j], ls[li]];
+      }); break;
+    }
+  }
+});
+$('#visualView').addEventListener('submit', e => {
+  e.preventDefault();
+  const f = e.target; const si = +(f.dataset.si ?? f.closest('.sec')?.dataset.si);
+  const inp = f.querySelector('input'); const text = inp.value.trim();
+  if (f.classList.contains('editing')) {
+    const li = +f.dataset.li;
+    if (text) { const L = parseLine('    ' + text, 0); if (L.kind === 'section') { toast('Eso es una cabecera de sección. Usa «Añadir sección».'); return; } }
+    editing = null;
+    mutate(d => { const ls = d.sections[si].lines; if (!text) ls.splice(li, 1); else { const old = ls[li]; const L = parseLine((old.indent ?? '    ') + text, 0); ls[li] = L; } });
+    if (!visualDirty) renderVisual();
+    return;
+  }
+  if (!text) return;
+  const L = parseLine('    ' + text, 0); if (L.kind === 'section') { toast('Para crear secciones usa los botones «+ sección» de arriba.'); return; }
+  mutate(d => { const ls = d.sections[si].lines; let at = ls.length; while (at > 0 && ls[at - 1].kind === 'blank') at--; ls.splice(at, 0, L); });
+  setTimeout(() => { const inp2 = $(`#sec-${si} .add-dir input`); inp2?.focus(); }, 30);
+});
+$('#visualView').addEventListener('keydown', e => { if (e.key === 'Escape' && editing) { editing = null; renderVisual(); } });
+$('#visualView').addEventListener('toggle', e => { if (e.target.id === 'mapDetails') { S.ui.mapOpen = e.target.open; persist(); requestAnimationFrame(drawMapEdges); } }, true);
+window.addEventListener('resize', () => requestAnimationFrame(drawMapEdges));
+
+/* ---------- Problemas ---------- */
+function renderProblems() {
+  const c = { error: 0, warn: 0, info: 0 }; ISSUES.forEach(i => c[i.sev]++);
+  $('#probsBtn').innerHTML = !ISSUES.length ? '<span class="ok-t">✓ Sin problemas</span>' : ['error', 'warn', 'info'].filter(k => c[k]).map(k => `<span class="cnt sev-${k}">${c[k]} ${k === 'error' ? (c[k] > 1 ? 'errores' : 'error') : k === 'warn' ? (c[k] > 1 ? 'avisos' : 'aviso') : (c[k] > 1 ? 'sugerencias' : 'sugerencia')}</span>`).join('');
+  const p = $('#probsPanel');
+  p.innerHTML = ISSUES.length ? `<div class="probs-h"><b>Problemas detectados</b><button class="btn sm" data-fixall>Pedir al asistente que los corrija</button></div>` + ISSUES.map((i, k) => `<div class="prob sev-${i.sev}"><span class="sv">${SEV_LABEL[i.sev]}</span><span class="pl">L${i.line}</span><span class="pm">${esc(i.msg)}</span><button class="link" data-goline="${i.line}">Ir</button><button class="link" data-fix="${k}">Arreglar ✦</button></div>`).join('') : '<p class="muted pad">No se detectaron problemas. (El análisis del editor es orientativo; valida siempre con <code>haproxy -c</code>.)</p>';
+}
+$('#probsBtn').onclick = () => $('#probsPanel').classList.toggle('hidden');
+$('#probsPanel').addEventListener('click', e => {
+  const g = e.target.closest('[data-goline]'); if (g) return gotoLine(+g.dataset.goline);
+  const f = e.target.closest('[data-fix]'); if (f) { const i = ISSUES[+f.dataset.fix]; return askAssistant(`Corrige este problema (línea ${i.line}): ${i.msg}`, true); }
+  if (e.target.closest('[data-fixall]')) askAssistant('Corrige los problemas detectados en mi configuración.', true);
+});
+function gotoLine(n) {
+  if (S.ui.mode === 'code') { Editor.gotoLine(n); return; }
+  if (visualDirty) renderVisual();
+  const el = $(`#visualView [data-line="${n}"]`);
+  if (el) { const sec = el.closest('.sec'); if (sec?.classList.contains('collapsed')) sec.classList.remove('collapsed'); el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 1400); }
+  else { setMode('code'); setTimeout(() => Editor.gotoLine(n), 30); }
+}
+
+/* ---------- Layout / modos ---------- */
+const mq = matchMedia('(max-width: 899px)');
+const isMobile = () => mq.matches;
+function isVisible(which) {
+  if (which === 'chat') return isMobile() ? S.ui.tab === 'chat' : S.ui.chatOpen;
+  if (isMobile() && S.ui.tab === 'chat') return false;
+  return S.ui.mode === which;
+}
+function setMode(m) { S.ui.mode = m; if (isMobile()) S.ui.tab = m; persist(); applyLayout(); }
+function applyLayout() {
+  const app = $('#app'), mob = isMobile();
+  app.classList.toggle('mobile', mob);
+  app.classList.toggle('chat-open', mob ? S.ui.tab === 'chat' : S.ui.chatOpen);
+  app.classList.toggle('main-hidden', mob && S.ui.tab === 'chat');
+  $('#codeView').hidden = S.ui.mode !== 'code'; $('#visualView').hidden = S.ui.mode !== 'visual';
+  $$('#modeSeg button').forEach(b => b.classList.toggle('on', b.dataset.mode === S.ui.mode));
+  $$('.mobile-tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === (mob ? S.ui.tab : S.ui.mode)));
+  $('#btnChatToggle').classList.toggle('on', S.ui.chatOpen);
+  if (isVisible('code')) Editor.render();
+  if (isVisible('visual')) { if (visualDirty) renderVisual(); else requestAnimationFrame(drawMapEdges); }
+  if (isVisible('chat')) { renderChat(); }
+}
+$('#modeSeg').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setMode(b.dataset.mode); });
+$$('.mobile-tabs button').forEach(b => b.onclick = () => { const t = b.dataset.tab; S.ui.tab = t; if (t !== 'chat') S.ui.mode = t; persist(); applyLayout(); });
+$('#btnChatToggle').onclick = () => { S.ui.chatOpen = !S.ui.chatOpen; persist(); applyLayout(); };
+mq.addEventListener('change', applyLayout);
+
+/* ---------- Asistente ---------- */
+let sampleFn = null, downloadsCap = null, capsReady = false, busy = false, abortCtl = null, chatTimer = null;
+const inArtifact = () => !!(window.claude && typeof window.claude.use === 'function');
+(async () => {
+  try { if (inArtifact()) { [sampleFn, downloadsCap] = await Promise.all([window.claude.use('sample').catch(() => null), window.claude.use('downloads').catch(() => null)]); } } catch { }
+  capsReady = true; updateAiStatus();
+})();
+function resolveProvider() {
+  const p = S.settings.provider;
+  if (p === 'claude') return sampleFn ? 'claude' : null;
+  if (p === 'api') return S.settings.apiKey ? 'api' : null;
+  return sampleFn ? 'claude' : S.settings.apiKey ? 'api' : null;
+}
+function updateAiStatus() {
+  const el = $('#aiStatus'); const p = resolveProvider();
+  if (!capsReady && inArtifact()) el.innerHTML = '<span class="dot wait"></span>conectando…';
+  else if (p === 'claude') el.innerHTML = '<span class="dot ok"></span>Claude';
+  else if (p === 'api') el.innerHTML = '<span class="dot ok"></span>API Anthropic';
+  else el.innerHTML = '<button class="link" data-open-settings><span class="dot off"></span>sin conexión · configurar</button>';
+}
+$('#aiStatus').addEventListener('click', e => { if (e.target.closest('[data-open-settings]')) openSettings(); });
+
+function splitMd(src) {
+  const parts = []; const re = /```([\w+-]*)[^\n]*\n([\s\S]*?)(```|$)/g; let last = 0, m, bi = 0;
+  while ((m = re.exec(src))) { parts.push({ t: 'text', v: src.slice(last, m.index) }); parts.push({ t: 'code', lang: m[1].toLowerCase(), v: m[2].replace(/\n$/, ''), closed: m[3] === '```', bi: bi++ }); last = re.lastIndex; if (last >= src.length) break; }
+  parts.push({ t: 'text', v: src.slice(last) });
+  return parts;
+}
+const isConfigBlock = p => ['haproxy', 'cfg', 'conf', 'ini', ''].includes(p.lang) && /^\s*(global|defaults|frontend|backend|listen)\b/m.test(p.v);
+function inlineMd(s) { return s.replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>').replace(/(^|[\s(])\*([^*\s][^*]*)\*(?=[\s).,;:]|$)/g, '$1<i>$2</i>').replace(/(^|\s)_([^_]+)_(?=\s|$|[.,;:])/g, '$1<i>$2</i>'); }
+function mdText(t) {
+  const lines = esc(t).split('\n'); let html = '', list = null, para = [];
+  const flush = () => { if (para.length) { html += `<p>${inlineMd(para.join(' '))}</p>`; para = []; } };
+  const closeList = () => { if (list) { html += `</${list}>`; list = null; } };
+  for (const ln of lines) {
+    let m;
+    if (!ln.trim()) { flush(); closeList(); continue; }
+    if ((m = /^(#{1,4})\s+(.*)$/.exec(ln))) { flush(); closeList(); html += `<h4>${inlineMd(m[2])}</h4>`; continue; }
+    if ((m = /^\s*[-*•]\s+(.*)$/.exec(ln))) { flush(); if (list !== 'ul') { closeList(); html += '<ul>'; list = 'ul'; } html += `<li>${inlineMd(m[1])}</li>`; continue; }
+    if ((m = /^\s*\d+[.)]\s+(.*)$/.exec(ln))) { flush(); if (list !== 'ol') { closeList(); html += '<ol>'; list = 'ol'; } html += `<li>${inlineMd(m[1])}</li>`; continue; }
+    closeList(); para.push(ln);
+  }
+  flush(); closeList(); return html;
+}
+function codeBlock(p, mi, msg) {
+  const cfg = isConfigBlock(p); const n = p.v.split('\n').length;
+  const body = p.v.split('\n').map(cfg || p.lang === 'haproxy' || p.lang === 'text' ? hlLine : esc).join('\n');
+  let actions = '';
+  if (cfg && !msg.pending && p.closed) {
+    const ops = diffLines(normCfg(S.config), normCfg(p.v)); const add = ops.filter(o => o.t === '+').length, del = ops.filter(o => o.t === '-').length;
+    const same = !add && !del;
+    actions = `<div class="cfg-prop ${same ? 'same' : ''}"><div class="cfg-prop-t">${same ? (msg.applied === p.bi ? '✓ Aplicada — es tu configuración actual' : '✓ Coincide con tu configuración actual') : `Propuesta de configuración <span class="add">+${add}</span> <span class="del">−${del}</span>`}</div>${same ? '' : `<div class="cfg-prop-b"><button class="btn sm" data-act="diff" data-i="${mi}" data-b="${p.bi}">Ver cambios</button><button class="btn sm primary" data-act="apply" data-i="${mi}" data-b="${p.bi}">Aplicar</button></div>`}</div>`;
+  }
+  const long = n > 16;
+  return `<div class="cb"><div class="cb-h"><span>${esc(p.lang || 'código')} · ${n} líneas</span><button class="link" data-act="copy" data-i="${mi}" data-b="${p.bi}">Copiar</button></div><pre class="cb-pre ${long ? 'long' : ''}"><code>${body}</code></pre>${long ? '<button class="link expand" data-act="expand">Mostrar todo</button>' : ''}${actions}</div>`;
+}
+function md(msg, mi) { return splitMd(msg.content || '').map(p => p.t === 'text' ? mdText(p.v) : codeBlock(p, mi, msg)).join(''); }
+function renderMsg(m, i) {
+  if (m.role === 'user') return `<div class="msg user" data-i="${i}"><div class="bubble">${esc(m.content).replace(/\n/g, '<br>')}</div></div>`;
+  return `<div class="msg ai ${m.error ? 'err' : ''} ${m.pending ? 'pending' : ''}" data-i="${i}"><div class="bubble md">${m.content ? md(m, i) : '<span class="typing"><i></i><i></i><i></i></span>'}</div></div>`;
+}
+const STARTERS = ['Añade un backend con 3 servidores web en 10.0.1.10-12:8080 con health check en /health', 'Limita a 20 peticiones por segundo por IP en https_in', 'Revisa mi configuración y dime qué mejorarías', 'Explícame qué hace mi configuración actual', 'Activa compresión gzip y HTTP/2'];
+function renderChat() {
+  const log = $('#chatLog');
+  if (!S.chat.length) {
+    log.innerHTML = `<div class="chat-empty"><div class="spark">✦</div><h3>Asistente de HAProxy</h3><p class="muted">Describe lo que necesitas en lenguaje natural. Conoce tu configuración activa en todo momento y te propondrá cambios que podrás revisar como diff antes de aplicarlos.</p><div class="starters">${STARTERS.map(s => `<button class="chip" data-starter="${esc(s)}">${esc(s)}</button>`).join('')}</div></div>`;
+  } else log.innerHTML = S.chat.map(renderMsg).join('');
+  log.scrollTop = log.scrollHeight;
+}
+function updateMsg(i) {
+  const el = $(`#chatLog .msg[data-i="${i}"]`); if (!el) return renderChat();
+  const log = $('#chatLog'); const atBottom = log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+  el.outerHTML = renderMsg(S.chat[i], i); if (atBottom) log.scrollTop = log.scrollHeight;
+}
+function scheduleChatRefresh() { clearTimeout(chatTimer); chatTimer = setTimeout(() => { if (isVisible('chat') && !busy) renderChat(); }, 400); }
+function updateChatControls() { $('#chatSend').textContent = busy ? 'Detener' : 'Enviar'; $('#chatSend').classList.toggle('danger', busy); }
+
+function buildMessages(userText) {
+  const hist = S.chat.slice(0, -2).filter(m => !m.error && !m.pending && m.content).slice(-10).map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content }));
+  while (hist.length && hist[0].role !== 'user') hist.shift();
+  const merged = []; hist.forEach(m => { const last = merged[merged.length - 1]; if (last && last.role === m.role) last.content += '\n\n' + m.content; else merged.push({ ...m }); });
+  if (merged.length && merged[merged.length - 1].role === 'user') merged.pop();
+  const probs = ISSUES.length ? ISSUES.map(i => `- [${i.sev}] línea ${i.line}: ${i.msg}`).join('\n') : '(ninguno)';
+  const ctx = `<config_actual>\n${S.config}\n</config_actual>\n<problemas_detectados>\n${probs}\n</problemas_detectados>\n\nPetición del usuario:\n${userText}`;
+  return { api: [...merged, { role: 'user', content: ctx }], inline: [...merged, { role: 'user', content: `<instrucciones>\n${SYSTEM_PROMPT}\n</instrucciones>\n\n${ctx}` }] };
+}
+async function callApi(messages, onText, signal) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST', signal,
+    headers: { 'content-type': 'application/json', 'x-api-key': S.settings.apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({ model: S.settings.model || 'claude-sonnet-5-5', max_tokens: 8192, system: SYSTEM_PROMPT, messages, stream: true }),
+  });
+  if (!res.ok) { let msg = `HTTP ${res.status}`; try { const j = await res.json(); msg += ': ' + (j.error?.message || JSON.stringify(j)); } catch { } throw new Error(msg); }
+  const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = '', text = '';
+  for (; ;) {
+    const { done, value } = await reader.read(); if (done) break;
+    buf += dec.decode(value, { stream: true }); const lines = buf.split('\n'); buf = lines.pop();
+    for (const ln of lines) {
+      if (!ln.startsWith('data:')) continue;
+      try { const ev = JSON.parse(ln.slice(5)); if (ev.type === 'content_block_delta' && ev.delta?.text) { text += ev.delta.text; onText(text); } if (ev.type === 'error') throw new Error(ev.error?.message || 'error'); } catch (e) { if (e.message && !/JSON/.test(e.message)) throw e; }
+    }
+  }
+  return text;
+}
+async function send(text) {
+  text = (text || '').trim(); if (!text || busy) return;
+  const provider = resolveProvider();
+  S.chat.push({ role: 'user', content: text, ts: Date.now() });
+  const m = { role: 'assistant', content: '', pending: true, ts: Date.now() }; S.chat.push(m); const mi = S.chat.length - 1;
+  renderChat(); persist();
+  if (!provider) {
+    m.pending = false; m.error = true;
+    m.content = inArtifact() && !capsReady ? 'Todavía me estoy conectando. Prueba de nuevo en unos segundos.' : inArtifact() ? 'No tengo acceso a Claude en esta vista. Puedes configurar una clave de la API de Anthropic en ⚙ Ajustes (solo funciona si alojas la página tú mismo).' : 'Para usar el asistente fuera de claude.ai, añade tu clave de la API de Anthropic en ⚙ Ajustes. Se guarda solo en el localStorage de este navegador.';
+    persist(); updateMsg(mi); return;
+  }
+  busy = true; abortCtl = new AbortController(); updateChatControls();
+  const msgs = buildMessages(text);
+  try {
+    if (provider === 'claude') {
+      const r = await sampleFn(msgs.inline, { onText: ({ text: t }) => { m.content = t; updateMsg(mi); }, signal: abortCtl.signal, cache: false });
+      m.content = r.text || m.content; if (r.truncated) m.content += '\n\n_(respuesta truncada)_';
+    } else {
+      m.content = await callApi(msgs.api, t => { m.content = t; updateMsg(mi); }, abortCtl.signal);
+    }
+  } catch (e) {
+    if (abortCtl.signal.aborted || e?.name === 'AbortError') m.content = (m.content && m.content !== 'Thinking...' ? m.content + '\n\n' : '') + '_(detenido)_';
+    else {
+      m.error = true;
+      const code = e?.code; let msg = e?.message || String(e);
+      if (code === 'not_granted') msg = 'No se concedió permiso para usar Claude desde esta página.';
+      else if (code === 'rate_limited') msg = 'Demasiadas peticiones seguidas. Espera un momento y vuelve a intentarlo.';
+      else if (/Failed to fetch|NetworkError|Load failed/i.test(msg)) msg = 'No se pudo conectar con la API de Anthropic. Dentro de claude.ai las peticiones externas están bloqueadas; fuera, revisa tu clave y conexión.';
+      m.content = (m.content && m.content !== 'Thinking...' ? m.content + '\n\n' : '') + '**Error:** ' + msg;
+    }
+  } finally { m.pending = false; busy = false; abortCtl = null; persist(); updateMsg(mi); updateChatControls(); }
+}
+function askAssistant(text, sendNow = false) {
+  if (isMobile()) S.ui.tab = 'chat'; else S.ui.chatOpen = true; persist(); applyLayout();
+  if (sendNow) send(text); else { const ta = $('#chatText'); ta.value = text; ta.focus(); autosize(); }
+}
+function blockOf(mi, bi) { return splitMd(S.chat[mi]?.content || '').filter(p => p.t === 'code')[bi]; }
+function applyProposal(mi, bi) {
+  const p = blockOf(mi, bi); if (!p) return;
+  const req = [...S.chat.slice(0, mi)].reverse().find(m => m.role === 'user');
+  saveVersion('Antes del asistente: ' + (req ? req.content.slice(0, 60) : 'cambios'), S.config);
+  setConfig(normCfg(p.v), { source: 'assistant' });
+  S.chat[mi].applied = bi; persist(); renderChat();
+  toast('Cambios aplicados', isMobile() ? { label: 'Ver', fn: () => { S.ui.tab = S.ui.mode; applyLayout(); } } : { label: 'Deshacer', fn: undo });
+}
+function diffHtml(ops) {
+  let h = '', oldN = 0, newN = 0; const ctx = 3; const out = [];
+  ops.forEach((o, k) => { if (o.t !== '+') oldN++; if (o.t !== '-') newN++; out.push({ ...o, on: o.t !== '+' ? oldN : '', nn: o.t !== '-' ? newN : '', k }); });
+  const changed = out.map(o => o.t !== '=');
+  const near = k => { for (let d = -ctx; d <= ctx; d++) if (changed[k + d]) return true; return false; };
+  let skipping = 0;
+  out.forEach((o, k) => {
+    if (o.t === '=' && !near(k)) { skipping++; return; }
+    if (skipping) { h += `<div class="dl skip">⋯ ${skipping} líneas sin cambios</div>`; skipping = 0; }
+    h += `<div class="dl d${o.t === '+' ? 'a' : o.t === '-' ? 'd' : 'e'}"><span class="n">${o.on}</span><span class="n">${o.nn}</span><span class="s">${o.t === '=' ? ' ' : o.t === '-' ? '−' : '+'}</span><span class="c">${hlLine(o.v) || ' '}</span></div>`;
+  });
+  if (skipping) h += `<div class="dl skip">⋯ ${skipping} líneas sin cambios</div>`;
+  return h;
+}
+function showDiff(oldT, newT, title, onApply, applyLabel = 'Aplicar') {
+  const ops = diffLines(normCfg(oldT), normCfg(newT)); const add = ops.filter(o => o.t === '+').length, del = ops.filter(o => o.t === '-').length;
+  const iss = lint(parse(newT)); const errs = iss.filter(i => i.sev === 'error');
+  const body = `<div class="diff-sum"><span class="add">+${add}</span> <span class="del">−${del}</span> líneas${errs.length ? ` · <span class="sev-error-t">${errs.length} error(es) detectados en la propuesta</span>` : iss.length ? ` · ${iss.length} aviso(s)` : ' · sin problemas detectados'}</div><div class="diff">${diffHtml(ops)}</div>`;
+  modal(title, body, onApply ? [{ label: 'Cancelar' }, { label: applyLabel, cls: 'primary', fn: onApply }] : [{ label: 'Cerrar' }], { wide: true });
+}
+$('#chatLog').addEventListener('click', e => {
+  const st = e.target.closest('[data-starter]'); if (st) return send(st.dataset.starter);
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const mi = +b.dataset.i, bi = +b.dataset.b;
+  if (b.dataset.act === 'copy') { const p = blockOf(mi, bi); if (p) copyText(p.v); }
+  if (b.dataset.act === 'expand') { const pre = b.previousElementSibling; pre.classList.toggle('long'); b.textContent = pre.classList.contains('long') ? 'Mostrar todo' : 'Mostrar menos'; }
+  if (b.dataset.act === 'diff') { const p = blockOf(mi, bi); if (p) showDiff(S.config, p.v, 'Cambios propuestos', () => applyProposal(mi, bi)); }
+  if (b.dataset.act === 'apply') applyProposal(mi, bi);
+});
+const chatTa = $('#chatText');
+function autosize() { chatTa.style.height = 'auto'; chatTa.style.height = Math.min(160, chatTa.scrollHeight) + 'px'; }
+chatTa.addEventListener('input', autosize);
+chatTa.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && !matchMedia('(pointer:coarse)').matches) { e.preventDefault(); $('#chatForm').requestSubmit(); } });
+$('#chatForm').addEventListener('submit', e => { e.preventDefault(); if (busy) { abortCtl?.abort(); return; } const t = chatTa.value; chatTa.value = ''; autosize(); send(t); });
+$('#btnClearChat').onclick = async () => { if (!S.chat.length || busy) return; if (await confirmBox('¿Borrar la conversación? La configuración no se toca.', 'Borrar', true)) { S.chat = []; persist(); renderChat(); } };
+
+/* ---------- Importar / Exportar / Historial / Ajustes ---------- */
+$('#btnUndo').onclick = undo; $('#btnRedo').onclick = redo;
+document.addEventListener('keydown', e => {
+  const mod = e.metaKey || e.ctrlKey; if (!mod) return;
+  const inField = /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName);
+  if (e.key.toLowerCase() === 'z' && !inField) { e.preventDefault(); e.shiftKey ? redo() : undo(); }
+  if (e.key.toLowerCase() === 'y' && !inField) { e.preventDefault(); redo(); }
+});
+$('#btnImport').onclick = () => {
+  const body = document.createElement('div');
+  body.innerHTML = `<p class="muted">Pega aquí tu <code>haproxy.cfg</code> o carga un fichero. Reemplazará la configuración actual (se guarda una versión antes).</p><textarea class="mono big" spellcheck="false" placeholder="global\n    ..."></textarea><div class="row-btns"><button class="btn sm" data-file>Cargar fichero…</button></div>`;
+  const ta = body.querySelector('textarea');
+  body.querySelector('[data-file]').onclick = () => { const fi = $('#fileInput'); fi.value = ''; fi.onchange = async () => { const f = fi.files[0]; if (f) ta.value = await f.text(); }; fi.click(); };
+  modal('Importar configuración', body, [{ label: 'Cancelar' }, { label: 'Reemplazar', cls: 'primary', fn: () => { if (!ta.value.trim()) { toast('No hay nada que importar.'); return false; } saveVersion('Antes de importar', S.config); setConfig(normCfg(ta.value), { source: 'import' }); toast('Configuración importada', { label: 'Deshacer', fn: undo }); } }], { wide: true });
+};
+$('#btnExport').onclick = () => {
+  const body = document.createElement('div');
+  const errs = ISSUES.filter(i => i.sev === 'error').length;
+  body.innerHTML = `${errs ? `<div class="iss sev-error"><span>Atención</span> Hay ${errs} error(es) detectados. Revísalos antes de desplegar.</div>` : ''}<textarea class="mono big" readonly spellcheck="false"></textarea><p class="muted sm">Valida antes de recargar: <code>haproxy -c -f /etc/haproxy/haproxy.cfg</code></p>`;
+  body.querySelector('textarea').value = S.config;
+  const btns = [{ label: 'Copiar', cls: 'primary', fn: () => { copyText(S.config); return false; } }];
+  if (downloadsCap) btns.unshift({ label: 'Descargar', fn: async () => { try { await downloadsCap.save({ filename: 'haproxy.cfg.txt', data: S.config }); } catch (e) { if (e?.code !== 'declined') toast('No se pudo descargar en esta vista.'); } return false; } });
+  else if (!inArtifact()) btns.unshift({ label: 'Descargar', fn: () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([S.config], { type: 'text/plain' })); a.download = 'haproxy.cfg'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); return false; } });
+  modal('Exportar haproxy.cfg', body, btns, { wide: true });
+};
+function openHistory() {
+  const body = document.createElement('div');
+  const draw = () => {
+    body.innerHTML = `<div class="hist-save"><input type="text" placeholder="Nombre de la versión (opcional)"><button class="btn sm primary" data-save>Guardar versión actual</button></div>` +
+      (S.versions.length ? S.versions.map((v, k) => `<div class="hist"><div><b>${esc(v.label)}</b><div class="muted sm">${new Date(v.ts).toLocaleString()} · ${v.config.split('\n').length} líneas</div></div><div class="hist-b"><button class="btn sm" data-vdiff="${k}">Comparar</button><button class="btn sm" data-vrestore="${k}">Restaurar</button><button class="icon danger" data-vdel="${k}" title="Borrar">✕</button></div></div>`).join('') : '<p class="muted">Aún no hay versiones. Se guardan automáticamente antes de aplicar cambios del asistente o importar.</p>');
+  };
+  draw();
+  body.addEventListener('click', e => {
+    const t = e.target.closest('button'); if (!t) return;
+    if (t.dataset.save !== undefined) { saveVersion(body.querySelector('input').value.trim() || 'Guardada manualmente'); draw(); toast('Versión guardada'); }
+    if (t.dataset.vdiff) { const v = S.versions[+t.dataset.vdiff]; showDiff(S.config, v.config, `Actual → «${v.label}»`, () => restore(v), 'Restaurar esta versión'); }
+    if (t.dataset.vrestore) { restore(S.versions[+t.dataset.vrestore]); m.close(); }
+    if (t.dataset.vdel) { S.versions.splice(+t.dataset.vdel, 1); persist(); draw(); }
+  });
+  const restore = v => { saveVersion('Antes de restaurar', S.config); setConfig(v.config, { source: 'restore' }); toast(`Restaurada «${v.label}»`, { label: 'Deshacer', fn: undo }); };
+  const m = modal('Historial de versiones', body, [], { wide: true });
+}
+$('#btnHistory').onclick = openHistory;
+function openSettings() {
+  const st = S.settings; const body = document.createElement('div');
+  body.innerHTML = `
+    <label class="fld"><span>Motor del asistente</span><select data-k="provider">
+      <option value="auto">Automático (Claude en claude.ai; si no, tu clave de API)</option>
+      <option value="claude">Claude integrado (solo dentro de claude.ai)</option>
+      <option value="api">API de Anthropic con tu clave</option></select></label>
+    <p class="muted sm">Estado: ${sampleFn ? '✓ Claude integrado disponible en esta vista.' : inArtifact() ? 'Claude integrado no disponible en esta vista.' : 'Fuera de claude.ai: usa tu clave de API.'}</p>
+    <label class="fld"><span>Clave de API de Anthropic</span><input type="password" data-k="apiKey" placeholder="sk-ant-…" autocomplete="off" spellcheck="false"></label>
+    <label class="fld"><span>Modelo (API)</span><select data-k="model"><option value="claude-sonnet-5-5">Claude Sonnet 5.5</option><option value="claude-opus-5-5">Claude Opus 5.5</option><option value="claude-haiku-5-5">Claude Haiku 5.5</option></select></label>
+    <p class="muted sm">La clave se guarda solo en el localStorage de este navegador y se envía únicamente a api.anthropic.com. Dentro de claude.ai las peticiones externas están bloqueadas, así que la clave solo sirve si alojas esta página tú mismo.</p>
+    <hr><div class="row-btns"><button class="btn sm" data-reset-example>Cargar configuración de ejemplo</button><button class="btn sm danger" data-wipe>Borrar toda la sesión</button></div>`;
+  body.querySelector('[data-k="provider"]').value = st.provider; body.querySelector('[data-k="apiKey"]').value = st.apiKey; body.querySelector('[data-k="model"]').value = st.model;
+  body.querySelector('[data-reset-example]').onclick = () => { saveVersion('Antes de cargar el ejemplo', S.config); setConfig(DEFAULT_CONFIG, { source: 'reset' }); m.close(); toast('Ejemplo cargado', { label: 'Deshacer', fn: undo }); };
+  body.querySelector('[data-wipe]').onclick = async () => { m.close(); if (await confirmBox('Se borrarán configuración, conversación, versiones y ajustes guardados en este navegador.', 'Borrar todo', true)) { try { localStorage.removeItem(KEY); } catch { } location.reload(); } };
+  const m = modal('Ajustes', body, [{ label: 'Cancelar' }, { label: 'Guardar', cls: 'primary', fn: () => { $$('[data-k]', body).forEach(el => { st[el.dataset.k] = el.value.trim(); }); persist(); updateAiStatus(); toast('Ajustes guardados'); } }]);
+}
+$('#btnSettings').onclick = openSettings;
+
+/* ---------- Arranque ---------- */
+(function initDatalists() {
+  $('#datalists').innerHTML = Object.entries(SUGGEST).map(([t, list]) => `<datalist id="dl-${t}">${list.map(v => { const L = parseLine('    ' + v, 0); const d = L.kind === 'dir' ? describe(L, t).html.replace(/<[^>]+>/g, '') : ''; return `<option value="${esc(v)}" label="${esc(d.slice(0, 90))}"></option>`; }).join('')}</datalist>`).join('');
+})();
+renderProblems(); updateUndo(); updateAiStatus(); updateChatControls(); applyLayout(); Editor.render();
+if (!isVisible('chat')) renderChat();
+
+</script>
+</body>
+</html>
