@@ -75,3 +75,9 @@ func AnalyzeConfig(sources []Source) Analysis { return AnalyzeConfigLang(sources
 func AnalyzeConfigLang(sources []Source, lang Lang) Analysis {
 	return analyzeDoc(NewConfig(sources).Merge(), lang)
 }
+
+// AnalyzeConfigWith es AnalyzeConfigLang con opciones del detector (idioma y
+// versión objetivo de HAProxy).
+func AnalyzeConfigWith(sources []Source, opts LintOptions) Analysis {
+	return analyzeDocWith(NewConfig(sources).Merge(), opts)
+}

@@ -24,6 +24,8 @@ type SectionInfo struct {
 	Named       string `json:"named"` // required | optional | none
 	Title       string `json:"title"`
 	Description string `json:"description"`
+	// Since: versión de HAProxy en la que apareció el tipo de sección, si se conoce.
+	Since string `json:"since,omitempty"`
 }
 
 // DirectiveInfo describe una directiva de la base de conocimiento.
@@ -31,6 +33,9 @@ type DirectiveInfo struct {
 	Sections    []string `json:"sections"`
 	Category    string   `json:"category"`
 	Description string   `json:"description,omitempty"`
+	// Since es la versión de HAProxy en la que apareció («2.4»). Vacío si no
+	// se conoce con seguridad.
+	Since string `json:"since,omitempty"`
 }
 
 // AllowedIn indica si la directiva es válida en el tipo de sección dado.
@@ -87,6 +92,8 @@ type Knowledge struct {
 	RedirectCodes  map[string]string        `json:"-"`
 	BooleanFetches []string                 `json:"booleanFetches"`
 	BuiltinACLs    []string                 `json:"builtinAcls"`
+	// OptionSince da la versión de HAProxy en la que apareció cada «option».
+	OptionSince map[string]string `json:"optionSince"`
 
 	booleanFetches map[string]bool
 	builtinACLs    map[string]bool

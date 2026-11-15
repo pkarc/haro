@@ -24,3 +24,16 @@ func TestResolveLang(t *testing.T) {
 		t.Errorf("sin entorno debe ser español, fue %q", got)
 	}
 }
+
+func TestCheckVersion(t *testing.T) {
+	for _, ok := range []string{"", "2.8", "v3.0", "2.8.3", "2.10"} {
+		if err := checkVersion(ok); err != nil {
+			t.Errorf("checkVersion(%q): %v", ok, err)
+		}
+	}
+	for _, bad := range []string{"2", "latest", "x.y"} {
+		if err := checkVersion(bad); err == nil {
+			t.Errorf("checkVersion(%q) debe fallar", bad)
+		}
+	}
+}

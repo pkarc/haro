@@ -40,6 +40,10 @@ message AnalyzeRequest {
   // Idioma de las explicaciones y de los mensajes del detector: "es" o "en".
   // Vacío = español. Cualquier otro valor es un error (INVALID_ARGUMENT).
   string lang = 3;
+  // Versión de HAProxy objetivo ("2.8", "v3.0"…). Si se indica, el detector
+  // avisa de lo que requiera una versión posterior (regla newer-than-target).
+  // Vacío = sin versión objetivo. Un valor no válido es INVALID_ARGUMENT.
+  string haproxy_version = 4;
 }
 
 message SourceFile {
@@ -211,12 +215,14 @@ message SectionInfo {
   string named = 2; // required | optional | none
   string title = 3;
   string description = 4;
+  string since = 5; // versión de HAProxy en que apareció ("2.3"); vacío si no se sabe
 }
 
 message DirectiveInfo {
   repeated string sections = 1;
   string category = 2;
   string description = 3;
+  string since = 4; // versión de HAProxy en que apareció ("2.4"); vacío si no se sabe
 }
 
 message SectionTemplate {

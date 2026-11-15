@@ -28,6 +28,8 @@ type Options struct {
 	Editor string
 	// Lang es el idioma de las explicaciones y mensajes del detector (vacío = español).
 	Lang core.Lang
+	// HAProxyVersion es la versión de HAProxy objetivo (vacío = ninguna).
+	HAProxyVersion string
 	// NoColor desactiva los colores.
 	NoColor bool
 	// NoWatch desactiva la recarga automática.
@@ -214,7 +216,7 @@ func (m *Model) setSources(srcs []core.Source) {
 		prevKey = s.Type + "\x00" + s.Name
 	}
 	m.srcs = srcs
-	m.analysis = core.AnalyzeConfigLang(srcs, m.opts.Lang)
+	m.analysis = core.AnalyzeConfigWith(srcs, core.LintOptions{Lang: m.opts.Lang, HAProxyVersion: m.opts.HAProxyVersion})
 	m.items = buildItems(m.analysis)
 	m.cursor = 0
 	for i, it := range m.items {

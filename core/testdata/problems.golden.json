@@ -81,6 +81,14 @@
       "message": "backend «api»: falta «timeout server» (ni aquí ni en defaults)."
     },
     {
+      "rule": "no-forwardfor",
+      "file": 0,
+      "severity": "info",
+      "line": 18,
+      "section": 3,
+      "message": "backend «api» no añade X-Forwarded-For: los servidores verán la IP de HAProxy en vez de la del cliente."
+    },
+    {
       "rule": "misplaced",
       "file": 0,
       "severity": "warn",

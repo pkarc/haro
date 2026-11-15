@@ -21,7 +21,7 @@
       "line": 3,
       "keyword": "tune.bufsize",
       "args": "32768",
-      "text": "Ajuste fino interno de rendimiento (`bufsize` = `32768`)",
+      "text": "Tamaño de cada buffer de petición/respuesta (bytes): `32768`",
       "known": true
     },
     {

@@ -56,3 +56,7 @@ Sirve para comprobar que el parser no pierde nada y para ver qué directivas aú
 - Código y nombres en inglés; comentarios, mensajes y documentación en español.
 - `gofmt` y `go vet` limpios. El núcleo (`core/`) no puede depender de paquetes externos: debe compilar a WASM.
 - Un commit por cambio lógico, con mensaje en español.
+
+## Versiones de HAProxy (`since`)
+
+Una directiva puede llevar `"since": "2.4"` en `knowledge.json`: la versión de HAProxy en que apareció. Con `--haproxy-version`, el detector avisa (regla `newer-than-target`) de lo que requiera una versión posterior. Pon `since` solo si estás seguro de la versión; si dudas, déjalo vacío.

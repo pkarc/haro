@@ -99,7 +99,10 @@ func (c coreService) Analyze(_ context.Context, req *connect.Request[harov1.Anal
 	if err != nil {
 		return nil, err
 	}
-	a := core.AnalyzeConfigLang(sources(req.Msg.Text, req.Msg.Files), lang)
+	if err := checkVersion(req.Msg.HaproxyVersion); err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, err)
+	}
+	a := core.AnalyzeConfigWith(sources(req.Msg.Text, req.Msg.Files), core.LintOptions{Lang: lang, HAProxyVersion: req.Msg.HaproxyVersion})
 	out, err := toProto(a, &harov1.Analysis{})
 	if err != nil {
 		return nil, internal(err)

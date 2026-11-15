@@ -51,6 +51,15 @@ var rulesES = map[string]string{
 	"tls-no-verify":   "Servidor TLS sin verificar el certificado",
 	"tls-no-alpn":     "Bind TLS en modo http sin ALPN (sin HTTP/2)",
 	"no-global":       "No hay sección global",
+
+	"stats-exposed":          "Estadísticas en una dirección pública sin autenticación ni restricción por IP",
+	"weak-userlist-password": "Contraseña de usuario (userlist) de ejemplo o débil",
+	"no-forwardfor":          "Backend HTTP sin option forwardfor (los servidores no ven la IP del cliente)",
+	"no-https-redirect":      "Escucha en el puerto 80 y en TLS sin redirigir a HTTPS",
+	"internal-port-public":   "Puerto de un servicio interno (base de datos, caché…) abierto a todas las interfaces",
+	"tls-legacy-protocol":    "Protocolo TLS obsoleto permitido (SSLv3, TLS 1.0 o 1.1)",
+	"no-health-check":        "Backend con varios servidores y ninguno con check",
+	"newer-than-target":      "Directiva más reciente que la versión de HAProxy objetivo (--haproxy-version)",
 }
 
 var rulesEN = map[string]string{
@@ -71,6 +80,15 @@ var rulesEN = map[string]string{
 	"tls-no-verify":   "TLS server without certificate verification",
 	"tls-no-alpn":     "TLS bind in http mode without ALPN (no HTTP/2)",
 	"no-global":       "There is no global section",
+
+	"stats-exposed":          "Statistics on a public address with no authentication or IP restriction",
+	"weak-userlist-password": "Placeholder or weak userlist password",
+	"no-forwardfor":          "HTTP backend without option forwardfor (servers do not see the client IP)",
+	"no-https-redirect":      "Listens on port 80 and on TLS without redirecting to HTTPS",
+	"internal-port-public":   "Port of an internal service (database, cache…) open on all interfaces",
+	"tls-legacy-protocol":    "Obsolete TLS protocol allowed (SSLv3, TLS 1.0 or 1.1)",
+	"no-health-check":        "Backend with several servers and none with check",
+	"newer-than-target":      "Directive newer than the target HAProxy version (--haproxy-version)",
 }
 
 // RulesFor devuelve las descripciones de las reglas en el idioma pedido.
@@ -82,7 +100,7 @@ func RulesFor(lang Lang) map[string]string {
 }
 
 var reGlobalPrefix = regexp.MustCompile(`^(tune\.|ssl-|quic|httpclient|h1-|h2-|ocsp)`)
-var reWeakPass = regexp.MustCompile(`(?i):(admin|password|123456|cambiame|changeme|cambiar|secret)$`)
+var reWeakPass = regexp.MustCompile(`(?i):(admin|password|123456|cambiame|changeme|cambiar|secret|test|haproxy|root|1234|pass|qwerty|letmein)$`)
 
 // Lint analiza el documento y devuelve los problemas ordenados por línea,
 // con los mensajes en español. Es orientativo: la validación definitiva es
@@ -90,7 +108,20 @@ var reWeakPass = regexp.MustCompile(`(?i):(admin|password|123456|cambiame|change
 func Lint(doc *Doc) []Issue { return LintLang(doc, LangES) }
 
 // LintLang es Lint con los mensajes en el idioma pedido.
-func LintLang(doc *Doc, lang Lang) []Issue {
+func LintLang(doc *Doc, lang Lang) []Issue { return LintWith(doc, LintOptions{Lang: lang}) }
+
+// LintOptions son las opciones de LintWith.
+type LintOptions struct {
+	Lang Lang
+	// HAProxyVersion es la versión objetivo («2.8», «v3.0», «2.8.3»). Si no
+	// está vacía y es válida, se avisa de lo que requiera una versión
+	// posterior (regla newer-than-target).
+	HAProxyVersion string
+}
+
+// LintWith es Lint con opciones: idioma y versión objetivo de HAProxy.
+func LintWith(doc *Doc, opts LintOptions) []Issue {
+	lang := opts.Lang
 	issues := []Issue{}
 	file := 0
 	add := func(rule string, sev Severity, line, sec int, es, en string, a ...any) {
@@ -242,6 +273,7 @@ func LintLang(doc *Doc, lang Lang) []Issue {
 		file = 0
 		add("no-global", SevInfo, 1, -1, "No hay sección global (es opcional, pero suele usarse para logs, usuario y límites).", "There is no global section (it is optional, but it is usually used for logging, user and limits).")
 	}
+	issues = append(issues, lintExtra(doc, eff, lang, opts)...)
 	sort.SliceStable(issues, func(a, b int) bool {
 		if issues[a].File != issues[b].File {
 			return issues[a].File < issues[b].File

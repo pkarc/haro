@@ -1,14 +1,6 @@
 {
   "issues": [
     {
-      "rule": "misplaced",
-      "file": 0,
-      "severity": "warn",
-      "line": 19,
-      "section": 0,
-      "message": "«description» no es válida en una sección global."
-    },
-    {
       "rule": "backend-missing",
       "file": 0,
       "severity": "error",
@@ -137,14 +129,14 @@
       "line": 16,
       "keyword": "tune.ssl.cachesize",
       "args": "100000",
-      "text": "Ajuste fino interno de rendimiento (`ssl.cachesize` = `100000`)",
+      "text": "Entradas de la caché de sesiones TLS: `100000`",
       "known": true
     },
     {
       "line": 17,
       "keyword": "ssl-engine",
       "args": "rdrand",
-      "text": "Ajuste global `ssl-engine`",
+      "text": "Carga un motor criptográfico de OpenSSL (p. ej. aceleración por hardware): `rdrand`",
       "known": true
     },
     {
@@ -354,8 +346,8 @@
       "line": 57,
       "keyword": "total-max-size",
       "args": "64",
-      "text": "Directiva que haro no reconoce (puede ser válida en tu versión; revisa la documentación).",
-      "known": false
+      "text": "Tamaño total de la caché (MB): `64`",
+      "known": true
     },
     {
       "line": 58,
@@ -956,8 +948,8 @@
       "line": 145,
       "keyword": "capture",
       "args": "request header Host len 32",
-      "text": "Directiva que haro no reconoce (puede ser válida en tu versión; revisa la documentación).",
-      "known": false
+      "text": "Captura la cabecera `Host` de la petición en el log (hasta **32** caracteres)",
+      "known": true
     },
     {
       "line": 146,

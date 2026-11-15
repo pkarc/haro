@@ -41,6 +41,9 @@ type mcpTools struct {
 	lang       core.Lang // idioma por defecto de las herramientas de lectura
 }
 
+// version valida el argumento haproxyVersion de una herramienta.
+func (t *mcpTools) version(v string) error { return checkVersion(v) }
+
 // langOf resuelve el argumento lang de una herramienta (vacío = el de --lang).
 func (t *mcpTools) langOf(v string) (core.Lang, error) {
 	if v == "" {
@@ -188,6 +191,8 @@ type input struct {
 	Paths []string `json:"paths"`
 	Text  string   `json:"text"`
 	Lang  string   `json:"lang"`
+	// HAProxyVersion es la versión objetivo para la regla newer-than-target.
+	HAProxyVersion string `json:"haproxyVersion"`
 }
 
 // sources lee la configuración de los argumentos: text (un único archivo) o
@@ -220,8 +225,9 @@ func decodeArgs(raw json.RawMessage, v any) error {
 var (
 	pathsProp = map[string]any{"type": "array", "items": map[string]any{"type": "string"},
 		"description": "Archivos o directorios de configuración, en orden de carga como haproxy -f (de cada directorio, los .cfg no ocultos en orden lexicográfico). Por defecto /etc/haproxy/haproxy.cfg."}
-	textProp = map[string]any{"type": "string", "description": "Contenido de un haproxy.cfg, en lugar de paths."}
-	langProp = map[string]any{"type": "string", "enum": []string{"es", "en"}, "description": "Idioma de las explicaciones y de los mensajes del detector. Por defecto, el de --lang de haro mcp (o el del entorno)."}
+	textProp    = map[string]any{"type": "string", "description": "Contenido de un haproxy.cfg, en lugar de paths."}
+	versionProp = map[string]any{"type": "string", "description": "Versión de HAProxy objetivo (p. ej. «2.8» o «3.0»). Si se indica, el detector avisa de lo que requiera una versión posterior (regla newer-than-target)."}
+	langProp    = map[string]any{"type": "string", "enum": []string{"es", "en"}, "description": "Idioma de las explicaciones y de los mensajes del detector. Por defecto, el de --lang de haro mcp (o el del entorno)."}
 )
 
 func schema(props map[string]any, required ...string) map[string]any {
@@ -237,21 +243,21 @@ func (t *mcpTools) tools() []mcp.Tool {
 		{
 			Name: "haro_lint", Title: "Detectar problemas", ReadOnly: true,
 			Description: "Detecta problemas en una configuración de HAProxy (backends inexistentes, ACLs sin definir, timeouts que faltan, modos http/tcp incompatibles…). Devuelve cada problema con archivo, línea, gravedad y regla. Es orientativo: valida con haro_check.",
-			InputSchema: schema(map[string]any{"paths": pathsProp, "text": textProp, "lang": langProp,
+			InputSchema: schema(map[string]any{"paths": pathsProp, "text": textProp, "lang": langProp, "haproxyVersion": versionProp,
 				"disable": map[string]any{"type": "array", "items": map[string]any{"type": "string"}, "description": "Identificadores de reglas a ignorar (ver el recurso haro://rules)."}}),
 			Handler: t.lint,
 		},
 		{
 			Name: "haro_explain", Title: "Explicar la configuración", ReadOnly: true,
 			Description: "Explica en lenguaje humano cada sección y directiva (incluida la herencia de defaults), con archivo y línea. Las explicaciones usan markdown mínimo (**negrita**, `código`).",
-			InputSchema: schema(map[string]any{"paths": pathsProp, "text": textProp, "lang": langProp,
+			InputSchema: schema(map[string]any{"paths": pathsProp, "text": textProp, "lang": langProp, "haproxyVersion": versionProp,
 				"section": map[string]any{"type": "string", "description": "Solo la sección con este nombre o tipo (p. ej. «api_servers» o «frontend»)."}}),
 			Handler: t.explain,
 		},
 		{
 			Name: "haro_analyze", Title: "Análisis completo", ReadOnly: true,
 			Description: "Análisis completo en JSON: árbol de secciones y líneas, problemas, explicaciones, modo y timeouts heredados y topología (entradas → backends → servidores). Úsalo cuando necesites los datos estructurados; para leer, haro_lint y haro_explain son más compactos.",
-			InputSchema: schema(map[string]any{"paths": pathsProp, "text": textProp, "lang": langProp}),
+			InputSchema: schema(map[string]any{"paths": pathsProp, "text": textProp, "lang": langProp, "haproxyVersion": versionProp}),
 			Handler:     t.analyze,
 		},
 		{
@@ -271,7 +277,7 @@ func (t *mcpTools) tools() []mcp.Tool {
 		{
 			Name: "haro_apply", Title: "Aplicar ediciones", Destructive: true,
 			Description: "Aplica ediciones estructuradas con cambios mínimos en el texto. Sin write, solo calcula el resultado (diff y problemas resultantes) y no toca nada. Con write=true y el servidor iniciado con --allow-write, valida la configuración completa (haproxy -c o el detector) y guarda de forma atómica con copia .bak, todo o nada. Las operaciones se aplican en orden; los índices de sección son los de la vista unificada de todos los archivos (los que muestra haro_analyze) y lineIndex es la posición dentro de las líneas de la sección (incluye comentarios y blancos).",
-			InputSchema: schema(map[string]any{"paths": pathsProp, "text": textProp, "lang": langProp,
+			InputSchema: schema(map[string]any{"paths": pathsProp, "text": textProp, "lang": langProp, "haproxyVersion": versionProp,
 				"ops":   map[string]any{"type": "array", "minItems": 1, "items": opSchema()},
 				"write": map[string]any{"type": "boolean", "description": "Guardar en disco (requiere paths y --allow-write). Por defecto false: solo simula."}}, "ops"),
 			Handler: t.apply,
@@ -357,6 +363,9 @@ func (t *mcpTools) lint(_ context.Context, raw json.RawMessage) (mcp.Result, err
 	if err != nil {
 		return mcp.Result{}, err
 	}
+	if err := t.version(in.HAProxyVersion); err != nil {
+		return mcp.Result{}, err
+	}
 	srcs, err := t.sources(in.input)
 	if err != nil {
 		return mcp.Result{}, err
@@ -365,7 +374,7 @@ func (t *mcpTools) lint(_ context.Context, raw json.RawMessage) (mcp.Result, err
 	for _, r := range in.Disable {
 		off[r] = true
 	}
-	issues := issuesOut(srcs, core.LintLang(core.NewConfig(srcs).Merge(), lang), off)
+	issues := issuesOut(srcs, core.LintWith(core.NewConfig(srcs).Merge(), core.LintOptions{Lang: lang, HAProxyVersion: in.HAProxyVersion}), off)
 	counts := map[string]int{"error": 0, "warn": 0, "info": 0}
 	for _, i := range issues {
 		counts[i.Severity]++
@@ -408,11 +417,14 @@ func (t *mcpTools) explain(_ context.Context, raw json.RawMessage) (mcp.Result, 
 	if err != nil {
 		return mcp.Result{}, err
 	}
+	if err := t.version(in.HAProxyVersion); err != nil {
+		return mcp.Result{}, err
+	}
 	srcs, err := t.sources(in.input)
 	if err != nil {
 		return mcp.Result{}, err
 	}
-	a := core.AnalyzeConfigLang(srcs, lang)
+	a := core.AnalyzeConfigWith(srcs, core.LintOptions{Lang: lang, HAProxyVersion: in.HAProxyVersion})
 	text := core.KB.Text(lang)
 	all := issuesOut(srcs, a.Issues, nil)
 	type key struct {
@@ -476,11 +488,14 @@ func (t *mcpTools) analyze(_ context.Context, raw json.RawMessage) (mcp.Result, 
 	if err != nil {
 		return mcp.Result{}, err
 	}
+	if err := t.version(in.HAProxyVersion); err != nil {
+		return mcp.Result{}, err
+	}
 	srcs, err := t.sources(in)
 	if err != nil {
 		return mcp.Result{}, err
 	}
-	return mcp.Result{Structured: core.AnalyzeConfigLang(srcs, lang)}, nil
+	return mcp.Result{Structured: core.AnalyzeConfigWith(srcs, core.LintOptions{Lang: lang, HAProxyVersion: in.HAProxyVersion})}, nil
 }
 
 func (t *mcpTools) diff(_ context.Context, raw json.RawMessage) (mcp.Result, error) {
@@ -545,6 +560,9 @@ func (t *mcpTools) apply(ctx context.Context, raw json.RawMessage) (mcp.Result, 
 	if err != nil {
 		return mcp.Result{}, err
 	}
+	if err := t.version(in.HAProxyVersion); err != nil {
+		return mcp.Result{}, err
+	}
 	srcs, err := t.sources(in.input)
 	if err != nil {
 		return mcp.Result{}, err
@@ -575,7 +593,7 @@ func (t *mcpTools) apply(ctx context.Context, raw json.RawMessage) (mcp.Result, 
 	if len(changes) == 0 {
 		sb.WriteString("Las operaciones no cambian el texto.\n")
 	}
-	issues := issuesOut(newSrcs, core.LintLang(out.Merge(), lang), nil)
+	issues := issuesOut(newSrcs, core.LintWith(out.Merge(), core.LintOptions{Lang: lang, HAProxyVersion: in.HAProxyVersion}), nil)
 	structured := map[string]any{"changes": changed, "issues": issues, "written": false}
 
 	if in.Write {

@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -380,5 +381,33 @@ func TestAnalyzeLang(t *testing.T) {
 	}
 	if _, err := c.core.GetKnowledge(context.Background(), connect.NewRequest(&harov1.GetKnowledgeRequest{Lang: "xx"})); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Errorf("idioma desconocido en GetKnowledge: %v", err)
+	}
+}
+
+func TestAnalyzeHAProxyVersion(t *testing.T) {
+	c := newTestServer(t, &server{})
+	text := "global\n    thread-groups 2\n"
+	rules := func(version string) ([]string, error) {
+		res, err := c.core.Analyze(context.Background(), connect.NewRequest(&harov1.AnalyzeRequest{Text: text, HaproxyVersion: version}))
+		if err != nil {
+			return nil, err
+		}
+		var out []string
+		for _, i := range res.Msg.Issues {
+			out = append(out, i.Rule)
+		}
+		return out, nil
+	}
+	if r, err := rules("2.4"); err != nil || !slices.Contains(r, "newer-than-target") {
+		t.Errorf("2.4: %v, %v", r, err)
+	}
+	if r, err := rules("v3.0"); err != nil || slices.Contains(r, "newer-than-target") {
+		t.Errorf("v3.0: %v, %v", r, err)
+	}
+	if r, _ := rules(""); slices.Contains(r, "newer-than-target") {
+		t.Errorf("sin versión no debe avisar: %v", r)
+	}
+	if _, err := rules("zzz"); connect.CodeOf(err) != connect.CodeInvalidArgument {
+		t.Errorf("versión inválida: %v", err)
 	}
 }

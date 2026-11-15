@@ -104,6 +104,7 @@ func runLint(args []string) error {
 	noColor := fs.Bool("no-color", false, "sin colores")
 	listRules := fs.Bool("rules", false, "lista las reglas disponibles y sale")
 	langArg := langFlag(fs)
+	versionArg := versionFlag(fs)
 	fs.Usage = func() {
 		fmt.Fprintln(fs.Output(), "Uso: haro lint [opciones] [archivo|directorio|-]...")
 		fmt.Fprintln(fs.Output(), "Varios archivos o directorios se analizan juntos, en el orden de carga de haproxy -f.")
@@ -112,6 +113,9 @@ func runLint(args []string) error {
 	fs.Parse(args)
 	lang, err := resolveLang(*langArg)
 	if err != nil {
+		return err
+	}
+	if err := checkVersion(*versionArg); err != nil {
 		return err
 	}
 	st := newStyle(*noColor)
@@ -141,7 +145,7 @@ func runLint(args []string) error {
 		}
 	}
 	var issues []core.Issue
-	for _, i := range core.LintLang(core.NewConfig(srcs).Merge(), lang) {
+	for _, i := range core.LintWith(core.NewConfig(srcs).Merge(), core.LintOptions{Lang: lang, HAProxyVersion: *versionArg}) {
 		if !off[i.Rule] {
 			issues = append(issues, i)
 		}
@@ -202,6 +206,22 @@ func runLint(args []string) error {
 	return nil
 }
 
+// versionFlag registra --haproxy-version en fs.
+func versionFlag(fs *flag.FlagSet) *string {
+	return fs.String("haproxy-version", "", "versión de HAProxy objetivo (p. ej. 2.8 o 3.0): avisa de lo que requiera una versión posterior")
+}
+
+// checkVersion valida el valor de --haproxy-version (vacío = sin versión objetivo).
+func checkVersion(v string) error {
+	if v == "" {
+		return nil
+	}
+	if _, ok := core.ParseVersion(v); !ok {
+		return fmt.Errorf("versión de HAProxy desconocida %q (usa, por ejemplo, 2.8 o 3.0)", v)
+	}
+	return nil
+}
+
 // ---------- explain ----------
 
 func runExplain(args []string) error {
@@ -210,6 +230,7 @@ func runExplain(args []string) error {
 	section := fs.String("section", "", "explica solo la sección con este nombre o tipo")
 	format := fs.String("format", "text", "formato de salida: text | json")
 	langArg := langFlag(fs)
+	versionArg := versionFlag(fs)
 	fs.Usage = func() {
 		fmt.Fprintln(fs.Output(), "Uso: haro explain [opciones] [archivo|directorio|-]...")
 		fs.PrintDefaults()
@@ -219,11 +240,14 @@ func runExplain(args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := checkVersion(*versionArg); err != nil {
+		return err
+	}
 	srcs, err := readSources(fs.Args())
 	if err != nil {
 		return err
 	}
-	a := core.AnalyzeConfigLang(srcs, lang)
+	a := core.AnalyzeConfigWith(srcs, core.LintOptions{Lang: lang, HAProxyVersion: *versionArg})
 	text := core.KB.Text(lang)
 	if *format == "json" {
 		enc := json.NewEncoder(os.Stdout)

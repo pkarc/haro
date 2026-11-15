@@ -30,12 +30,15 @@ func AnalyzeLang(text string, lang Lang) Analysis {
 	return analyzeDoc(Parse(text), lang)
 }
 
-func analyzeDoc(doc *Doc, lang Lang) Analysis {
+func analyzeDoc(doc *Doc, lang Lang) Analysis { return analyzeDocWith(doc, LintOptions{Lang: lang}) }
+
+func analyzeDocWith(doc *Doc, opts LintOptions) Analysis {
+	lang := opts.Lang
 	ex := []LineExplanation{}
 	for i, s := range doc.Sections {
 		for _, l := range s.Directives() {
 			ex = append(ex, LineExplanation{File: s.File, Line: l.Line, Section: i, Keyword: l.Keyword, Args: DisplayArgs(l), Explain: DescribeLang(l, s.Type, lang)})
 		}
 	}
-	return Analysis{Doc: doc, Issues: LintLang(doc, lang), Explanations: ex, Effective: ComputeEffective(doc), Topology: BuildTopology(doc)}
+	return Analysis{Doc: doc, Issues: LintWith(doc, opts), Explanations: ex, Effective: ComputeEffective(doc), Topology: BuildTopology(doc)}
 }

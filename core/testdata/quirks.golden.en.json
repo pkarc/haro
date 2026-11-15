@@ -21,7 +21,7 @@
       "line": 3,
       "keyword": "tune.bufsize",
       "args": "32768",
-      "text": "Internal performance tuning (`bufsize` = `32768`)",
+      "text": "Size of each request/response buffer (bytes): `32768`",
       "known": true
     },
     {

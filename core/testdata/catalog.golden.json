@@ -1,0 +1,563 @@
+{
+  "issues": [],
+  "explanations": [
+    {
+      "line": 4,
+      "keyword": "maxconnrate",
+      "args": "100",
+      "text": "Máximo de conexiones nuevas por segundo en todo el proceso: `100`",
+      "known": true
+    },
+    {
+      "line": 5,
+      "keyword": "maxsessrate",
+      "args": "200",
+      "text": "Máximo de sesiones nuevas por segundo en todo el proceso: `200`",
+      "known": true
+    },
+    {
+      "line": 6,
+      "keyword": "max-spread-checks",
+      "args": "5s",
+      "text": "Tiempo máximo entre los primeros checks de servidores distintos al arrancar: `5s`",
+      "known": true
+    },
+    {
+      "line": 7,
+      "keyword": "spread-checks",
+      "args": "10",
+      "text": "Porcentaje de aleatoriedad que se añade al intervalo de los checks: `10`",
+      "known": true
+    },
+    {
+      "line": 8,
+      "keyword": "unix-bind",
+      "args": "prefix /run/haproxy mode 660",
+      "text": "Propietario y permisos por defecto de los sockets Unix: `prefix /run/haproxy mode 660`",
+      "known": true
+    },
+    {
+      "line": 9,
+      "keyword": "nbproc",
+      "args": "1",
+      "text": "Número de procesos (obsoleto: usa nbthread): `1`",
+      "known": true
+    },
+    {
+      "line": 10,
+      "keyword": "thread-groups",
+      "args": "2",
+      "text": "Número de grupos de hilos: `2`",
+      "known": true
+    },
+    {
+      "line": 11,
+      "keyword": "cpu-policy",
+      "args": "performance",
+      "text": "Política de reparto de hilos entre los CPU: `performance`",
+      "known": true
+    },
+    {
+      "line": 12,
+      "keyword": "ssl-provider",
+      "args": "legacy",
+      "text": "Carga un proveedor de OpenSSL 3: `legacy`",
+      "known": true
+    },
+    {
+      "line": 13,
+      "keyword": "ssl-default-bind-curves",
+      "args": "X25519:P-256",
+      "text": "Curvas elípticas por defecto en todos los bind con ssl: `X25519:P-256`",
+      "known": true
+    },
+    {
+      "line": 14,
+      "keyword": "tune.bufsize",
+      "args": "32768",
+      "text": "Tamaño de cada buffer de petición/respuesta (bytes): `32768`",
+      "known": true
+    },
+    {
+      "line": 15,
+      "keyword": "tune.h2.fe.max-concurrent-streams",
+      "args": "100",
+      "text": "Streams HTTP/2 simultáneos por conexión de cliente: `100`",
+      "known": true
+    },
+    {
+      "line": 16,
+      "keyword": "tune.quic.socket-owner",
+      "args": "connection",
+      "text": "Quién es dueño del socket UDP de QUIC (listener o connection): `connection`",
+      "known": true
+    },
+    {
+      "line": 17,
+      "keyword": "tune.ssl.ocsp-update.maxdelay",
+      "args": "3600",
+      "text": "Tiempo máximo entre actualizaciones OCSP: `3600`",
+      "known": true
+    },
+    {
+      "line": 18,
+      "keyword": "external-check",
+      "args": "",
+      "text": "Permite ejecutar checks externos (comandos del sistema)",
+      "known": true
+    },
+    {
+      "line": 19,
+      "keyword": "set-var",
+      "args": "proc.start int(1)",
+      "text": "Define una variable global con el valor de una expresión: `proc.start int(1)`",
+      "known": true
+    },
+    {
+      "line": 20,
+      "keyword": "description",
+      "args": "Balanceador principal",
+      "text": "Descripción: Balanceador principal",
+      "known": true
+    },
+    {
+      "line": 23,
+      "keyword": "mode",
+      "args": "http",
+      "text": "**Modo HTTP** (capa 7): HAProxy interpreta peticiones, cabeceras y rutas, y puede aplicar reglas sobre ellas.",
+      "known": true
+    },
+    {
+      "line": 24,
+      "keyword": "timeout",
+      "args": "connect 5s",
+      "text": "Tiempo máximo para establecer la conexión TCP con un servidor: **5 s**",
+      "known": true
+    },
+    {
+      "line": 25,
+      "keyword": "timeout",
+      "args": "client 30s",
+      "text": "Tiempo máximo de inactividad del cliente: **30 s**",
+      "known": true
+    },
+    {
+      "line": 26,
+      "keyword": "timeout",
+      "args": "server 30s",
+      "text": "Tiempo máximo esperando datos del servidor: **30 s**",
+      "known": true
+    },
+    {
+      "line": 27,
+      "keyword": "external-check",
+      "args": "command /usr/local/bin/check.sh",
+      "text": "Comando que se ejecuta como health check: `/usr/local/bin/check.sh`",
+      "known": true
+    },
+    {
+      "line": 28,
+      "keyword": "srvtcpka-idle",
+      "args": "30s",
+      "text": "Inactividad con el servidor antes de enviar sondas TCP keep-alive: `30s`",
+      "known": true
+    },
+    {
+      "line": 29,
+      "keyword": "dynamic-cookie-key",
+      "args": "s3cret",
+      "text": "Clave secreta para generar las cookies de persistencia dinámicas: `s3cret`",
+      "known": true
+    },
+    {
+      "line": 32,
+      "keyword": "nameserver",
+      "args": "ns1 10.0.0.2:53",
+      "text": "Servidor DNS **ns1** en `10.0.0.2:53`",
+      "known": true
+    },
+    {
+      "line": 33,
+      "keyword": "hold",
+      "args": "valid 10s",
+      "text": "Conserva las respuestas válidas durante **10 s**",
+      "known": true
+    },
+    {
+      "line": 34,
+      "keyword": "hold",
+      "args": "nx 30s",
+      "text": "Conserva las respuestas NXDOMAIN (no existe) durante **30 s**",
+      "known": true
+    },
+    {
+      "line": 35,
+      "keyword": "hold",
+      "args": "timeout 5s",
+      "text": "Conserva las consultas sin respuesta durante **5 s**",
+      "known": true
+    },
+    {
+      "line": 38,
+      "keyword": "dgram-bind",
+      "args": "0.0.0.0:514",
+      "text": "Dirección UDP en la que se reciben mensajes syslog para reenviarlos: `0.0.0.0:514`",
+      "known": true
+    },
+    {
+      "line": 39,
+      "keyword": "log",
+      "args": "127.0.0.1:5140 local0",
+      "text": "Envía logs al syslog `127.0.0.1:5140` · facility `local0`",
+      "known": true
+    },
+    {
+      "line": 40,
+      "keyword": "backlog",
+      "args": "100",
+      "text": "Cola del sistema para conexiones pendientes: `100`",
+      "known": true
+    },
+    {
+      "line": 43,
+      "keyword": "docroot",
+      "args": "/var/www",
+      "text": "Directorio raíz de los documentos en el servidor FastCGI: `/var/www`",
+      "known": true
+    },
+    {
+      "line": 44,
+      "keyword": "index",
+      "args": "index.php",
+      "text": "Fichero índice que se añade a las rutas que terminan en «/»: `index.php`",
+      "known": true
+    },
+    {
+      "line": 45,
+      "keyword": "path-info",
+      "args": "^(/.+)$",
+      "text": "Expresión regular que separa SCRIPT_NAME y PATH_INFO de la ruta: `^(/.+)$`",
+      "known": true
+    },
+    {
+      "line": 46,
+      "keyword": "set-param",
+      "args": "APP_ENV production",
+      "text": "Define un parámetro FastCGI con el valor de una expresión: `APP_ENV production`",
+      "known": true
+    },
+    {
+      "line": 49,
+      "keyword": "crt-base",
+      "args": "/etc/ssl/certs",
+      "text": "Directorio base para las rutas relativas de certificados: `/etc/ssl/certs`",
+      "known": true
+    },
+    {
+      "line": 50,
+      "keyword": "key-base",
+      "args": "/etc/ssl/private",
+      "text": "Directorio base para las rutas relativas de claves privadas: `/etc/ssl/private`",
+      "known": true
+    },
+    {
+      "line": 51,
+      "keyword": "load",
+      "args": "crt site.pem key site.key",
+      "text": "Carga un certificado en el almacén con sus ficheros asociados (clave, OCSP, emisor…): `crt site.pem key site.key`",
+      "known": true
+    },
+    {
+      "line": 54,
+      "keyword": "peer",
+      "args": "a 10.0.0.1:1024",
+      "text": "Réplica **a** en `10.0.0.1:1024`",
+      "known": true
+    },
+    {
+      "line": 55,
+      "keyword": "table",
+      "args": "sessions type ip size 100k",
+      "text": "Tabla de seguimiento compartida con las réplicas: `sessions type ip size 100k`",
+      "known": true
+    },
+    {
+      "line": 58,
+      "keyword": "mailer",
+      "args": "smtp1 10.0.0.9:25",
+      "text": "Servidor de correo **smtp1** en `10.0.0.9:25`",
+      "known": true
+    },
+    {
+      "line": 61,
+      "keyword": "total-max-size",
+      "args": "64",
+      "text": "Tamaño total de la caché (MB): `64`",
+      "known": true
+    },
+    {
+      "line": 62,
+      "keyword": "max-age",
+      "args": "300",
+      "text": "Tiempo máximo que un objeto permanece en la caché: `300`",
+      "known": true
+    },
+    {
+      "line": 63,
+      "keyword": "max-object-size",
+      "args": "1048576",
+      "text": "Tamaño máximo de un objeto cacheable (bytes): `1048576`",
+      "known": true
+    },
+    {
+      "line": 66,
+      "keyword": "bind",
+      "args": ":80",
+      "text": "Escucha en todas las interfaces, puerto `80`",
+      "known": true
+    },
+    {
+      "line": 67,
+      "keyword": "rate-limit",
+      "args": "sessions 100",
+      "text": "Limita las sesiones nuevas a **100** por segundo",
+      "known": true
+    },
+    {
+      "line": 68,
+      "keyword": "capture",
+      "args": "request header Host len 32",
+      "text": "Captura la cabecera `Host` de la petición en el log (hasta **32** caracteres)",
+      "known": true
+    },
+    {
+      "line": 69,
+      "keyword": "capture",
+      "args": "response header Server len 16",
+      "text": "Captura la cabecera `Server` de la respuesta en el log (hasta **16** caracteres)",
+      "known": true
+    },
+    {
+      "line": 70,
+      "keyword": "capture",
+      "args": "cookie SESSION len 24",
+      "text": "Captura la cookie `SESSION` en el log (hasta **24** caracteres)",
+      "known": true
+    },
+    {
+      "line": 71,
+      "keyword": "compression",
+      "args": "algo gzip",
+      "text": "Algoritmos de compresión: `gzip`",
+      "known": true
+    },
+    {
+      "line": 72,
+      "keyword": "compression",
+      "args": "type text/html text/css",
+      "text": "Comprime solo estos tipos de contenido: `text/html text/css`",
+      "known": true
+    },
+    {
+      "line": 73,
+      "keyword": "compression",
+      "args": "offload",
+      "text": "HAProxy comprime y quita la cabecera Accept-Encoding hacia el servidor",
+      "known": true
+    },
+    {
+      "line": 74,
+      "keyword": "filter",
+      "args": "compression",
+      "text": "Filtro de compresión de respuestas",
+      "known": true
+    },
+    {
+      "line": 75,
+      "keyword": "stats",
+      "args": "enable",
+      "text": "Activa la **página web de estadísticas**",
+      "known": true
+    },
+    {
+      "line": 76,
+      "keyword": "stats",
+      "args": "uri /stats",
+      "text": "Página de estadísticas en la ruta `/stats`",
+      "known": true
+    },
+    {
+      "line": 77,
+      "keyword": "stats",
+      "args": "show-legends",
+      "text": "Muestra datos extra de cada servidor (nombre, dirección…) al pasar el ratón",
+      "known": true
+    },
+    {
+      "line": 78,
+      "keyword": "stats",
+      "args": "show-node",
+      "text": "Muestra el nombre del nodo en la página",
+      "known": true
+    },
+    {
+      "line": 79,
+      "keyword": "stats",
+      "args": "show-desc",
+      "text": "Muestra la descripción del nodo en la página",
+      "known": true
+    },
+    {
+      "line": 80,
+      "keyword": "stats",
+      "args": "scope be",
+      "text": "Limita la página a la sección `be`",
+      "known": true
+    },
+    {
+      "line": 81,
+      "keyword": "stats",
+      "args": "http-request deny unless { src 10.0.0.0/8 }",
+      "text": "En la página de estadísticas: **Rechaza** la petición (403) — salvo si «la IP de origen está en `10.0.0.0/8`»",
+      "known": true
+    },
+    {
+      "line": 82,
+      "keyword": "guid",
+      "args": "fe-main",
+      "text": "Identificador único global del objeto (para referenciarlo de forma estable): `fe-main`",
+      "known": true
+    },
+    {
+      "line": 83,
+      "keyword": "default_backend",
+      "args": "be",
+      "text": "Backend por defecto: **be** — recibe todo lo que no coincide con ninguna regla `use_backend`",
+      "known": true
+    },
+    {
+      "line": 86,
+      "keyword": "balance",
+      "args": "random(2)",
+      "text": "Reparto de carga: **aleatorio** (power of two choices)",
+      "known": true
+    },
+    {
+      "line": 87,
+      "keyword": "http-reuse",
+      "args": "safe",
+      "text": "Reutilización de conexiones: reutiliza solo tras la primera petición (seguro)",
+      "known": true
+    },
+    {
+      "line": 88,
+      "keyword": "stick",
+      "args": "on src",
+      "text": "Persistencia: asocia y busca por `src`",
+      "known": true
+    },
+    {
+      "line": 89,
+      "keyword": "stick",
+      "args": "match src",
+      "text": "Persistencia: busca al servidor por `src`",
+      "known": true
+    },
+    {
+      "line": 90,
+      "keyword": "stick",
+      "args": "store-request src",
+      "text": "Persistencia: guarda en la petición `src`",
+      "known": true
+    },
+    {
+      "line": 91,
+      "keyword": "use-fcgi-app",
+      "args": "php",
+      "text": "Usa una sección fcgi-app para hablar FastCGI con los servidores: `php`",
+      "known": true
+    },
+    {
+      "line": 92,
+      "keyword": "http-error",
+      "args": "status 503 content-type text/plain string \"unavailable\"",
+      "text": "Respuesta personalizada para el estado **503**",
+      "known": true
+    },
+    {
+      "line": 93,
+      "keyword": "tcp-check",
+      "args": "connect port 6379",
+      "text": "El check abre una conexión al puerto `6379`",
+      "known": true
+    },
+    {
+      "line": 94,
+      "keyword": "tcp-check",
+      "args": "send PING\\r\\n",
+      "text": "El check envía `PINGrn`",
+      "known": true
+    },
+    {
+      "line": 95,
+      "keyword": "tcp-check",
+      "args": "expect string +PONG",
+      "text": "El check es correcto si la respuesta cumple `string +PONG`",
+      "known": true
+    },
+    {
+      "line": 96,
+      "keyword": "tcp-response",
+      "args": "inspect-delay 5s",
+      "text": "Espera hasta **5 s** para poder inspeccionar la respuesta TCP",
+      "known": true
+    },
+    {
+      "line": 97,
+      "keyword": "server",
+      "args": "s1 10.0.0.1:80 check",
+      "text": "Servidor **s1** en `10.0.0.1:80` · health checks activos",
+      "known": true
+    }
+  ],
+  "topology": {
+    "entries": [
+      {
+        "section": 9,
+        "type": "frontend",
+        "name": "fe",
+        "binds": [
+          {
+            "address": ":80",
+            "tls": false
+          }
+        ]
+      }
+    ],
+    "backends": [
+      {
+        "section": 10,
+        "name": "be",
+        "balance": "random(2)",
+        "servers": [
+          {
+            "name": "s1",
+            "address": "10.0.0.1:80",
+            "check": true
+          }
+        ]
+      }
+    ],
+    "edges": [
+      {
+        "file": 0,
+        "from": 9,
+        "to": 10,
+        "toName": "be",
+        "default": true,
+        "line": 83
+      }
+    ],
+    "missing": []
+  }
+}

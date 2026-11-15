@@ -51,6 +51,21 @@
     "program": {
       "color": "#94a3b8",
       "named": "required"
+    },
+    "log-forward": {
+      "color": "#38bdf8",
+      "named": "required",
+      "since": "2.3"
+    },
+    "fcgi-app": {
+      "color": "#fb923c",
+      "named": "required",
+      "since": "2.1"
+    },
+    "crt-store": {
+      "color": "#2dd4bf",
+      "named": "optional",
+      "since": "3.0"
     }
   },
   "directives": {
@@ -69,14 +84,16 @@
     "user": {
       "sections": [
         "global",
-        "userlist"
+        "userlist",
+        "program"
       ],
       "category": "proc"
     },
     "group": {
       "sections": [
         "global",
-        "userlist"
+        "userlist",
+        "program"
       ],
       "category": "proc"
     },
@@ -268,7 +285,8 @@
       "sections": [
         "global"
       ],
-      "category": "http"
+      "category": "http",
+      "since": "2.2"
     },
     "mode": {
       "sections": [
@@ -283,7 +301,8 @@
       "sections": [
         "frontend",
         "listen",
-        "peers"
+        "peers",
+        "log-forward"
       ],
       "category": "net"
     },
@@ -337,7 +356,8 @@
       "sections": [
         "backend",
         "listen",
-        "peers"
+        "peers",
+        "ring"
       ],
       "category": "srv"
     },
@@ -377,7 +397,8 @@
         "global",
         "defaults",
         "frontend",
-        "listen"
+        "listen",
+        "log-forward"
       ],
       "category": "perf"
     },
@@ -385,7 +406,8 @@
       "sections": [
         "defaults",
         "frontend",
-        "listen"
+        "listen",
+        "log-forward"
       ],
       "category": "perf"
     },
@@ -411,7 +433,8 @@
         "backend",
         "listen"
       ],
-      "category": "health"
+      "category": "health",
+      "since": "2.0"
     },
     "timeout": {
       "sections": [
@@ -421,7 +444,9 @@
         "listen",
         "resolvers",
         "mailers",
-        "peers"
+        "peers",
+        "log-forward",
+        "ring"
       ],
       "category": "time"
     },
@@ -430,7 +455,8 @@
         "defaults",
         "frontend",
         "backend",
-        "listen"
+        "listen",
+        "program"
       ],
       "category": "http"
     },
@@ -447,7 +473,8 @@
       "sections": [
         "frontend",
         "backend",
-        "listen"
+        "listen",
+        "defaults"
       ],
       "category": "route"
     },
@@ -476,7 +503,8 @@
         "backend",
         "listen"
       ],
-      "category": "http"
+      "category": "http",
+      "since": "2.2"
     },
     "tcp-request": {
       "sections": [
@@ -574,7 +602,8 @@
         "frontend",
         "backend",
         "listen",
-        "peers"
+        "peers",
+        "log-forward"
       ],
       "category": "log"
     },
@@ -649,7 +678,8 @@
         "backend",
         "listen"
       ],
-      "category": "http"
+      "category": "http",
+      "since": "2.0"
     },
     "errorloc": {
       "sections": [
@@ -685,7 +715,8 @@
         "backend",
         "listen"
       ],
-      "category": "http"
+      "category": "http",
+      "since": "2.2"
     },
     "compression": {
       "sections": [
@@ -731,7 +762,9 @@
       "sections": [
         "frontend",
         "backend",
-        "listen"
+        "listen",
+        "global",
+        "ring"
       ],
       "category": "misc"
     },
@@ -781,7 +814,9 @@
       "sections": [
         "frontend",
         "backend",
-        "listen"
+        "listen",
+        "defaults",
+        "peers"
       ],
       "category": "misc"
     },
@@ -789,7 +824,9 @@
       "sections": [
         "frontend",
         "backend",
-        "listen"
+        "listen",
+        "defaults",
+        "peers"
       ],
       "category": "misc"
     },
@@ -907,6 +944,1304 @@
         "program"
       ],
       "category": "proc"
+    },
+    "51degrees-cache-size": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "51degrees-data-file": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "51degrees-property-name-list": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "51degrees-property-separator": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "deviceatlas-json-file": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "deviceatlas-log-level": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "deviceatlas-properties-cookie": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "deviceatlas-separator": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "wurfl-cache-size": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "wurfl-data-file": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "wurfl-information-list": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "wurfl-information-list-separator": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "wurfl-patch-file": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "anonkey": {
+      "sections": [
+        "global"
+      ],
+      "category": "sec"
+    },
+    "busy-polling": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "close-spread-time": {
+      "sections": [
+        "global"
+      ],
+      "category": "proc"
+    },
+    "cluster-secret": {
+      "sections": [
+        "global"
+      ],
+      "category": "sec"
+    },
+    "default-path": {
+      "sections": [
+        "global"
+      ],
+      "category": "proc"
+    },
+    "h1-case-adjust-file": {
+      "sections": [
+        "global"
+      ],
+      "category": "http",
+      "since": "2.2"
+    },
+    "h2-workaround-bogus-websocket-clients": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "harden.reject-privileged-ports.quic": {
+      "sections": [
+        "global"
+      ],
+      "category": "sec"
+    },
+    "harden.reject-privileged-ports.tcp": {
+      "sections": [
+        "global"
+      ],
+      "category": "sec"
+    },
+    "http-err-codes": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "http-fail-codes": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "httpclient.resolvers.disabled": {
+      "sections": [
+        "global"
+      ],
+      "category": "net"
+    },
+    "httpclient.resolvers.id": {
+      "sections": [
+        "global"
+      ],
+      "category": "net"
+    },
+    "httpclient.resolvers.prefer": {
+      "sections": [
+        "global"
+      ],
+      "category": "net"
+    },
+    "httpclient.retries": {
+      "sections": [
+        "global"
+      ],
+      "category": "net"
+    },
+    "httpclient.ssl.ca-file": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "httpclient.ssl.verify": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "httpclient.timeout.connect": {
+      "sections": [
+        "global"
+      ],
+      "category": "time"
+    },
+    "insecure-setuid-wanted": {
+      "sections": [
+        "global"
+      ],
+      "category": "sec"
+    },
+    "issuers-chain-path": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "limited-quic": {
+      "sections": [
+        "global"
+      ],
+      "category": "net"
+    },
+    "lua-load-per-thread": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "max-spread-checks": {
+      "sections": [
+        "global"
+      ],
+      "category": "health"
+    },
+    "maxcompcpuusage": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "maxcomprate": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "maxconnrate": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "maxpipes": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "maxsessrate": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "maxsslconn": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "maxsslrate": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "maxzlibmem": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "mworker-max-reloads": {
+      "sections": [
+        "global"
+      ],
+      "category": "proc"
+    },
+    "nbproc": {
+      "sections": [
+        "global"
+      ],
+      "category": "proc"
+    },
+    "no-quic": {
+      "sections": [
+        "global"
+      ],
+      "category": "net"
+    },
+    "noepoll": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "noevports": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "nogetaddrinfo": {
+      "sections": [
+        "global"
+      ],
+      "category": "net"
+    },
+    "nokqueue": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "nopoll": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "noreuseport": {
+      "sections": [
+        "global"
+      ],
+      "category": "net"
+    },
+    "nosplice": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "numa-cpu-mapping": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "ocsp-update.disable": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "ocsp-update.httpproxy": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "ocsp-update.maxdelay": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "ocsp-update.mindelay": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "ocsp-update.mode": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "pp2-never-send-local": {
+      "sections": [
+        "global"
+      ],
+      "category": "net"
+    },
+    "prealloc-fd": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "profiling.memory": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "profiling.tasks": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "quiet": {
+      "sections": [
+        "global"
+      ],
+      "category": "proc"
+    },
+    "resetenv": {
+      "sections": [
+        "global"
+      ],
+      "category": "proc"
+    },
+    "set-dumpable": {
+      "sections": [
+        "global"
+      ],
+      "category": "proc"
+    },
+    "set-var": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "set-var-fmt": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "setcap": {
+      "sections": [
+        "global"
+      ],
+      "category": "sec"
+    },
+    "strict-limits": {
+      "sections": [
+        "global"
+      ],
+      "category": "proc"
+    },
+    "thread-group": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf",
+      "since": "2.7"
+    },
+    "thread-groups": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf",
+      "since": "2.7"
+    },
+    "thread-hard-limit": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "ulimit-n": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "unix-bind": {
+      "sections": [
+        "global"
+      ],
+      "category": "net"
+    },
+    "unsetenv": {
+      "sections": [
+        "global"
+      ],
+      "category": "proc"
+    },
+    "zero-warning": {
+      "sections": [
+        "global"
+      ],
+      "category": "proc"
+    },
+    "cpu-policy": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf",
+      "since": "3.1"
+    },
+    "cpu-set": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf",
+      "since": "3.1"
+    },
+    "ssl-default-bind-client-sigalgs": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "ssl-default-bind-curves": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "ssl-default-bind-sigalgs": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "ssl-default-server-client-sigalgs": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "ssl-default-server-curves": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "ssl-default-server-sigalgs": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "ssl-engine": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "ssl-load-extra-del-ext": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "ssl-load-extra-files": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "ssl-mode-async": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "ssl-propquery": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls",
+      "since": "3.0"
+    },
+    "ssl-provider": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls",
+      "since": "3.0"
+    },
+    "ssl-provider-path": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls",
+      "since": "3.0"
+    },
+    "ssl-security-level": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "ssl-skip-self-issued-ca": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "bind-process": {
+      "sections": [
+        "defaults",
+        "frontend",
+        "listen"
+      ],
+      "category": "proc"
+    },
+    "clitcpka-cnt": {
+      "sections": [
+        "defaults",
+        "frontend",
+        "listen"
+      ],
+      "category": "net"
+    },
+    "clitcpka-idle": {
+      "sections": [
+        "defaults",
+        "frontend",
+        "listen"
+      ],
+      "category": "net"
+    },
+    "clitcpka-intvl": {
+      "sections": [
+        "defaults",
+        "frontend",
+        "listen"
+      ],
+      "category": "net"
+    },
+    "srvtcpka-cnt": {
+      "sections": [
+        "defaults",
+        "backend",
+        "listen"
+      ],
+      "category": "net"
+    },
+    "srvtcpka-idle": {
+      "sections": [
+        "defaults",
+        "backend",
+        "listen"
+      ],
+      "category": "net"
+    },
+    "srvtcpka-intvl": {
+      "sections": [
+        "defaults",
+        "backend",
+        "listen"
+      ],
+      "category": "net"
+    },
+    "dynamic-cookie-key": {
+      "sections": [
+        "defaults",
+        "backend",
+        "listen"
+      ],
+      "category": "persist"
+    },
+    "server-state-file-name": {
+      "sections": [
+        "defaults",
+        "backend",
+        "listen"
+      ],
+      "category": "proc"
+    },
+    "guid": {
+      "sections": [
+        "frontend",
+        "backend",
+        "listen"
+      ],
+      "category": "misc",
+      "since": "3.0"
+    },
+    "use-fcgi-app": {
+      "sections": [
+        "backend",
+        "listen"
+      ],
+      "category": "http",
+      "since": "2.1"
+    },
+    "default-bind": {
+      "sections": [
+        "peers"
+      ],
+      "category": "net"
+    },
+    "table": {
+      "sections": [
+        "peers"
+      ],
+      "category": "persist"
+    },
+    "shards": {
+      "sections": [
+        "peers"
+      ],
+      "category": "net"
+    },
+    "dgram-bind": {
+      "sections": [
+        "log-forward"
+      ],
+      "category": "net",
+      "since": "2.3"
+    },
+    "maxlen": {
+      "sections": [
+        "ring"
+      ],
+      "category": "log"
+    },
+    "external-check": {
+      "sections": [
+        "global",
+        "defaults",
+        "backend",
+        "listen"
+      ],
+      "category": "sec"
+    },
+    "docroot": {
+      "sections": [
+        "fcgi-app"
+      ],
+      "category": "http",
+      "since": "2.1"
+    },
+    "index": {
+      "sections": [
+        "fcgi-app"
+      ],
+      "category": "http",
+      "since": "2.1"
+    },
+    "path-info": {
+      "sections": [
+        "fcgi-app"
+      ],
+      "category": "http",
+      "since": "2.1"
+    },
+    "pass-header": {
+      "sections": [
+        "fcgi-app"
+      ],
+      "category": "http",
+      "since": "2.1"
+    },
+    "hide-header": {
+      "sections": [
+        "fcgi-app"
+      ],
+      "category": "http",
+      "since": "2.1"
+    },
+    "set-param": {
+      "sections": [
+        "fcgi-app"
+      ],
+      "category": "http",
+      "since": "2.1"
+    },
+    "log-stderr": {
+      "sections": [
+        "fcgi-app"
+      ],
+      "category": "log",
+      "since": "2.1"
+    },
+    "load": {
+      "sections": [
+        "crt-store"
+      ],
+      "category": "tls",
+      "since": "3.0"
+    },
+    "key-base": {
+      "sections": [
+        "crt-store"
+      ],
+      "category": "tls",
+      "since": "3.0"
+    },
+    "tune.applet.zero-copy-forwarding": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "tune.buffers.limit": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.buffers.reserve": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.bufsize": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.comp.maxlevel": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.disable-zero-copy-forwarding": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.events.max-events-at-once": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.fail-alloc": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "tune.fd.edge-triggered": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.h1.zero-copy-fwd-recv": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.h1.zero-copy-fwd-send": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.h2.be.glitches-threshold": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "tune.h2.be.initial-window-size": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "tune.h2.be.max-concurrent-streams": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "tune.h2.fe.glitches-threshold": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "tune.h2.fe.initial-window-size": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "tune.h2.fe.max-concurrent-streams": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "tune.h2.fe.max-total-streams": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "tune.h2.header-table-size": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "tune.h2.initial-window-size": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "tune.h2.max-concurrent-streams": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "tune.h2.max-frame-size": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "tune.h2.zero-copy-fwd-send": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.http.cookielen": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "tune.http.logurilen": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "tune.http.maxhdr": {
+      "sections": [
+        "global"
+      ],
+      "category": "http"
+    },
+    "tune.idle-pool.shared": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.idletimer": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.listener.default-shards": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.listener.multi-queue": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.lua.burst-timeout": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "tune.lua.forced-yield": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "tune.lua.log.loggers": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "tune.lua.log.stderr": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "tune.lua.maxmem": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "tune.lua.service-timeout": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "tune.lua.session-timeout": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "tune.lua.task-timeout": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "tune.max-checks-per-thread": {
+      "sections": [
+        "global"
+      ],
+      "category": "health"
+    },
+    "tune.maxaccept": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.maxpollevents": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.maxrewrite": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.memory.hot-size": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.pattern.cache-size": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.peers.max-updates-at-once": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.pipesize": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.pool-high-fd-ratio": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.pool-low-fd-ratio": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.pt.zero-copy-forwarding": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.quic.frontend.conn-tx-buffers.limit": {
+      "sections": [
+        "global"
+      ],
+      "category": "net"
+    },
+    "tune.quic.frontend.max-idle-timeout": {
+      "sections": [
+        "global"
+      ],
+      "category": "net",
+      "since": "2.6"
+    },
+    "tune.quic.frontend.max-streams-bidi": {
+      "sections": [
+        "global"
+      ],
+      "category": "net",
+      "since": "2.6"
+    },
+    "tune.quic.max-frame-loss": {
+      "sections": [
+        "global"
+      ],
+      "category": "net"
+    },
+    "tune.quic.reorder-ratio": {
+      "sections": [
+        "global"
+      ],
+      "category": "net"
+    },
+    "tune.quic.retry-threshold": {
+      "sections": [
+        "global"
+      ],
+      "category": "net",
+      "since": "2.6"
+    },
+    "tune.quic.socket-owner": {
+      "sections": [
+        "global"
+      ],
+      "category": "net",
+      "since": "2.6"
+    },
+    "tune.quic.zero-copy-fwd-send": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.rcvbuf.backend": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.rcvbuf.client": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.rcvbuf.frontend": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.rcvbuf.server": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.recv_enough": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.ring.queues": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.runqueue-depth": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.sched.low-latency": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.sndbuf.backend": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.sndbuf.client": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.sndbuf.frontend": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.sndbuf.server": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.ssl.cachesize": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "tune.ssl.capture-buffer-size": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "tune.ssl.default-dh-param": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "tune.ssl.force-private-cache": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "tune.ssl.keylog": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "tune.ssl.lifetime": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "tune.ssl.maxrecord": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "tune.ssl.ocsp-update.maxdelay": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls",
+      "since": "2.8"
+    },
+    "tune.ssl.ocsp-update.mindelay": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls",
+      "since": "2.8"
+    },
+    "tune.ssl.ssl-ctx-cache-size": {
+      "sections": [
+        "global"
+      ],
+      "category": "tls"
+    },
+    "tune.stick-counters": {
+      "sections": [
+        "global"
+      ],
+      "category": "persist"
+    },
+    "tune.vars.global-max-size": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "tune.vars.proc-max-size": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "tune.vars.reqres-max-size": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "tune.vars.sess-max-size": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "tune.vars.txn-max-size": {
+      "sections": [
+        "global"
+      ],
+      "category": "misc"
+    },
+    "tune.zlib.memlevel": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
+    },
+    "tune.zlib.windowsize": {
+      "sections": [
+        "global"
+      ],
+      "category": "perf"
     }
   },
   "booleanFetches": [
@@ -941,5 +2276,8 @@
     "RDP_COOKIE",
     "REQ_CONTENT",
     "WAIT_END"
-  ]
+  ],
+  "optionSince": {
+    "disable-h2-upgrade": "2.4"
+  }
 }

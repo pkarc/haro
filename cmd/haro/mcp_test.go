@@ -283,3 +283,26 @@ func TestMCPLang(t *testing.T) {
 		t.Errorf("haro://rules en inglés: %s", out.String())
 	}
 }
+
+func TestMCPHAProxyVersion(t *testing.T) {
+	cfg := "global\n    thread-groups 2\n"
+	text, _, isErr := mcpCall(t, &mcpTools{}, "haro_lint", map[string]any{"text": cfg, "haproxyVersion": "2.4", "lang": "en"})
+	if isErr || !strings.Contains(text, "newer-than-target") || !strings.Contains(text, "thread-groups") {
+		t.Errorf("con versión 2.4 debe avisar: %s", text)
+	}
+	text, _, _ = mcpCall(t, &mcpTools{}, "haro_lint", map[string]any{"text": cfg, "haproxyVersion": "3.0"})
+	if strings.Contains(text, "newer-than-target") {
+		t.Errorf("con 3.0 no debe avisar: %s", text)
+	}
+	if _, _, isErr := mcpCall(t, &mcpTools{}, "haro_lint", map[string]any{"text": cfg, "haproxyVersion": "nope"}); !isErr {
+		t.Error("una versión no válida debe ser error")
+	}
+	for _, tool := range (&mcpTools{}).tools() {
+		switch tool.Name {
+		case "haro_lint", "haro_explain", "haro_analyze", "haro_apply":
+			if _, ok := tool.InputSchema["properties"].(map[string]any)["haproxyVersion"]; !ok {
+				t.Errorf("%s: falta haproxyVersion en el esquema", tool.Name)
+			}
+		}
+	}
+}

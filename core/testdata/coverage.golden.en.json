@@ -1,14 +1,6 @@
 {
   "issues": [
     {
-      "rule": "misplaced",
-      "file": 0,
-      "severity": "warn",
-      "line": 19,
-      "section": 0,
-      "message": "“description” is not valid in a global section."
-    },
-    {
       "rule": "backend-missing",
       "file": 0,
       "severity": "error",
@@ -137,14 +129,14 @@
       "line": 16,
       "keyword": "tune.ssl.cachesize",
       "args": "100000",
-      "text": "Internal performance tuning (`ssl.cachesize` = `100000`)",
+      "text": "Entries of the TLS session cache: `100000`",
       "known": true
     },
     {
       "line": 17,
       "keyword": "ssl-engine",
       "args": "rdrand",
-      "text": "Global setting `ssl-engine`",
+      "text": "Loads an OpenSSL crypto engine (e.g. hardware acceleration): `rdrand`",
       "known": true
     },
     {
@@ -354,8 +346,8 @@
       "line": 57,
       "keyword": "total-max-size",
       "args": "64",
-      "text": "Directive that haro does not recognize (it may be valid in your version; check the documentation).",
-      "known": false
+      "text": "Total cache size (MB): `64`",
+      "known": true
     },
     {
       "line": 58,
@@ -956,8 +948,8 @@
       "line": 145,
       "keyword": "capture",
       "args": "request header Host len 32",
-      "text": "Directive that haro does not recognize (it may be valid in your version; check the documentation).",
-      "known": false
+      "text": "Captures the request header `Host` in the log (up to **32** characters)",
+      "known": true
     },
     {
       "line": 146,

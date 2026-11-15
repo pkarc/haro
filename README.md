@@ -41,6 +41,7 @@ haro lint                               # /etc/haproxy/haproxy.cfg por defecto
 haro lint haproxy.cfg conf.d/           # varios archivos, como haproxy -f
 haro lint --format json mi.cfg          # salida para CI (también sarif y markdown)
 haro lint --disable no-global,tls-no-alpn mi.cfg
+haro lint --haproxy-version 2.8 mi.cfg   # avisa de directivas que requieren una versión posterior (newer-than-target)
 haro lint --rules                       # lista de reglas
 haro explain mi.cfg
 haro explain --lang en mi.cfg           # explicaciones en inglés (también en lint, tui y mcp)
@@ -190,3 +191,7 @@ El plan detallado está en [`docs/PLAN.md`](docs/PLAN.md).
 - [x] Servidor MCP (`haro mcp`)
 - [ ] Asistente: construcción de contexto en el núcleo, llamada a la API en cada cliente
 - [ ] Módulo WASM y web pública
+
+## Licencia y créditos
+
+MIT (ver [`LICENSE`](LICENSE)). El catálogo de nombres de directivas se derivó de `haproxytech/config-parser` (Apache-2.0) y el corpus opcional de pruebas es `HariSekhon/HAProxy-configs` (MIT); detalles en [`NOTICE`](NOTICE).

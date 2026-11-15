@@ -746,7 +746,11 @@ func init() {
 			if k == "url_param" {
 				return x.t("Reparto: hash del parámetro de URL ", "Balancing: hash of the URL parameter ") + c(arg(a, 1)), true
 			}
-			if d, ok := x.kb().Balance[k]; ok {
+			base := k
+			if i := strings.Index(base, "("); i > 0 {
+				base = base[:i]
+			}
+			if d, ok := x.kb().Balance[base]; ok {
 				return x.t("Reparto de carga: ", "Load balancing: ") + d, true
 			}
 			return x.t("Reparto de carga: ", "Load balancing: ") + c(strings.Join(a, " ")), false
@@ -924,6 +928,22 @@ func init() {
 				return x.t("Permite acciones de administración desde la web", "Allows admin actions from the web page") + x.condSuffix(cd), true
 			case "hide-version":
 				return x.t("Oculta la versión de HAProxy en la página", "Hides the HAProxy version on the page"), true
+			case "show-node":
+				return x.t("Muestra el nombre del nodo en la página", "Shows the node name on the page"), true
+			case "show-desc":
+				return x.t("Muestra la descripción del nodo en la página", "Shows the node description on the page"), true
+			case "show-legends":
+				return x.t("Muestra datos extra de cada servidor (nombre, dirección…) al pasar el ratón", "Shows extra details of each server (name, address…) on hover"), true
+			case "show-modules":
+				return x.t("Muestra los módulos cargados en la página", "Shows the loaded modules on the page"), true
+			case "scope":
+				return x.t("Limita la página a la sección ", "Limits the page to the section ") + c(arg(r, 0)), true
+			case "http-request":
+				return x.ruleDesc(r, x.t("En la página de estadísticas:", "On the statistics page:")), true
+			case "maxconn":
+				return x.t("Máximo de conexiones simultáneas al socket de estadísticas: ", "Maximum simultaneous connections to the statistics socket: ") + b(arg(r, 0)), true
+			case "bind-process":
+				return x.t("Procesos que sirven las estadísticas: ", "Processes serving the statistics: ") + c(strings.Join(r, " ")), true
 			}
 			return x.t("Estadísticas: ", "Statistics: ") + c(strings.Join(a, " ")), false
 		},
@@ -1040,6 +1060,144 @@ func init() {
 				t += x.t(" con los usuarios ", " with the users ") + c(u)
 			}
 			return t, true
+		},
+		"tcp-check": func(x tr, a []string, _ string) (string, bool) {
+			r := rest(a, 1)
+			switch arg(a, 0) {
+			case "connect":
+				t := x.t("El check abre una conexión", "The check opens a connection")
+				if p := kv(r, "port"); p != "" {
+					t += x.t(" al puerto ", " to port ") + c(p)
+				}
+				if toSet(r)["ssl"] {
+					t += " (TLS)"
+				}
+				return t, true
+			case "send", "send-lf":
+				return x.t("El check envía ", "The check sends ") + c(strings.Join(r, " ")), true
+			case "send-binary", "send-binary-lf":
+				return x.t("El check envía los bytes ", "The check sends the bytes ") + c(strings.Join(r, " ")), true
+			case "expect":
+				return x.t("El check es correcto si la respuesta cumple ", "The check passes if the response matches ") + c(strings.Join(r, " ")), true
+			case "comment":
+				return x.t("Comentario del check: ", "Check comment: ") + c(strings.Join(r, " ")), true
+			case "set-var", "set-var-fmt", "unset-var":
+				return x.t("El check manipula la variable ", "The check manipulates the variable ") + c(arg(r, 0)), true
+			}
+			return x.t("Paso de check TCP: ", "TCP check step: ") + c(strings.Join(a, " ")), true
+		},
+		"tcp-response": func(x tr, a []string, _ string) (string, bool) {
+			if arg(a, 0) == "inspect-delay" {
+				return x.f("Espera hasta %s para poder inspeccionar la respuesta TCP", "Waits up to %s to be able to inspect the TCP response", x.dur(arg(a, 1), "ms")), true
+			}
+			if arg(a, 0) == "content" {
+				return x.ruleDesc(rest(a, 1), x.t("Respuesta TCP:", "TCP response:")), true
+			}
+			return x.ruleDesc(a, x.t("Respuesta TCP:", "TCP response:")), true
+		},
+		"stick": func(x tr, a []string, _ string) (string, bool) {
+			main, cd := SplitCond(rest(a, 1))
+			what := map[string]string{
+				"on":             x.t("Persistencia: asocia y busca por ", "Persistence: stores and looks up by "),
+				"match":          x.t("Persistencia: busca al servidor por ", "Persistence: looks up the server by "),
+				"store-request":  x.t("Persistencia: guarda en la petición ", "Persistence: stores from the request "),
+				"store-response": x.t("Persistencia: guarda de la respuesta ", "Persistence: stores from the response "),
+			}[arg(a, 0)]
+			if what == "" {
+				return x.t("Regla de persistencia: ", "Persistence rule: ") + c(strings.Join(a, " ")), false
+			}
+			return what + c(arg(main, 0)) + x.condSuffix(cd), true
+		},
+		"hold": func(x tr, a []string, _ string) (string, bool) {
+			what := map[string]string{
+				"valid":    x.t("respuestas válidas", "valid responses"),
+				"nx":       x.t("respuestas NXDOMAIN (no existe)", "NXDOMAIN responses (no such name)"),
+				"obsolete": x.t("direcciones obsoletas", "obsolete addresses"),
+				"other":    x.t("otras respuestas", "other responses"),
+				"refused":  x.t("respuestas REFUSED", "REFUSED responses"),
+				"timeout":  x.t("consultas sin respuesta", "queries without an answer"),
+			}[arg(a, 0)]
+			if what == "" {
+				return x.t("Retención DNS: ", "DNS hold: ") + c(strings.Join(a, " ")), false
+			}
+			return x.t("Conserva las ", "Keeps ") + what + x.t(" durante ", " for ") + x.dur(arg(a, 1), "ms"), true
+		},
+		"capture": func(x tr, a []string, _ string) (string, bool) {
+			switch {
+			case arg(a, 0) == "cookie":
+				return x.f("Captura la cookie %s en el log (hasta %s caracteres)", "Captures the cookie %s in the log (up to %s characters)", c(arg(a, 1)), b(arg(a, 3))), true
+			case (arg(a, 0) == "request" || arg(a, 0) == "response") && arg(a, 1) == "header":
+				return x.f("Captura la cabecera %[1]s de la %[3]s en el log (hasta %[2]s caracteres)", "Captures the %[3]s header %[1]s in the log (up to %[2]s characters)", c(arg(a, 2)), b(arg(a, 4)), map[string]string{"request": x.t("petición", "request"), "response": x.t("respuesta", "response")}[arg(a, 0)]), true
+			}
+			return x.t("Captura para el log: ", "Log capture: ") + c(strings.Join(a, " ")), false
+		},
+		"compression": func(x tr, a []string, _ string) (string, bool) {
+			r := strings.Join(rest(a, 1), " ")
+			switch arg(a, 0) {
+			case "algo":
+				return x.t("Algoritmos de compresión: ", "Compression algorithms: ") + c(r), true
+			case "type":
+				return x.t("Comprime solo estos tipos de contenido: ", "Compresses only these content types: ") + c(r), true
+			case "offload":
+				return x.t("HAProxy comprime y quita la cabecera Accept-Encoding hacia el servidor", "HAProxy compresses and strips Accept-Encoding towards the server"), true
+			case "direction":
+				return x.t("Dirección de la compresión: ", "Compression direction: ") + c(r), true
+			}
+			return x.t("Compresión: ", "Compression: ") + c(strings.Join(a, " ")), false
+		},
+		"filter": func(x tr, a []string, _ string) (string, bool) {
+			what := map[string]string{
+				"compression": x.t("compresión de respuestas", "response compression"),
+				"trace":       x.t("trazas de depuración del flujo", "stream debug traces"),
+				"spoe":        x.t("agente externo SPOE", "SPOE external agent"),
+				"cache":       x.t("caché HTTP", "HTTP cache"),
+				"fcgi-app":    "FastCGI",
+				"bwlim-in":    x.t("límite de ancho de banda de entrada", "inbound bandwidth limit"),
+				"bwlim-out":   x.t("límite de ancho de banda de salida", "outbound bandwidth limit"),
+			}[arg(a, 0)]
+			if what == "" {
+				return x.t("Filtro: ", "Filter: ") + c(strings.Join(a, " ")), false
+			}
+			return x.t("Filtro de ", "Filter for ") + what, true
+		},
+		"http-reuse": func(x tr, a []string, _ string) (string, bool) {
+			what := map[string]string{
+				"never":      x.t("nunca reutiliza conexiones entre clientes", "never reuses connections between clients"),
+				"safe":       x.t("reutiliza solo tras la primera petición (seguro)", "reuses only after the first request (safe)"),
+				"aggressive": x.t("reutiliza siempre que hay una conexión libre", "reuses whenever an idle connection exists"),
+				"always":     x.t("reutiliza incluso la primera petición", "reuses even for the first request"),
+			}[arg(a, 0)]
+			if what == "" {
+				return x.t("Reutilización de conexiones: ", "Connection reuse: ") + c(strings.Join(a, " ")), false
+			}
+			return x.t("Reutilización de conexiones: ", "Connection reuse: ") + what, true
+		},
+		"rate-limit": func(x tr, a []string, _ string) (string, bool) {
+			if arg(a, 0) == "sessions" {
+				return x.f("Limita las sesiones nuevas a %s por segundo", "Limits new sessions to %s per second", b(arg(a, 1))), true
+			}
+			return x.t("Límite de tasa: ", "Rate limit: ") + c(strings.Join(a, " ")), false
+		},
+		"http-error": func(x tr, a []string, _ string) (string, bool) {
+			return x.f("Respuesta personalizada para el estado %s", "Custom response for status %s", b(kv(a, "status"))), true
+		},
+		"peer": func(x tr, a []string, _ string) (string, bool) {
+			return x.f("Réplica %s en %s", "Replica %s at %s", b(arg(a, 0)), c(arg(a, 1))), true
+		},
+		"mailer": func(x tr, a []string, _ string) (string, bool) {
+			return x.f("Servidor de correo %s en %s", "Mail server %s at %s", b(arg(a, 0)), c(arg(a, 1))), true
+		},
+		"external-check": func(x tr, a []string, s string) (string, bool) {
+			switch arg(a, 0) {
+			case "command":
+				return x.t("Comando que se ejecuta como health check: ", "Command run as a health check: ") + c(arg(a, 1)), true
+			case "path":
+				return x.t("PATH que ven los checks externos: ", "PATH seen by external checks: ") + c(arg(a, 1)), true
+			}
+			if s == "global" {
+				return x.t("Permite ejecutar checks externos (comandos del sistema)", "Allows running external checks (system commands)"), true
+			}
+			return x.t("Checks externos: ", "External checks: ") + c(strings.Join(a, " ")), false
 		},
 		"nameserver": func(x tr, a []string, _ string) (string, bool) {
 			return x.f("Servidor DNS %s en %s", "DNS server %s at %s", b(arg(a, 0)), c(arg(a, 1))), true

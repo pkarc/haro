@@ -37,9 +37,13 @@ type AnalyzeRequest struct {
 	Files []*SourceFile          `protobuf:"bytes,2,rep,name=files,proto3" json:"files,omitempty"`
 	// Idioma de las explicaciones y de los mensajes del detector: "es" o "en".
 	// Vacío = español. Cualquier otro valor es un error (INVALID_ARGUMENT).
-	Lang          string `protobuf:"bytes,3,opt,name=lang,proto3" json:"lang,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Lang string `protobuf:"bytes,3,opt,name=lang,proto3" json:"lang,omitempty"`
+	// Versión de HAProxy objetivo ("2.8", "v3.0"…). Si se indica, el detector
+	// avisa de lo que requiera una versión posterior (regla newer-than-target).
+	// Vacío = sin versión objetivo. Un valor no válido es INVALID_ARGUMENT.
+	HaproxyVersion string `protobuf:"bytes,4,opt,name=haproxy_version,json=haproxyVersion,proto3" json:"haproxy_version,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AnalyzeRequest) Reset() {
@@ -89,6 +93,13 @@ func (x *AnalyzeRequest) GetFiles() []*SourceFile {
 func (x *AnalyzeRequest) GetLang() string {
 	if x != nil {
 		return x.Lang
+	}
+	return ""
+}
+
+func (x *AnalyzeRequest) GetHaproxyVersion() string {
+	if x != nil {
+		return x.HaproxyVersion
 	}
 	return ""
 }
@@ -1588,6 +1599,7 @@ type SectionInfo struct {
 	Named         string                 `protobuf:"bytes,2,opt,name=named,proto3" json:"named,omitempty"` // required | optional | none
 	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
 	Description   string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	Since         string                 `protobuf:"bytes,5,opt,name=since,proto3" json:"since,omitempty"` // versión de HAProxy en que apareció ("2.3"); vacío si no se sabe
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1650,11 +1662,19 @@ func (x *SectionInfo) GetDescription() string {
 	return ""
 }
 
+func (x *SectionInfo) GetSince() string {
+	if x != nil {
+		return x.Since
+	}
+	return ""
+}
+
 type DirectiveInfo struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Sections      []string               `protobuf:"bytes,1,rep,name=sections,proto3" json:"sections,omitempty"`
 	Category      string                 `protobuf:"bytes,2,opt,name=category,proto3" json:"category,omitempty"`
 	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Since         string                 `protobuf:"bytes,4,opt,name=since,proto3" json:"since,omitempty"` // versión de HAProxy en que apareció ("2.4"); vacío si no se sabe
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1706,6 +1726,13 @@ func (x *DirectiveInfo) GetCategory() string {
 func (x *DirectiveInfo) GetDescription() string {
 	if x != nil {
 		return x.Description
+	}
+	return ""
+}
+
+func (x *DirectiveInfo) GetSince() string {
+	if x != nil {
+		return x.Since
 	}
 	return ""
 }
@@ -2512,11 +2539,12 @@ var File_haro_v1_haro_proto protoreflect.FileDescriptor
 
 const file_haro_v1_haro_proto_rawDesc = "" +
 	"\n" +
-	"\x12haro/v1/haro.proto\x12\aharo.v1\"c\n" +
+	"\x12haro/v1/haro.proto\x12\aharo.v1\"\x8c\x01\n" +
 	"\x0eAnalyzeRequest\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12)\n" +
 	"\x05files\x18\x02 \x03(\v2\x13.haro.v1.SourceFileR\x05files\x12\x12\n" +
-	"\x04lang\x18\x03 \x01(\tR\x04lang\"4\n" +
+	"\x04lang\x18\x03 \x01(\tR\x04lang\x12'\n" +
+	"\x0fhaproxy_version\x18\x04 \x01(\tR\x0ehaproxyVersion\"4\n" +
 	"\n" +
 	"SourceFile\x12\x12\n" +
 	"\x04path\x18\x01 \x01(\tR\x04path\x12\x12\n" +
@@ -2643,16 +2671,18 @@ const file_haro_v1_haro_proto_rawDesc = "" +
 	"\x05files\x18\x01 \x03(\v2\x13.haro.v1.SourceFileR\x05files\x12-\n" +
 	"\achanges\x18\x02 \x03(\v2\x13.haro.v1.FileChangeR\achanges\")\n" +
 	"\x13GetKnowledgeRequest\x12\x12\n" +
-	"\x04lang\x18\x01 \x01(\tR\x04lang\"q\n" +
+	"\x04lang\x18\x01 \x01(\tR\x04lang\"\x87\x01\n" +
 	"\vSectionInfo\x12\x14\n" +
 	"\x05color\x18\x01 \x01(\tR\x05color\x12\x14\n" +
 	"\x05named\x18\x02 \x01(\tR\x05named\x12\x14\n" +
 	"\x05title\x18\x03 \x01(\tR\x05title\x12 \n" +
-	"\vdescription\x18\x04 \x01(\tR\vdescription\"i\n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x12\x14\n" +
+	"\x05since\x18\x05 \x01(\tR\x05since\"\x7f\n" +
 	"\rDirectiveInfo\x12\x1a\n" +
 	"\bsections\x18\x01 \x03(\tR\bsections\x12\x1a\n" +
 	"\bcategory\x18\x02 \x01(\tR\bcategory\x12 \n" +
-	"\vdescription\x18\x03 \x01(\tR\vdescription\";\n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x14\n" +
+	"\x05since\x18\x04 \x01(\tR\x05since\";\n" +
 	"\x0fSectionTemplate\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
 	"\x05lines\x18\x02 \x03(\tR\x05lines\"\xc2\x05\n" +
