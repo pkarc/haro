@@ -1,9 +1,10 @@
 // Contrato del núcleo de haro. Es la fuente de verdad de los tipos que
 // comparten el servidor Go (`haro serve`) y la web en TypeScript.
 //
-// Hoy `haro serve` expone estas mismas rutas como JSON sobre HTTP
-// (/api/v1/...). El siguiente paso es generar con buf el servidor Connect en
-// Go y el cliente en TypeScript a partir de este archivo.
+// `haro serve` implementa estos servicios con Connect (rutas
+// /haro.v1.CoreService/* y /haro.v1.ConfigService/*; admite Connect, gRPC y
+// gRPC-Web, con mensajes protobuf o JSON). El código de Go (gen/) y de
+// TypeScript (web/src/gen) se genera con `make proto`.
 syntax = "proto3";
 
 package haro.v1;
@@ -282,8 +283,12 @@ message SavedFile {
 
 message PutConfigResponse {
   bool saved = 1;
-  string path = 2;   // solo si se guardó un único archivo
+  string path = 2;   // si se guardó: el archivo (solo si fue uno); si no, el archivo del error del detector
   string backup = 3; // solo si se guardó un único archivo
-  CheckResult check = 4;
+  CheckResult check = 4; // salida de haproxy -c (también cuando lo rechaza)
   repeated SavedFile files = 5;
+  // Un guardado rechazado por la validación no es un error de RPC: llega con
+  // saved=false, el motivo en error y, según el validador, check o issue.
+  string error = 6;
+  Issue issue = 7; // error del detector de haro cuando no hay haproxy
 }

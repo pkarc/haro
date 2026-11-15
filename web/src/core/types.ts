@@ -1,89 +1,67 @@
-// Tipos del núcleo. Reflejan proto/haro/v1/haro.proto; cuando se active
-// Connect, este archivo se sustituye por el código generado con buf.
+// Tipos del núcleo. Salen del contrato (proto/haro/v1/haro.proto) a través del
+// código generado con buf (src/gen); aquí solo se convierten en objetos planos
+// (sin $typeName) para que la interfaz pueda crearlos con literales, y se
+// precisan las cadenas que en el contrato son enumeraciones.
+import type { Message } from '@bufbuild/protobuf'
+import type * as pb from '../gen/haro/v1/haro_pb'
+
+type Meta = '$typeName' | '$unknown'
+/** Mensaje protobuf → objeto plano, recursivamente. */
+export type Plain<T> = T extends Message
+  ? { [K in keyof Omit<T, Meta>]: Plain<T[K]> }
+  : T extends readonly (infer U)[]
+    ? Plain<U>[]
+    : T extends object
+      ? { [K in keyof T]: Plain<T[K]> }
+      : T
 
 export type Severity = 'error' | 'warn' | 'info'
 
-export interface SourceFile { path: string; text: string }
+export type SourceFile = Plain<pb.SourceFile>
+export type Line = Omit<Plain<pb.Line>, 'kind'> & { kind: 'blank' | 'comment' | 'directive' }
+export type Section = Omit<Plain<pb.Section>, 'lines'> & { lines: Line[] }
+export type Doc = Omit<Plain<pb.Doc>, 'pre' | 'sections'> & { pre: Line[]; sections: Section[] }
+export type Issue = Omit<Plain<pb.Issue>, 'severity'> & { severity: Severity }
+export type Explanation = Plain<pb.Explanation>
+export type LineExplanation = Omit<Plain<pb.LineExplanation>, 'explanation'> & { explanation: Explanation }
+export type Effective = Omit<Plain<pb.Effective>, 'modeFrom'> & { modeFrom: 'own' | 'defaults' | 'implicit' }
+export type Bind = Plain<pb.Bind>
+export type ServerNode = Plain<pb.ServerNode>
+export type EntryNode = Plain<pb.EntryNode>
+export type BackendNode = Plain<pb.BackendNode>
+export type Edge = Plain<pb.Edge>
+export type Topology = Plain<pb.Topology>
 
-export interface Line {
-  file: number
-  kind: 'blank' | 'comment' | 'directive'
-  line: number
-  indent?: string
-  text?: string
-  keyword?: string
-  args?: string[]
-  comment?: string
-}
-
-export interface Section {
-  file: number
-  type: string
-  name?: string
-  line: number
-  indent?: string
-  text: string
-  tokens: string[]
-  comment?: string
-  lines: Line[]
-}
-
-export interface Doc { pre: Line[]; sections: Section[]; files?: string[] }
-export interface Issue { file: number; rule: string; severity: Severity; line: number; section: number; message: string }
-export interface Explanation { text: string; category: string; known: boolean }
-export interface LineExplanation { file: number; line: number; section: number; keyword: string; args: string; explanation: Explanation }
-export interface Effective { mode: string; modeFrom: 'own' | 'defaults' | 'implicit'; timeouts: Record<string, boolean>; defaults: number }
-export interface Bind { address: string; tls: boolean }
-export interface ServerNode { name: string; address: string; backup?: boolean; check?: boolean; disabled?: boolean; template?: boolean }
-export interface EntryNode { section: number; type: string; name: string; binds: Bind[]; servers?: ServerNode[] }
-export interface BackendNode { section: number; name: string; balance: string; servers: ServerNode[] }
-export interface Edge { file: number; from: number; to: number; toName: string; default: boolean; condition?: string; line: number }
-export interface Topology { entries: EntryNode[]; backends: BackendNode[]; edges: Edge[]; missing: string[] }
-
-export interface Analysis {
+/** El núcleo siempre rellena doc y topology; el contrato los marca opcionales por ser mensajes. */
+export type Analysis = Omit<Plain<pb.Analysis>, 'doc' | 'topology' | 'issues' | 'explanations' | 'effective'> & {
   doc: Doc
+  topology: Topology
   issues: Issue[]
   explanations: LineExplanation[]
   effective: Effective[]
-  topology: Topology
 }
 
-export interface DiffOp { op: '=' | '-' | '+'; text: string }
-export interface CheckResult { available: boolean; ok: boolean; output: string }
-export interface Capabilities { version: string; paths?: string[]; canRead: boolean; canWrite: boolean; canCheck: boolean; haproxyBin?: string }
+export type DiffOp = Omit<Plain<pb.DiffOp>, 'op'> & { op: '=' | '-' | '+' }
+export type CheckResult = Plain<pb.CheckResult>
+export type Capabilities = Plain<pb.Capabilities>
 
-export interface Op {
-  op: 'add_section' | 'remove_section' | 'move_section' | 'rename_section' | 'add_directive' | 'update_directive' | 'remove_directive' | 'move_directive'
-  section?: number
-  type?: string
-  name?: string
-  template?: boolean
-  file?: number
-  at?: number
-  to?: number
-  text?: string
-  lineIndex?: number
-  delta?: number
-  updateRefs?: boolean
-}
-export interface FileChange { file: number; path: string; text: string }
-export interface ApplyResult { files: SourceFile[]; changes: FileChange[] }
+export type OpName = 'add_section' | 'remove_section' | 'move_section' | 'rename_section' | 'add_directive' | 'update_directive' | 'remove_directive' | 'move_directive'
+/** Operación de edición (ver core/edit.go para qué campos usa cada una). */
+export type Op = Partial<Omit<Plain<pb.Op>, 'op'>> & { op: OpName }
+export type FileChange = Plain<pb.FileChange>
+export type ApplyResult = Plain<pb.ApplyResponse>
 
-// GET /api/v1/knowledge: datos para autocompletado, colores y plantillas.
-export interface SectionInfo { color: string; named: 'required' | 'optional' | 'none'; title: string; description: string }
-export interface DirectiveInfo { sections: string[]; category: string; description?: string }
-export interface SectionTemplate { name?: string; lines: string[] }
-export interface Knowledge {
-  categories: Record<string, string>
-  sections: Record<string, SectionInfo>
-  directives: Record<string, DirectiveInfo>
-  rules: Record<string, string>
-  templates: Record<string, SectionTemplate>
-}
+export type SectionInfo = Omit<Plain<pb.SectionInfo>, 'named'> & { named: 'required' | 'optional' | 'none' }
+export type DirectiveInfo = Plain<pb.DirectiveInfo>
+export type SectionTemplate = Plain<pb.SectionTemplate>
+export type Knowledge = Omit<Plain<pb.Knowledge>, 'sections'> & { sections: Record<string, SectionInfo> }
 
-// Resultado de PUT /api/v1/config. Si el servidor rechaza el guardado (422),
-// `error` explica por qué y llega `check` (salida de haproxy -c) o `issue`
-// (error del detector cuando no hay haproxy).
+/**
+ * Resultado de guardar. Si la validación rechaza el guardado, `saved` es false,
+ * `error` explica por qué y llega `check` (salida de haproxy -c) o `issue`
+ * (error del detector cuando no hay haproxy). Si falla por otro motivo (sin
+ * permiso de escritura, archivo ajeno…), solo `error` y `status`.
+ */
 export interface PutResult {
   saved: boolean
   error?: string
@@ -92,6 +70,3 @@ export interface PutResult {
   issue?: Issue
   path?: string
 }
-
-// Error de POST /api/v1/apply (HTTP 422).
-export interface ApplyErrorInfo { index: number; op: string; message: string }

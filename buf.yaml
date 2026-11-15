@@ -1,0 +1,16 @@
+version: v2
+modules:
+  - path: proto
+lint:
+  use:
+    - STANDARD
+  except:
+    # Los mensajes del núcleo (Analysis, CheckResult, Capabilities…) se usan
+    # directamente como respuesta; no se renombran para conservar los nombres
+    # del contrato JSON anterior.
+    - RPC_REQUEST_STANDARD_NAME
+    - RPC_RESPONSE_STANDARD_NAME
+    - RPC_REQUEST_RESPONSE_UNIQUE
+breaking:
+  use:
+    - FILE

@@ -11,7 +11,7 @@ const emptyAnalysis = (tag: string): Analysis => ({
 
 function fakeClient(over: Partial<CoreClient> = {}): CoreClient {
   return {
-    capabilities: async () => ({ version: 't', canRead: false, canWrite: false, canCheck: false }),
+    capabilities: async () => ({ version: 't', canRead: false, canWrite: false, canCheck: false, paths: [], haproxyBin: '' }),
     analyze: async f => emptyAnalysis(f[0].text),
     apply: async files => ({ files, changes: [] }),
     diff: async () => [],

@@ -52,7 +52,7 @@ haro carga las rutas igual que `haproxy -f`: en el orden indicado y, para cada d
 - la herencia de `defaults`, las referencias a backends y los nombres duplicados sí cruzan archivos;
 - cada problema indica su archivo y línea (`conf.d/20-web.cfg:4`).
 
-Al guardar desde `haro serve`, se valida la configuración completa con el cambio aplicado, no solo el archivo editado. `PUT /api/v1/config` acepta `{files: [...]}` para guardar varios archivos a la vez (todo o nada), necesario cuando un cambio, como renombrar un backend, toca dos archivos.
+Al guardar desde `haro serve`, se valida la configuración completa con el cambio aplicado, no solo el archivo editado. `ConfigService.PutConfig` acepta `files` (lista) para guardar varios archivos a la vez (todo o nada), necesario cuando un cambio, como renombrar un backend, toca dos archivos.
 
 `haro serve` escucha solo en `127.0.0.1:7468` y rechaza peticiones con un `Host` externo. Para guardar hace falta `--allow-write`. Antes de escribir, haro valida con `haproxy -c` si el binario está disponible; si no lo está, usa su propio detector y se niega a guardar si encuentra errores. Siempre deja una copia `.bak` de la versión anterior.
 
@@ -80,6 +80,7 @@ web/         Interfaz React + Vite + TypeScript, embebida en el binario
 make test     # tests
 make golden   # regenera los .golden.json tras un cambio intencionado
 make web      # compila la interfaz en web/dist (requiere Node)
+make proto    # regenera gen/ y web/src/gen desde proto/ (requiere buf)
 make build    # binario en bin/haro, con la web embebida
 make run      # serve con la configuración de ejemplo
 ```
@@ -88,7 +89,7 @@ Para trabajar en la web con recarga en caliente: `go run ./cmd/haro serve` en un
 
 ### Editar desde código: `core.Apply`
 
-Todas las interfaces editan con operaciones (`add_section`, `rename_section`, `move_directive`…) que `core.Apply` aplica sobre una copia y devuelve como los archivos que cambiaron. Los archivos que la operación no menciona vuelven byte a byte. Se exponen en `POST /api/v1/apply` (`{files, ops}`); guardar sigue siendo `PUT /api/v1/config`. Las operaciones están documentadas en `core/edit.go`.
+Todas las interfaces editan con operaciones (`add_section`, `rename_section`, `move_directive`…) que `core.Apply` aplica sobre una copia y devuelve como los archivos que cambiaron. Los archivos que la operación no menciona vuelven byte a byte. Se exponen en `CoreService.Apply` (`{files, ops}`); guardar sigue siendo `ConfigService.PutConfig`. Las operaciones están documentadas en `core/edit.go`.
 
 ### Corpus de configuraciones reales
 
@@ -111,12 +112,12 @@ El plan detallado está en [`docs/PLAN.md`](docs/PLAN.md).
 
 - [x] Núcleo en Go con casos golden
 - [x] CLI: `lint`, `explain`, `diff`, `serve`
-- [x] API local JSON con guardado seguro
+- [x] API local (Connect RPC) con guardado seguro
 - [x] Configuraciones en varios archivos y directorios
 - [x] Test opcional con corpus de configuraciones reales
 - [ ] Ampliar la base de conocimiento con el catálogo de client-native (Apache-2.0)
 - [ ] Plantillas de backend por tecnología (PostgreSQL, Redis, Elasticsearch…)
-- [ ] Generar servidor y cliente Connect desde `proto/` con buf
+- [x] Servidor y cliente Connect generados desde `proto/` con buf (`make proto`)
 - [x] Web: modo código (CodeMirror 6), modo visual, mapa (React Flow) y panel de problemas
 - [ ] Web: asistente
 - [ ] Interfaz de terminal con Bubble Tea (`haro` sin argumentos)

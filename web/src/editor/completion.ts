@@ -5,7 +5,7 @@ import { sectionTypeAt } from './syntax'
 /**
  * Autocompletado de la primera palabra de cada línea: con sangría, las
  * directivas de la sección bajo el cursor; sin sangría, los tipos de sección.
- * Todo sale de GET /api/v1/knowledge.
+ * Todo sale de CoreService.GetKnowledge.
  */
 export function directiveCompletion(knowledge: Knowledge | null): CompletionSource {
   if (!knowledge) return () => null

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -20,10 +19,9 @@ import (
 	"github.com/pkarc/haro/web"
 )
 
-// El API local usa JSON sobre HTTP con las mismas rutas y mensajes que el
-// servicio definido en proto/haro/v1/haro.proto. Cuando se añadan las
-// dependencias de Connect, el cliente TypeScript generado hablará con este
-// mismo servidor sin cambios en la web.
+// El API local es el servicio Connect definido en proto/haro/v1/haro.proto
+// (ver rpc.go). Hablan con él la web (cliente TypeScript generado) y cualquier
+// cliente Connect, gRPC o HTTP+JSON.
 
 type server struct {
 	// paths son los argumentos de --file tal cual (archivos o directorios).
@@ -31,15 +29,6 @@ type server struct {
 	paths      []string
 	allowWrite bool
 	haproxyBin string
-}
-
-type capabilities struct {
-	Version    string   `json:"version"`
-	Paths      []string `json:"paths,omitempty"`
-	CanRead    bool     `json:"canRead"`
-	CanWrite   bool     `json:"canWrite"`
-	CanCheck   bool     `json:"canCheck"`
-	HAProxyBin string   `json:"haproxyBin,omitempty"`
 }
 
 type multiFlag []string
@@ -101,14 +90,7 @@ func runServe(args []string) error {
 
 func (s *server) routes() *http.ServeMux {
 	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/v1/capabilities", s.handleCapabilities)
-	mux.HandleFunc("GET /api/v1/knowledge", s.handleKnowledge)
-	mux.HandleFunc("POST /api/v1/analyze", s.handleAnalyze)
-	mux.HandleFunc("POST /api/v1/apply", s.handleApply)
-	mux.HandleFunc("POST /api/v1/diff", s.handleDiff)
-	mux.HandleFunc("POST /api/v1/check", s.handleCheck)
-	mux.HandleFunc("GET /api/v1/config", s.handleGetConfig)
-	mux.HandleFunc("PUT /api/v1/config", s.handlePutConfig)
+	s.mountRPC(mux)
 	mux.Handle("/", http.FileServer(http.FS(web.FS())))
 	return mux
 }
@@ -122,7 +104,7 @@ func localOnly(h http.Handler) http.Handler {
 			host = r.Host
 		}
 		if ip := net.ParseIP(host); host != "localhost" && (ip == nil || !ip.IsLoopback()) {
-			writeErr(w, 403, "host no permitido")
+			http.Error(w, "host no permitido", http.StatusForbidden)
 			return
 		}
 		h.ServeHTTP(w, r)
@@ -134,98 +116,6 @@ func limitBody(h http.Handler) http.Handler {
 		r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 		h.ServeHTTP(w, r)
 	})
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(v)
-}
-
-func writeErr(w http.ResponseWriter, status int, msg string) {
-	writeJSON(w, status, map[string]string{"error": msg})
-}
-
-func decode(r *http.Request, v any) error { return json.NewDecoder(r.Body).Decode(v) }
-
-// sourcesFromRequest acepta {"text": "..."} para un único archivo o
-// {"files": [{"path","text"}, ...]} para varios, en orden de carga.
-type analyzeRequest struct {
-	Text  string        `json:"text"`
-	Files []core.Source `json:"files"`
-}
-
-func (r analyzeRequest) sources() []core.Source {
-	if len(r.Files) > 0 {
-		return r.Files
-	}
-	return []core.Source{{Path: "haproxy.cfg", Text: r.Text}}
-}
-
-func (s *server) handleCapabilities(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, 200, capabilities{Version: version, Paths: s.paths, CanRead: len(s.paths) > 0, CanWrite: s.allowWrite, CanCheck: s.haproxyBin != "", HAProxyBin: s.haproxyBin})
-}
-
-// handleKnowledge expone los datos que la interfaz necesita para el
-// autocompletado y el modo visual (tipos de sección, categorías, directivas
-// conocidas por sección y plantillas), para que la web no duplique nada.
-func (s *server) handleKnowledge(w http.ResponseWriter, _ *http.Request) {
-	writeJSON(w, 200, core.KB.Public())
-}
-
-func (s *server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
-	var req analyzeRequest
-	if err := decode(r, &req); err != nil {
-		writeErr(w, 400, "petición inválida")
-		return
-	}
-	writeJSON(w, 200, core.AnalyzeConfig(req.sources()))
-}
-
-func (s *server) handleDiff(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Before string `json:"before"`
-		After  string `json:"after"`
-	}
-	if err := decode(r, &req); err != nil {
-		writeErr(w, 400, "petición inválida")
-		return
-	}
-	writeJSON(w, 200, map[string]any{"ops": core.DiffLines(core.Normalize(req.Before), core.Normalize(req.After))})
-}
-
-// handleApply aplica operaciones de edición sobre los archivos recibidos y
-// devuelve los archivos resultantes, sin tocar el disco: guardar sigue siendo
-// PUT /api/v1/config, con todas sus validaciones. files lleva todos los
-// archivos de la configuración; changes, solo los que cambiaron.
-func (s *server) handleApply(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		analyzeRequest
-		Ops []core.Op `json:"ops"`
-	}
-	if err := decode(r, &req); err != nil {
-		writeErr(w, 400, "petición inválida")
-		return
-	}
-	_, changes, err := core.Apply(core.NewConfig(req.sources()), req.Ops...)
-	if err != nil {
-		var ae *core.ApplyError
-		if errors.As(err, &ae) {
-			writeJSON(w, 422, map[string]any{"error": ae.Error(), "index": ae.Index, "op": ae.Op, "message": ae.Msg})
-			return
-		}
-		writeErr(w, 500, err.Error())
-		return
-	}
-	// Los archivos sin cambios se devuelven con su texto original, byte a byte.
-	files := append([]core.Source{}, req.sources()...)
-	for _, c := range changes {
-		files[c.File].Text = c.Text
-	}
-	if changes == nil {
-		changes = []core.FileChange{}
-	}
-	writeJSON(w, 200, map[string]any{"files": files, "changes": changes})
 }
 
 type checkResult struct {
@@ -261,62 +151,40 @@ func (s *server) check(ctx context.Context, srcs []core.Source) (checkResult, er
 	return checkResult{Available: true, OK: err == nil, Output: strings.NewReplacer(replacer...).Replace(string(out))}, nil
 }
 
-func (s *server) handleCheck(w http.ResponseWriter, r *http.Request) {
-	var req analyzeRequest
-	if err := decode(r, &req); err != nil {
-		writeErr(w, 400, "petición inválida")
-		return
-	}
-	res, err := s.check(r.Context(), req.sources())
-	if err != nil {
-		writeErr(w, 500, err.Error())
-		return
-	}
-	writeJSON(w, 200, res)
+// saved describe un archivo guardado.
+type saved struct{ Path, Backup string }
+
+// putOutcome es el resultado de guardar. Un guardado rechazado por la
+// validación no es un fallo del servidor: lleva el motivo en Err y, según quién
+// lo rechazó, la salida de haproxy -c (Check) o el error del detector (Issue).
+type putOutcome struct {
+	Saved   []saved
+	Err     string
+	Check   *checkResult
+	Issue   *core.Issue
+	Path    string // archivo del error del detector
 }
 
-func (s *server) handleGetConfig(w http.ResponseWriter, _ *http.Request) {
-	if len(s.paths) == 0 {
-		writeErr(w, 404, "haro serve se inició sin --file")
-		return
-	}
-	srcs, err := readSources(s.paths)
-	if err != nil {
-		writeErr(w, 500, err.Error())
-		return
-	}
-	writeJSON(w, 200, map[string]any{"files": srcs})
-}
+// errClient es un error de la petición (no del servidor).
+type errClient string
 
-// handlePutConfig guarda uno o varios archivos de la configuración. Acepta
-// {path, text} para uno o {files: [{path, text}]} para varios, que se validan
-// y se guardan juntos: así un cambio que toca dos archivos a la vez (por
-// ejemplo renombrar un backend y sus referencias) no queda a medias. Solo
-// funciona con --allow-write; valida la configuración completa (todos los
-// archivos, con los cambios aplicados) con `haproxy -c` o, si no está
-// instalado, con el detector de haro. Escribe de forma atómica, deja una copia
-// .bak de cada archivo y, si falla una escritura, restaura los ya escritos.
-func (s *server) handlePutConfig(w http.ResponseWriter, r *http.Request) {
+func (e errClient) Error() string { return string(e) }
+
+// put guarda uno o varios archivos de la configuración servida. Se validan
+// juntos (la configuración completa, con todos los cambios aplicados) y se
+// guardan todo o nada: un cambio que toca dos archivos a la vez, como renombrar
+// un backend y sus referencias, no puede quedar a medias. Valida con `haproxy
+// -c` o, si no está instalado, con el detector de haro. Escribe de forma
+// atómica, deja una copia .bak de cada archivo y, si una escritura falla,
+// restaura los ya escritos.
+func (s *server) put(ctx context.Context, changes []core.Source) (putOutcome, error) {
+	var out putOutcome
 	if !s.allowWrite {
-		writeErr(w, 403, "la escritura está desactivada; inicia haro serve con --allow-write")
-		return
-	}
-	var req struct {
-		core.Source
-		Files []core.Source `json:"files"`
-	}
-	if err := decode(r, &req); err != nil {
-		writeErr(w, 400, "petición inválida")
-		return
-	}
-	changes := req.Files
-	if len(changes) == 0 {
-		changes = []core.Source{req.Source}
+		return out, errDenied
 	}
 	srcs, err := readSources(s.paths)
 	if err != nil {
-		writeErr(w, 500, err.Error())
-		return
+		return out, err
 	}
 	old := make([]string, len(srcs))
 	for i, src := range srcs {
@@ -332,34 +200,34 @@ func (s *server) handlePutConfig(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if idx < 0 {
-			writeErr(w, 400, "ese archivo no forma parte de la configuración servida")
-			return
+			return out, errClient("ese archivo no forma parte de la configuración servida")
 		}
 		srcs[idx].Text = c.Text
 		touched[idx] = true
 	}
 
-	res, err := s.check(r.Context(), srcs)
+	res, err := s.check(ctx, srcs)
 	if err != nil {
-		writeErr(w, 500, err.Error())
-		return
+		return out, err
 	}
+	out.Check = &res
 	if res.Available && !res.OK {
-		writeJSON(w, 422, map[string]any{"error": "haproxy -c rechazó la configuración; no se guardó", "check": res})
-		return
+		out.Err = "haproxy -c rechazó la configuración; no se guardó"
+		return out, nil
 	}
 	if !res.Available {
 		// Sin haproxy instalado, el detector de haro es la única barrera.
 		for _, i := range core.Lint(core.NewConfig(srcs).Merge()) {
 			if i.Severity == core.SevError {
-				writeJSON(w, 422, map[string]any{"error": "la configuración tiene errores y no hay haproxy para validarla; no se guardó", "issue": i, "path": srcs[i.File].Path})
-				return
+				i := i
+				out.Err = "la configuración tiene errores y no hay haproxy para validarla; no se guardó"
+				out.Issue, out.Path = &i, srcs[i.File].Path
+				return out, nil
 			}
 		}
 	}
 
 	var written []int
-	var saved []map[string]string
 	for i := range srcs {
 		if !touched[i] {
 			continue
@@ -368,18 +236,15 @@ func (s *server) handlePutConfig(w http.ResponseWriter, r *http.Request) {
 			for _, j := range written { // deshacer lo ya escrito
 				_ = writeFile(srcs[j].Path, old[j], false)
 			}
-			writeErr(w, 500, err.Error())
-			return
+			return out, err
 		}
 		written = append(written, i)
-		saved = append(saved, map[string]string{"path": srcs[i].Path, "backup": srcs[i].Path + ".bak"})
+		out.Saved = append(out.Saved, saved{srcs[i].Path, srcs[i].Path + ".bak"})
 	}
-	out := map[string]any{"saved": true, "files": saved, "check": res}
-	if len(saved) == 1 {
-		out["path"], out["backup"] = saved[0]["path"], saved[0]["backup"]
-	}
-	writeJSON(w, 200, out)
+	return out, nil
 }
+
+var errDenied = errors.New("la escritura está desactivada; inicia haro serve con --allow-write")
 
 // writeFile escribe el archivo de forma atómica (temporal + rename), con copia
 // .bak de la versión anterior si backup es true.

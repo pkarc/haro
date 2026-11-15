@@ -4,7 +4,7 @@ import type { DiffOp } from '../core/types'
 
 const CONTEXT = 3
 
-// Diff de líneas calculado por el núcleo (POST /api/v1/diff).
+// Diff de líneas calculado por el núcleo (CoreService.Diff).
 export function DiffBlock({ before, after }: { before: string; after: string }) {
   const [ops, setOps] = useState<DiffOp[] | null>(null)
   const [error, setError] = useState('')

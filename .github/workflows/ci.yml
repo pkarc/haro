@@ -85,3 +85,22 @@ jobs:
         working-directory: web
       - run: npm run test:e2e
         working-directory: web
+
+  proto:
+    name: Código generado al día (buf)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup_only: true
+      - run: cd web && npm ci
+      - run: make proto
+      - name: gen/ y web/src/gen deben coincidir con proto/
+        run: git diff --exit-code

@@ -1,7 +1,11 @@
+import { Code, ConnectError, createClient } from '@connectrpc/connect'
+import { createConnectTransport } from '@connectrpc/connect-web'
+import { ConfigService, CoreService } from '../gen/haro/v1/haro_pb'
 import type { Analysis, ApplyResult, Capabilities, CheckResult, DiffOp, Knowledge, Op, PutResult, SourceFile } from './types'
 
 // La interfaz no sabe con qué núcleo habla:
-//  - HttpCoreClient: `haro serve` local (Go nativo).
+//  - ConnectCoreClient: `haro serve` local (Go nativo), con el cliente
+//    generado por buf desde proto/haro/v1/haro.proto.
 //  - WasmCoreClient (futuro): el mismo núcleo compilado a WebAssembly para la
 //    web pública, sin servidor y sin que la configuración salga del navegador.
 // Una configuración puede tener uno o varios archivos, en orden de carga.
@@ -18,36 +22,63 @@ export interface CoreClient {
   knowledge(): Promise<Knowledge>
 }
 
-async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
-  const res = await fetch(path, {
-    method,
-    headers: body ? { 'content-type': 'application/json' } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
-  })
-  const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw Object.assign(new Error(data.error ?? `HTTP ${res.status}`), { status: res.status, data })
-  return data as T
+// Los errores de RPC llegan como Error con el mensaje del servidor (sin el
+// prefijo «[código]» de ConnectError) y el código en `code`.
+function fail(e: unknown): never {
+  const err = ConnectError.from(e)
+  throw Object.assign(new Error(err.rawMessage), { code: err.code })
 }
 
-export class HttpCoreClient implements CoreClient {
-  capabilities() { return call<Capabilities>('GET', '/api/v1/capabilities') }
-  analyze(files: SourceFile[]) { return call<Analysis>('POST', '/api/v1/analyze', { files }) }
-  apply(files: SourceFile[], ops: Op[]) { return call<ApplyResult>('POST', '/api/v1/apply', { files, ops }) }
-  async diff(before: string, after: string) { return (await call<{ ops: DiffOp[] }>('POST', '/api/v1/diff', { before, after })).ops }
-  check(files: SourceFile[]) { return call<CheckResult>('POST', '/api/v1/check', { files }) }
-  async getConfig() {
-    try { return (await call<{ files: SourceFile[] }>('GET', '/api/v1/config')).files }
-    catch (e) { if ((e as { status?: number }).status === 404) return null; throw e }
+async function rpc<T>(p: Promise<T>): Promise<T> {
+  try { return await p } catch (e) { fail(e) }
+}
+
+// Los mensajes llevan $typeName; la interfaz trabaja con objetos planos y
+// tipos más estrictos (ver types.ts). El núcleo siempre rellena doc y topology.
+const plain = <T>(m: unknown) => m as T
+
+export class ConnectCoreClient implements CoreClient {
+  private core: ReturnType<typeof createClient<typeof CoreService>>
+  private config: ReturnType<typeof createClient<typeof ConfigService>>
+
+  constructor(baseUrl = '') {
+    // JSON, no binario: mismo formato que los mensajes del contrato y fácil de depurar.
+    const transport = createConnectTransport({ baseUrl, useBinaryFormat: false })
+    this.core = createClient(CoreService, transport)
+    this.config = createClient(ConfigService, transport)
   }
-  knowledge() { return call<Knowledge>('GET', '/api/v1/knowledge') }
+
+  async capabilities() { return plain<Capabilities>(await rpc(this.config.getCapabilities({}))) }
+  async analyze(files: SourceFile[]) { return plain<Analysis>(await rpc(this.core.analyze({ files }))) }
+  async apply(files: SourceFile[], ops: Op[]) { return plain<ApplyResult>(await rpc(this.core.apply({ files, ops }))) }
+  async diff(before: string, after: string) { return plain<DiffOp[]>((await rpc(this.core.diff({ before, after }))).ops) }
+  async check(files: SourceFile[]) { return plain<CheckResult>(await rpc(this.core.check({ files }))) }
+  async knowledge() { return plain<Knowledge>(await rpc(this.core.getKnowledge({}))) }
+
+  async getConfig() {
+    try { return plain<SourceFile[]>((await this.config.getConfig({})).files) }
+    catch (e) {
+      if (ConnectError.from(e).code === Code.NotFound) return null // haro serve sin --file
+      fail(e)
+    }
+  }
+
   putFile(path: string, text: string): Promise<PutResult> { return this.put({ path, text }) }
   putFiles(files: SourceFile[]): Promise<PutResult> { return this.put({ files }) }
-  private async put(body: unknown): Promise<PutResult> {
-    try { return await call<PutResult>('PUT', '/api/v1/config', body) }
-    catch (e) {
-      const err = e as Error & { status?: number; data?: Partial<PutResult> }
-      // El cuerpo del 422 trae check (salida de haproxy -c) o issue (detector).
-      return { ...err.data, saved: false, error: err.message, status: err.status }
+
+  private async put(req: { path?: string; text?: string; files?: SourceFile[] }): Promise<PutResult> {
+    try {
+      const r = await this.config.putConfig(req)
+      return {
+        saved: r.saved,
+        error: r.error || undefined,
+        check: r.check ? plain<CheckResult>(r.check) : undefined,
+        issue: r.issue ? plain<PutResult['issue']>(r.issue) : undefined,
+        path: r.path || undefined,
+      }
+    } catch (e) {
+      const err = ConnectError.from(e)
+      return { saved: false, error: err.rawMessage, status: err.code === Code.PermissionDenied ? 403 : 400 }
     }
   }
 }

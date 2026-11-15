@@ -1,13 +1,16 @@
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 
-.PHONY: build web test golden lint run clean
+.PHONY: build web test golden lint run clean proto
 
 build: ## Compila el binario (incluye la web si ya está en web/dist)
 	go build -ldflags "$(LDFLAGS)" -o bin/haro ./cmd/haro
 
 web: ## Compila la interfaz React en web/dist
 	cd web && npm install && npm run build
+
+proto: ## Regenera el código de gen/ y web/src/gen desde proto/ (requiere buf y npm install en web/)
+	buf lint && buf generate
 
 test: ## Ejecuta los tests del núcleo y del CLI
 	go test ./...

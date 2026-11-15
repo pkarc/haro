@@ -9,7 +9,7 @@ haro (*HAProxy readout*) es una herramienta open source para leer, explicar, val
 - **Varios archivos**: se cargan como `haproxy -f` (orden dado; de cada directorio, los `.cfg` no ocultos en orden lexicográfico, sin subdirectorios). Cada archivo empieza fuera de sección; herencia de `defaults`, referencias y nombres cruzan archivos.
 - **Explicaciones en markdown mínimo**: `**negrita**` y `` `código` ``. La web y la terminal lo pintan cada una a su manera. No metas HTML en el núcleo.
 - **Binario único**: `haro` = CLI + `haro serve` (servidor local con la web embebida con `go:embed`). Sin nube.
-- **API local**: hoy JSON sobre HTTP en `/api/v1/*`. El contrato está en `proto/haro/v1/haro.proto`; el plan es generar servidor y cliente con **Connect RPC** (`buf`), manteniendo las mismas rutas y mensajes.
+- **API local**: Connect RPC (`/haro.v1.CoreService/*`, `/haro.v1.ConfigService/*`), generado con `buf` (`make proto`) desde `proto/haro/v1/haro.proto`. El código generado (`gen/`, `web/src/gen`) se commitea. La conversión núcleo↔proto vive en `cmd/haro/rpc.go`, nunca en `core`.
 - **Web**: React + Vite + TypeScript. La web solo habla con el núcleo a través de `CoreClient` (`web/src/core/client.ts`), para poder añadir después un `WasmCoreClient` (web pública sin servidor).
 - **TUI**: Bubble Tea (`haro` sin argumentos), con lipgloss y bubbles.
 - **Web pública futura** (otro repo, p. ej. `haro-cloud`): misma web, núcleo compilado a WASM, sesión en localStorage.
