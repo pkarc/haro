@@ -46,17 +46,21 @@ cd web && npm install && npm run dev                           # web con recarga
 - El detector es orientativo: la validación definitiva es `haproxy -c`.
 - Mantén el núcleo sin dependencias externas (debe compilar a WASM).
 
-## Estado y próximos pasos (en este orden)
+## Estado y próximos pasos
 
 Hecho: núcleo con tests golden, varios archivos, CLI (`lint`, `explain`, `diff`, `serve`), API local con guardado seguro, contrato proto, esqueleto web, test opcional de corpus.
 
-1. **Interfaz web**: portar `docs/prototype/haro-prototype.html` a React (CodeMirror 6 con modo HAProxy, modo visual por secciones, mapa con React Flow, problemas, diff, pestañas por archivo). Debe usar el núcleo vía `CoreClient`, no la lógica JS del prototipo. Las operaciones de edición del modo visual deberían acabar en el núcleo (`apply`), no en la web.
-2. **Connect**: `buf generate` desde `proto/`; sustituir los handlers JSON y `web/src/core/{types,client}.ts` por el código generado.
-3. **TUI con Bubble Tea**: lista de secciones, detalle con explicaciones, mapa en texto, panel de problemas, recarga al cambiar el archivo, abrir `$EDITOR` en la línea.
-4. **Servidor MCP** (`haro mcp`): herramientas `lint`, `explain`, `analyze`, `diff` para Claude Code / Claude Desktop.
-5. **Distribución**: GoReleaser (Linux/macOS, amd64/arm64), Homebrew tap, imagen Docker; GitHub Action y hook de pre-commit; salida SARIF.
-6. **Base de conocimiento**: ampliar con el corpus y el catálogo de client-native; inglés además de español.
-7. Plantillas por tecnología (Proxmox, Home Assistant, Nextcloud, PostgreSQL, Redis…), asistente, WASM y web pública.
+**El plan detallado, con tareas y criterios de aceptación por fase, está en `docs/PLAN.md`.** Resumen del orden:
+
+0. Puesta a punto: licencia, ruta del módulo, CI (incluida validación real con `haproxy -c`).
+1. Operaciones de edición en el núcleo (`apply`), base del modo visual, la TUI y el MCP.
+2. Interfaz web en React portando el prototipo, usando `CoreClient` y `apply`.
+3. Connect RPC generado con `buf`.
+4. Interfaz de terminal con Bubble Tea.
+5. Servidor MCP (`haro mcp`).
+6. Distribución: GoReleaser, Homebrew, Docker, GitHub Action, SARIF, pre-commit.
+7. Base de conocimiento ampliada e idiomas (inglés y español).
+8. Plantillas, asistente, WASM y web pública.
 
 ## Pendiente de decidir por el autor
 

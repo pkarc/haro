@@ -103,6 +103,8 @@ El corpus no se incluye en el repo. El test se omite si no está descargado.
 
 ## Hoja de ruta
 
+El plan detallado está en [`docs/PLAN.md`](docs/PLAN.md).
+
 - [x] Núcleo en Go con casos golden
 - [x] CLI: `lint`, `explain`, `diff`, `serve`
 - [x] API local JSON con guardado seguro
