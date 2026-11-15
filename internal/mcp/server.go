@@ -247,14 +247,14 @@ func (s *Server) dispatch(ctx context.Context, req request) (any, error) {
 	case "initialize":
 		return s.initialize(req.Params)
 	case "server/discover":
-		res := wrap(map[string]any{
+		res := map[string]any{
+			"resultType":        "complete",
 			"supportedVersions": []string{ModernVersion},
 			"capabilities":      s.capabilities(),
 			"_meta":             map[string]any{metaServer: s.serverInfo()},
 			"ttlMs":             3600000,
 			"cacheScope":        "public",
-		})
-		res["resultType"] = "complete"
+		}
 		if s.Instructions != "" {
 			res["instructions"] = s.Instructions
 		}
