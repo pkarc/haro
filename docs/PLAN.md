@@ -1,5 +1,7 @@
 # Plan de trabajo de haro
 
+> **Estado:** fases 0 a 8 hechas, salvo la web pública (8.4). Resumen y gaps en [`IMPLEMENTACION.md`](IMPLEMENTACION.md).
+
 Plan detallado para continuar el proyecto en un entorno con red (Claude Code en la máquina del autor). Cada fase tiene objetivo, tareas, notas de diseño y criterios de aceptación. Las fases están en el orden recomendado; dentro de cada una, el orden de las tareas también importa.
 
 Reglas generales para todas las fases:

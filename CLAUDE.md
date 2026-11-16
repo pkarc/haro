@@ -51,19 +51,9 @@ cd web && npm install && npm run dev                           # web con recarga
 
 ## Estado y próximos pasos
 
-Hecho: núcleo con tests golden, varios archivos, CLI (`lint`, `explain`, `diff`, `serve`), API local con guardado seguro, contrato proto, esqueleto web, test opcional de corpus.
+Hechas las fases 0 a 8 de `docs/PLAN.md`, salvo la web pública (repo aparte, pendiente de decisiones: GitHub App, Worker de OAuth, `ConfigStore`). El resumen de cada fase, con los gaps encontrados y cómo se resolvieron, está en `docs/IMPLEMENTACION.md`.
 
-**El plan detallado, con tareas y criterios de aceptación por fase, está en `docs/PLAN.md`.** Resumen del orden:
-
-0. Puesta a punto: licencia, ruta del módulo, CI (incluida validación real con `haproxy -c`).
-1. Operaciones de edición en el núcleo (`apply`), base del modo visual, la TUI y el MCP.
-2. Interfaz web en React portando el prototipo, usando `CoreClient` y `apply`.
-3. Connect RPC generado con `buf`.
-4. Interfaz de terminal con Bubble Tea.
-5. Servidor MCP (`haro mcp`).
-6. Distribución: GoReleaser, Homebrew, Docker, GitHub Action, SARIF, pre-commit.
-7. Base de conocimiento ampliada e idiomas (inglés y español).
-8. Plantillas, asistente, WASM y web pública.
+Pendiente de hacer push/publicar: crear `pkarc/homebrew-tap` y el secreto `HOMEBREW_TAP_GITHUB_TOKEN`, la primera etiqueta `v*`, probar el asistente con una clave real y la GitHub Action en un repo.
 
 ## Licencia y módulo
 
