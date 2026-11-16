@@ -28,18 +28,18 @@ func newStyles() styles {
 	border := lipgloss.RoundedBorder()
 	return styles{
 		title:     lipgloss.NewStyle().Bold(true),
-		dim:       lipgloss.NewStyle().Foreground(ac("#6b7280", "#a1a1aa")),
+		dim:       lipgloss.NewStyle().Foreground(ac("#6b7280", "#9ca3af")),
 		bold:      lipgloss.NewStyle().Bold(true),
 		code:      lipgloss.NewStyle().Foreground(ac("#0e7490", "#67e8f9")),
 		err:       lipgloss.NewStyle().Foreground(ac("#b91c1c", "#f87171")).Bold(true),
 		warn:      lipgloss.NewStyle().Foreground(ac("#a16207", "#fbbf24")).Bold(true),
 		info:      lipgloss.NewStyle().Foreground(ac("#1d4ed8", "#60a5fa")),
 		ok:        lipgloss.NewStyle().Foreground(ac("#15803d", "#4ade80")),
-		pane:      lipgloss.NewStyle().Border(border).BorderForeground(ac("#d1d5db", "#3a3a40")),
-		paneFocus: lipgloss.NewStyle().Border(border).BorderForeground(ac("#2563eb", "#5eead4")),
+		pane:      lipgloss.NewStyle().Border(border).BorderForeground(ac("#d1d5db", "#4b5563")),
+		paneFocus: lipgloss.NewStyle().Border(border).BorderForeground(ac("#2563eb", "#60a5fa")),
 		cursor:    lipgloss.NewStyle().Reverse(true),
-		hl:        lipgloss.NewStyle().Background(ac("#fef3c7", "#26262a")),
-		status:    lipgloss.NewStyle().Foreground(ac("#374151", "#a1a1aa")),
+		hl:        lipgloss.NewStyle().Background(ac("#fef3c7", "#44403c")),
+		status:    lipgloss.NewStyle().Foreground(ac("#374151", "#d1d5db")),
 		statusKey: lipgloss.NewStyle().Bold(true),
 		tag:       lipgloss.NewStyle().Foreground(ac("#7c3aed", "#c4b5fd")),
 	}

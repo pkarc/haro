@@ -13,8 +13,8 @@ const STYLE = {
   def: { stroke: '#38bdf8', strokeWidth: 1.8 },
   cond: { stroke: '#f472b6', strokeWidth: 1.6, strokeDasharray: '5 4' },
   missing: { stroke: '#f87171', strokeWidth: 1.6, strokeDasharray: '3 3' },
-  srv: { stroke: '#52525b', strokeWidth: 1.4 },
-  backup: { stroke: '#52525b', strokeWidth: 1.4, strokeDasharray: '2 4' },
+  srv: { stroke: '#475569', strokeWidth: 1.4 },
+  backup: { stroke: '#475569', strokeWidth: 1.4, strokeDasharray: '2 4' },
 }
 
 export function MapPanel({ analysis }: { analysis: Analysis }) {
@@ -113,7 +113,7 @@ function MapFlow({ analysis }: { analysis: Analysis }) {
           if (d?.file !== undefined && d.line) { setMode('visual'); goto(d.file, d.line) }
         }}
       >
-        <Background gap={24} color="#1f1f23" />
+        <Background gap={24} color="#1d2330" />
       </ReactFlow>
     </div>
   )
