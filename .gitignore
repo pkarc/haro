@@ -10,3 +10,4 @@ web/playwright-report/
 web/tsconfig.tsbuildinfo
 web/public/wasm/
 web/dist-wasm/
+web/dist-consumer/

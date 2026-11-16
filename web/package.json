@@ -12,7 +12,10 @@
     "typecheck": "tsc -b",
     "build:wasm": "tsc -b && VITE_CORE=wasm vite build --outDir dist-wasm --emptyOutDir",
     "preview:wasm": "vite preview --outDir dist-wasm --port 7473 --strictPort --host 127.0.0.1",
-    "test:e2e:wasm": "npm run build:wasm && playwright test --project=wasm"
+    "test:e2e:wasm": "npm run build:wasm && playwright test --project=wasm",
+    "typecheck:consumer": "tsc -p examples/consumer/tsconfig.json",
+    "build:consumer": "tsc -p examples/consumer/tsconfig.json && vite build --config examples/consumer/vite.config.ts",
+    "preview:consumer": "vite preview --outDir dist-consumer --port 7477 --strictPort --host 127.0.0.1"
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.17.0",

@@ -85,6 +85,9 @@ jobs:
       - run: make wasm
       - run: npm run build:wasm
         working-directory: web
+      # Consumidor de ejemplo (como lo usará haro-site): compila y se prueba en e2e.
+      - run: npm run build:consumer
+        working-directory: web
       - run: npx playwright install --with-deps chromium
         working-directory: web
       - run: npm run test:e2e

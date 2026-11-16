@@ -18,10 +18,13 @@ export default defineConfig({
     { command: 'node e2e/serve.mjs assist 7474', url: 'http://127.0.0.1:7474/', reuseExistingServer: false },
     // Web sin servidor (núcleo en WebAssembly): requiere `npm run build:wasm` antes.
     { command: 'npm run preview:wasm', url: 'http://127.0.0.1:7473/', reuseExistingServer: false },
+    // Consumidor de ejemplo (como haro-site): requiere `npm run build:consumer` antes.
+    { command: 'npm run preview:consumer', url: 'http://127.0.0.1:7477/', reuseExistingServer: false },
   ],
   projects: [
     { name: 'desktop', testMatch: /(example|multi|assist)\.spec\.ts/, use: { viewport: { width: 1280, height: 800 } } },
     { name: 'wasm', testMatch: /wasm\.spec\.ts/, use: { viewport: { width: 1280, height: 800 } } },
+    { name: 'consumer', testMatch: /consumer\.spec\.ts/, use: { viewport: { width: 1280, height: 800 } } },
     { name: 'mobile', testMatch: /mobile\.spec\.ts/, use: { viewport: { width: 390, height: 844 }, hasTouch: true } },
   ],
 })
