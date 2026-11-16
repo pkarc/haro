@@ -81,10 +81,31 @@ jobs:
       - run: npm ci && npm run build
         working-directory: web
       - run: make build
+      # La web sin servidor (núcleo en WebAssembly) también se prueba en e2e.
+      - run: make wasm
+      - run: npm run build:wasm
+        working-directory: web
       - run: npx playwright install --with-deps chromium
         working-directory: web
       - run: npm run test:e2e
         working-directory: web
+
+  wasm:
+    name: Núcleo en WebAssembly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: make wasm
+      - run: node wasm/smoke.mjs
+      - name: Tamaño del módulo
+        run: |
+          { echo '### Módulo WebAssembly (Go estándar)'; echo; echo "sin comprimir: $(stat -c %s web/public/wasm/haro.wasm) bytes"; echo "gzip: $(gzip -9 -c web/public/wasm/haro.wasm | wc -c) bytes"; } >> "$GITHUB_STEP_SUMMARY"
 
   proto:
     name: Código generado al día (buf)

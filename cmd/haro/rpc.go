@@ -14,6 +14,7 @@ import (
 	"github.com/pkarc/haro/core"
 	harov1 "github.com/pkarc/haro/gen/haro/v1"
 	"github.com/pkarc/haro/gen/haro/v1/harov1connect"
+	"github.com/pkarc/haro/internal/coreapi"
 )
 
 // Implementación de los servicios Connect de proto/haro/v1/haro.proto. La
@@ -63,6 +64,14 @@ func requestLang(v string) (core.Lang, error) {
 		return "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("idioma desconocido %q (usa es o en)", v))
 	}
 	return l, nil
+}
+
+func changesToProto(changes []core.FileChange) []*harov1.FileChange {
+	out := make([]*harov1.FileChange, 0, len(changes))
+	for _, ch := range changes {
+		out = append(out, &harov1.FileChange{File: int32(ch.File), Path: ch.Path, Text: ch.Text})
+	}
+	return out
 }
 
 func internal(err error) error { return connect.NewError(connect.CodeInternal, err) }
@@ -121,7 +130,7 @@ func (c coreService) Apply(_ context.Context, req *connect.Request[harov1.ApplyR
 			return nil, internal(err)
 		}
 	}
-	_, changes, err := core.Apply(core.NewConfig(srcs), ops...)
+	res, err := coreapi.Apply(srcs, ops)
 	if err != nil {
 		var ae *core.ApplyError
 		if errors.As(err, &ae) {
@@ -129,12 +138,7 @@ func (c coreService) Apply(_ context.Context, req *connect.Request[harov1.ApplyR
 		}
 		return nil, internal(err)
 	}
-	out := &harov1.ApplyResponse{Changes: []*harov1.FileChange{}}
-	for _, ch := range changes {
-		srcs[ch.File].Text = ch.Text
-		out.Changes = append(out.Changes, &harov1.FileChange{File: int32(ch.File), Path: ch.Path, Text: ch.Text})
-	}
-	out.Files = sourceFiles(srcs)
+	out := &harov1.ApplyResponse{Files: sourceFiles(res.Files), Changes: changesToProto(res.Changes)}
 	return connect.NewResponse(out), nil
 }
 
@@ -169,8 +173,7 @@ func (c coreService) RenderTemplate(_ context.Context, req *connect.Request[haro
 	for k, v := range req.Msg.Params {
 		params[k] = v.AsInterface()
 	}
-	cfg := core.NewConfig(srcs)
-	ops, err := core.RenderTechTemplate(req.Msg.Id, params, cfg, lang)
+	res, err := coreapi.RenderTemplate(srcs, req.Msg.Id, params, lang)
 	if err != nil {
 		var te *core.TemplateError
 		if errors.As(err, &te) {
@@ -178,21 +181,12 @@ func (c coreService) RenderTemplate(_ context.Context, req *connect.Request[haro
 		}
 		return nil, internal(err)
 	}
-	_, changes, err := core.Apply(cfg, ops...)
-	if err != nil {
-		return nil, internal(err) // las ops de una plantilla siempre deben aplicarse
-	}
-	out := &harov1.RenderTemplateResponse{Ops: make([]*harov1.Op, len(ops)), Changes: []*harov1.FileChange{}}
-	for i, op := range ops {
+	out := &harov1.RenderTemplateResponse{Ops: make([]*harov1.Op, len(res.Ops)), Files: sourceFiles(res.Files), Changes: changesToProto(res.Changes)}
+	for i, op := range res.Ops {
 		if out.Ops[i], err = toProto(op, &harov1.Op{}); err != nil {
 			return nil, internal(err)
 		}
 	}
-	for _, ch := range changes {
-		srcs[ch.File].Text = ch.Text
-		out.Changes = append(out.Changes, &harov1.FileChange{File: int32(ch.File), Path: ch.Path, Text: ch.Text})
-	}
-	out.Files = sourceFiles(srcs)
 	return connect.NewResponse(out), nil
 }
 

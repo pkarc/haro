@@ -56,6 +56,10 @@ haro serve --file /etc/haproxy/haproxy.cfg --allow-write # permite guardar
 haro serve --file haproxy.cfg --file conf.d/             # varios archivos
 ```
 
+### Sin servidor: el núcleo en WebAssembly
+
+El mismo núcleo compila a WebAssembly (`make wasm` → `web/public/wasm/`) y la web puede usarlo en vez de `haro serve`: `cd web && VITE_CORE=wasm npm run build`. La configuración nunca sale del navegador. No hay disco ni `haproxy -c` en ese modo (solo el detector). El módulo con Go estándar pesa unos 6 MB (1,6 MB con gzip); `make wasm-tiny` usa TinyGo en Docker y lo deja en unos 1,8 MB (620 KB con gzip). `node wasm/smoke.mjs [dir]` comprueba cualquiera de los dos.
+
 ### En CI y en tu repositorio
 
 ```yaml
@@ -207,7 +211,8 @@ El plan detallado está en [`docs/PLAN.md`](docs/PLAN.md).
 - [x] Operaciones de edición en el núcleo (`apply`)
 - [x] Servidor MCP (`haro mcp`)
 - [ ] Asistente: construcción de contexto en el núcleo, llamada a la API en cada cliente
-- [ ] Módulo WASM y web pública
+- [x] Núcleo en WebAssembly (`make wasm`, `WasmCoreClient`)
+- [ ] Web pública (repo aparte)
 
 ## Licencia y créditos
 

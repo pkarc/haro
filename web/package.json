@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "build:wasm": "tsc -b && VITE_CORE=wasm vite build --outDir dist-wasm --emptyOutDir",
+    "preview:wasm": "vite preview --outDir dist-wasm --port 7473 --strictPort --host 127.0.0.1",
+    "test:e2e:wasm": "npm run build:wasm && playwright test --project=wasm"
   },
   "dependencies": {
     "@bufbuild/protobuf": "^2.17.0",

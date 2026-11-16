@@ -8,3 +8,5 @@ core/testdata/corpus/
 web/test-results/
 web/playwright-report/
 web/tsconfig.tsbuildinfo
+web/public/wasm/
+web/dist-wasm/
