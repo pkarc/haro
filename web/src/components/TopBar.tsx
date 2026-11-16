@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useApp } from '../store'
+import { useApp, useAppContext } from '../store'
 import { dirtyIndexes } from '../store/files'
 import { ExportDialog } from './ExportDialog'
 import { HistoryDialog } from './HistoryDialog'
@@ -14,7 +14,8 @@ export function TopBar() {
   const redo = useApp(s => s.redo)
   const canUndo = useApp(s => s.undoStack.length > 0)
   const canRedo = useApp(s => s.redoStack.length > 0)
-  const caps = useApp(s => s.capabilities)
+  const { configStore, actions } = useAppContext()
+  const canSave = configStore.canSave
   const nDirty = useApp(s => dirtyIndexes(s.files, s.disk).length)
   const served = useApp(s => !!s.disk)
   const toast = useApp(s => s.toast)
@@ -22,7 +23,7 @@ export function TopBar() {
   const close = () => setDlg(null)
 
   const onSave = () => {
-    if (!caps?.canWrite) { toast('No hay permiso de escritura: inicia haro serve con --allow-write para guardar en disco.', 'warn'); return }
+    if (!canSave) { toast(configStore.readOnlyHint ?? 'Esta configuración es de solo lectura.', 'warn'); return }
     if (!nDirty) { toast('No hay cambios sin guardar.'); return }
     setDlg('save')
   }
@@ -41,10 +42,11 @@ export function TopBar() {
         <button className="tbtn" title="Importar" onClick={() => setDlg('import')}><span className="ic">⇣</span><span className="lbl">Importar</span></button>
         <button className="tbtn" title="Exportar" onClick={() => setDlg('export')}><span className="ic">⇡</span><span className="lbl">Exportar</span></button>
         {served && (
-          <button className={`tbtn save${nDirty ? ' on' : ''}${caps?.canWrite ? '' : ' ro'}`} title={caps?.canWrite ? 'Guardar en disco' : 'Solo lectura: inicia haro serve con --allow-write'} onClick={onSave} data-testid="save-button">
+          <button className={`tbtn save${nDirty ? ' on' : ''}${canSave ? '' : ' ro'}`} title={canSave ? `Guardar en ${configStore.label}` : `Solo lectura: ${configStore.readOnlyHint ?? ''}`} onClick={onSave} data-testid="save-button">
             <span className="ic">💾</span><span className="lbl">Guardar{nDirty ? ` (${nDirty})` : ''}</span>
           </button>
         )}
+        {actions}
         <button className="icon" aria-label="Ajustes" title="Ajustes" onClick={() => setDlg('settings')}>⚙</button>
       </div>
       {dlg === 'history' && <HistoryDialog onClose={close} />}

@@ -3,7 +3,7 @@ import { DiffBlock } from '../components/DiffBlock'
 import { openDialog } from '../components/dialogs'
 import { Modal } from '../components/Modal'
 import type { RenderResult, TechTemplate, TemplateParam } from '../core/types'
-import { coreClient, useApp } from '../store'
+import { useApp, useCoreClient } from '../store'
 import { initialValues, isVisible, missingRequired, toParams, type FormValues } from './form'
 
 const RENDER_DELAY_MS = 300
@@ -44,6 +44,7 @@ function Field({ p, value, onChange }: { p: TemplateParam; value: string | boole
 }
 
 export function TemplateDialog({ onClose }: { onClose(): void }) {
+  const coreClient = useCoreClient()
   const files = useApp(s => s.files)
   const lang = useApp(s => s.lang)
   const applyTemplate = useApp(s => s.applyTemplate)
@@ -59,7 +60,7 @@ export function TemplateDialog({ onClose }: { onClose(): void }) {
     let live = true
     coreClient.templates(lang).then(l => { if (live) setList(l) }, e => { if (live) setLoadError((e as Error).message) })
     return () => { live = false }
-  }, [lang])
+  }, [coreClient, lang])
 
   const tpl = list?.find(t => t.id === id)
 
@@ -87,7 +88,7 @@ export function TemplateDialog({ onClose }: { onClose(): void }) {
       )
     }, RENDER_DELAY_MS)
     return () => clearTimeout(timer)
-  }, [tpl, values, files, lang])
+  }, [coreClient, tpl, values, files, lang])
 
   const ready = preview.state === 'ok' && preview.result.changes.length > 0
   const confirm = async () => {

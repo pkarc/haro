@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CoreClient } from '../core/client'
+import { ServedStore, type ConfigStore, type SaveResult } from '../core/configstore'
 import type { Analysis, SourceFile } from '../core/types'
 import { proposalStale } from './chat'
 import { applyChanges, dirtyIndexes } from './files'
@@ -27,9 +28,9 @@ function fakeClient(over: Partial<CoreClient> = {}): CoreClient {
     ...over,
   }
 }
-const mk = (client = fakeClient()) => {
+const mk = (client = fakeClient(), configStore: ConfigStore = new ServedStore(client)) => {
   const mem = new Map<string, string>()
-  return createAppStore(client, { storage: { getItem: k => mem.get(k) ?? null, setItem: (k, v) => { mem.set(k, v) }, removeItem: k => { mem.delete(k) } } })
+  return createAppStore(client, configStore, { storage: { getItem: k => mem.get(k) ?? null, setItem: (k, v) => { mem.set(k, v) }, removeItem: k => { mem.delete(k) } } })
 }
 const F = (text: string, path = 'a.cfg'): SourceFile => ({ path, text })
 
@@ -205,15 +206,15 @@ describe('idioma', () => {
   it('persiste el idioma y descarta valores inválidos', () => {
     const mem = new Map<string, string>()
     const storage = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => { mem.set(k, v) }, removeItem: (k: string) => { mem.delete(k) } }
-    const a = createAppStore(fakeClient(), { storage })
+    const a = createAppStore(fakeClient(), new ServedStore(fakeClient()), { storage })
     a.setState({ lang: 'en' })
     a.getState().setText(0, 'cambio') // fuerza la escritura en el almacenamiento
     const saved = JSON.parse(mem.get('haro.v1')!)
     expect(saved.state.lang).toBe('en')
-    expect(createAppStore(fakeClient(), { storage }).getState().lang).toBe('en')
+    expect(createAppStore(fakeClient(), new ServedStore(fakeClient()), { storage }).getState().lang).toBe('en')
     saved.state.lang = 'klingon'
     mem.set('haro.v1', JSON.stringify(saved))
-    expect(['es', 'en']).toContain(createAppStore(fakeClient(), { storage }).getState().lang)
+    expect(['es', 'en']).toContain(createAppStore(fakeClient(), new ServedStore(fakeClient()), { storage }).getState().lang)
   })
 })
 
@@ -304,11 +305,11 @@ describe('asistente', () => {
     const mem = new Map<string, string>()
     const storage = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => { mem.set(k, v) }, removeItem: (k: string) => { mem.delete(k) } }
     const { client } = assistant(async function* () { yield { type: 'text', text: 'resp' }; yield done })
-    const a = createAppStore(client, { storage })
+    const a = createAppStore(client, new ServedStore(client), { storage })
     await a.getState().sendChat('hola')
     a.setState({ chat: [...a.getState().chat, { role: 'user', content: 'otra', ts: 1 }, { role: 'assistant', content: 'a medias', ts: 2, pending: true }] })
     a.getState().setText(0, 'x') // fuerza guardar
-    const b = createAppStore(client, { storage })
+    const b = createAppStore(client, new ServedStore(client), { storage })
     expect(b.getState().chat.map(m => m.content)).toEqual(['hola', 'resp', 'otra', 'a medias'])
     expect(b.getState().chat[3]).toMatchObject({ error: expect.stringContaining('interrumpió') })
     expect(b.getState().chat[3].pending).toBeUndefined()
@@ -378,5 +379,118 @@ describe('asistente', () => {
       expect(s.getState().versions).toHaveLength(0)
       expect(s.getState().toasts.at(-1)?.kind).toBe('warn')
     })
+  })
+})
+
+
+// ---------- almacén de configuración inyectado ----------
+
+/** Almacén en memoria con control de versión, como lo tendría un repositorio. */
+class MemoryStore implements ConfigStore {
+  label = 'memoria'
+  canSave = true
+  storageKey = 'test.memoria'
+  version = 1
+  loads = 0
+  saved: SourceFile[][] = []
+  constructor(public files: SourceFile[], private loadedVersion = 1) {}
+  async load() { this.loads++; this.loadedVersion = this.version; return this.files }
+  async save(files: SourceFile[]): Promise<SaveResult> {
+    if (this.loadedVersion !== this.version) return { saved: false, conflict: true, error: 'La versión remota cambió desde que se cargó' }
+    this.saved.push(files)
+    this.files = this.files.map(f => files.find(g => g.path === f.path) ?? f)
+    this.version++
+    this.loadedVersion = this.version
+    return { saved: true }
+  }
+}
+
+describe('ConfigStore inyectado', () => {
+  it('init carga los archivos del almacén y los marca como lo de origen', async () => {
+    const store = new MemoryStore([F('uno', 'a.cfg'), F('dos', 'b.cfg')])
+    const s = mk(fakeClient(), store)
+    await s.getState().init()
+    expect(store.loads).toBe(1)
+    expect(s.getState().files.map(f => f.text)).toEqual(['uno', 'dos'])
+    expect(s.getState().dirty()).toEqual([])
+    s.getState().setText(1, 'DOS')
+    expect(s.getState().dirty()).toEqual([1])
+  })
+
+  it('guardar pasa por el almacén y marca los archivos como guardados', async () => {
+    const store = new MemoryStore([F('uno', 'a.cfg'), F('dos', 'b.cfg')])
+    const s = mk(fakeClient(), store)
+    await s.getState().init()
+    s.getState().setText(0, 'UNO')
+    s.getState().setText(1, 'DOS')
+    const res = await s.getState().save(s.getState().dirty())
+    expect(res.saved).toBe(true)
+    expect(store.saved).toHaveLength(1) // una sola llamada con todos los archivos
+    expect(store.saved[0].map(f => f.text)).toEqual(['UNO', 'DOS'])
+    expect(s.getState().dirty()).toEqual([])
+  })
+
+  it('un conflicto de versión no marca nada como guardado y reload() recupera lo remoto', async () => {
+    const store = new MemoryStore([F('uno', 'a.cfg')])
+    const s = mk(fakeClient(), store)
+    await s.getState().init()
+    s.getState().setText(0, 'LOCAL')
+    store.version++ // alguien cambió el origen
+    store.files = [F('REMOTO', 'a.cfg')]
+    const res = await s.getState().save([0])
+    expect(res.saved).toBe(false)
+    expect(res.conflict).toBe(true)
+    expect(s.getState().dirty()).toEqual([0])
+    expect(await s.getState().reload()).toBe(true)
+    expect(s.getState().files[0].text).toBe('REMOTO')
+    expect(s.getState().dirty()).toEqual([])
+    // Antes de recargar se guardó una versión con lo local, para no perderlo.
+    expect(s.getState().versions.some(v => v.files[0].text === 'LOCAL')).toBe(true)
+    // Tras recargar, guardar funciona de nuevo.
+    s.getState().setText(0, 'NUEVO')
+    expect((await s.getState().save([0])).saved).toBe(true)
+  })
+
+  it('si load() falla, avisa y la sesión sigue local', async () => {
+    const store = new MemoryStore([])
+    store.load = async () => { throw new Error('sin red') }
+    const s = mk(fakeClient(), store)
+    await s.getState().init()
+    expect(s.getState().toasts.some(t => t.msg.includes('sin red') && t.msg.includes('memoria'))).toBe(true)
+    expect(s.getState().files.length).toBeGreaterThan(0) // muestra
+    expect(s.getState().disk).toBeNull()
+  })
+
+  it('dos almacenes con distinta storageKey no mezclan sesiones', async () => {
+    const mem = new Map<string, string>()
+    const storage = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => { mem.set(k, v) }, removeItem: (k: string) => { mem.delete(k) } }
+    const a = createAppStore(fakeClient(), new MemoryStore([F('A')]), { storage })
+    const other = new MemoryStore([F('B')]); other.storageKey = 'test.otra'
+    const b = createAppStore(fakeClient(), other, { storage })
+    await a.getState().init(); await b.getState().init()
+    a.getState().setText(0, 'A2')
+    expect([...mem.keys()].sort()).toEqual(['test.memoria', 'test.otra'])
+    expect(b.getState().files[0].text).toBe('B')
+  })
+})
+
+describe('ServedStore', () => {
+  it('carga con getConfig, solo guarda si el servidor lo permite y guarda con putFiles', async () => {
+    const put = vi.fn(async () => ({ saved: true }))
+    const base = fakeClient({ getConfig: async () => [F('x')], putFiles: put, capabilities: async () => ({ ...(await fakeClient().capabilities()), canWrite: false }) })
+    const ro = new ServedStore(base)
+    expect(await ro.load()).toEqual([F('x')])
+    expect(ro.canSave).toBe(false)
+    expect(ro.readOnlyHint).toContain('--allow-write')
+    const rw = new ServedStore({ ...base, capabilities: async () => ({ ...(await fakeClient().capabilities()), canWrite: true }) })
+    await rw.load()
+    expect(rw.canSave).toBe(true)
+    await rw.save([F('y')])
+    expect(put).toHaveBeenCalledWith([F('y')])
+  })
+
+  it('sin --file la sesión es local', async () => {
+    const st = new ServedStore(fakeClient({ getConfig: async () => null }))
+    expect(await st.load()).toBeNull()
   })
 })

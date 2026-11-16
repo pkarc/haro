@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import type { CoreClient } from '../core/client'
-import { browserLang, type Analysis, type Capabilities, type Knowledge, type Lang, type Op, type PutResult, type SourceFile } from '../core/types'
+import type { ConfigStore, SaveResult } from '../core/configstore'
+import { browserLang, type Analysis, type Capabilities, type Knowledge, type Lang, type Op, type SourceFile } from '../core/types'
 import { applyProposalToFiles, buildMessages, persistableChat, sanitizeChat, snapshotFor, type ChatMessage } from './chat'
 import { applyChanges, dirtyIndexes, sameFiles } from './files'
 import { SAMPLE_FILES } from './sample'
@@ -57,6 +58,8 @@ export interface AppState {
 
   init(): Promise<void>
   loadServed(served: SourceFile[] | null): void
+  /** Vuelve a leer del almacén de configuración (tras un conflicto de versión). Guarda antes una versión con lo local. */
+  reload(): Promise<boolean>
   setActive(i: number): void
   setText(index: number, text: string, opts?: { coalesce?: boolean }): void
   applyOps(ops: Op[]): Promise<boolean>
@@ -90,15 +93,18 @@ export interface AppState {
   clearFocus(): void
   dirty(): number[]
   // Guarda varios archivos a la vez: se valida el conjunto y se guarda todo o nada.
-  save(indexes: number[]): Promise<PutResult>
+  save(indexes: number[]): Promise<SaveResult>
   markSaved(path: string, text: string): void
   toast(msg: string, kind?: Toast['kind'], action?: Toast['action']): void
   dismissToast(id: number): void
   refreshAnalysis(immediate?: boolean): void
 }
 
+export const DEFAULT_STORAGE_KEY = 'haro.v1'
+
 export interface StoreOptions {
   storage?: StateStorage
+  /** Por defecto, la del almacén de configuración (`ConfigStore.storageKey`) o `haro.v1`. */
   storageKey?: string
   /** Para pruebas: sin esperar el debounce real. */
   analyzeDelay?: number
@@ -119,10 +125,11 @@ function browserStorage(): StateStorage {
 const normalize = (t: string) => t.replace(/\r\n?/g, '\n')
 
 /**
- * Crea el almacén de la aplicación. Recibe el cliente del núcleo para poder
- * probarlo con uno falso (y, en el futuro, con el cliente WASM).
+ * Crea el almacén de la aplicación. Recibe el cliente del núcleo (Connect o
+ * WASM, o uno falso en pruebas) y el almacén de configuración (de dónde
+ * se cargan y adónde se guardan los archivos).
  */
-export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
+export function createAppStore(client: CoreClient, configStore: ConfigStore, opts: StoreOptions = {}) {
   let timer: ReturnType<typeof setTimeout> | undefined
   let requestId = 0
   let toastId = 0
@@ -219,7 +226,10 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
         const [caps, kn, served] = await Promise.all([
           client.capabilities().catch(() => null),
           client.knowledge(get().lang).catch(() => null),
-          client.getConfig().catch(() => null),
+          configStore.load().catch((e: unknown) => {
+            get().toast(`No se pudo cargar desde ${configStore.label}: ${(e as Error).message}`, 'error')
+            return null
+          }),
         ])
         set({ capabilities: caps, knowledge: kn })
         get().loadServed(served && served.length ? served : null)
@@ -240,6 +250,19 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
           return
         }
         set({ files: served, disk: served, active: 0, undoStack: [], redoStack: [], rev: s.rev + 1 })
+      },
+
+      async reload() {
+        let files: SourceFile[] | null
+        try { files = await configStore.load() } catch (e) {
+          get().toast(`No se pudo recargar desde ${configStore.label}: ${(e as Error).message}`, 'error')
+          return false
+        }
+        if (!files?.length) return false
+        get().saveVersion('Antes de recargar')
+        set(s => ({ files: files!, disk: files, active: 0, undoStack: [], redoStack: [], rev: s.rev + 1 }))
+        get().refreshAnalysis()
+        return true
       },
 
       setActive(i) { if (i >= 0 && i < get().files.length) set({ active: i }) },
@@ -412,7 +435,7 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
 
       async save(indexes) {
         const files = indexes.map(i => get().files[i])
-        const res = await client.putFiles(files)
+        const res = await configStore.save(files)
         if (res.saved) files.forEach(f => get().markSaved(f.path, f.text))
         return res
       },
@@ -442,7 +465,7 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
       },
     }
   }, {
-    name: opts.storageKey ?? 'haro.v1',
+    name: opts.storageKey ?? configStore.storageKey ?? DEFAULT_STORAGE_KEY,
     version: 1,
     storage: createJSONStorage(() => opts.storage ?? browserStorage()),
     partialize: s => ({ lang: s.lang, chat: persistableChat(s.chat).slice(-100), files: s.files, active: s.active, disk: s.disk, mode: s.mode, versions: s.versions, ui: s.ui }),

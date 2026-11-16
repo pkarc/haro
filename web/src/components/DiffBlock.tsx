@@ -1,18 +1,19 @@
 import { useEffect, useState } from 'react'
-import { coreClient } from '../store'
+import { useCoreClient } from '../store'
 import type { DiffOp } from '../core/types'
 
 const CONTEXT = 3
 
 // Diff de líneas calculado por el núcleo (CoreService.Diff).
 export function DiffBlock({ before, after }: { before: string; after: string }) {
+  const coreClient = useCoreClient()
   const [ops, setOps] = useState<DiffOp[] | null>(null)
   const [error, setError] = useState('')
   useEffect(() => {
     let live = true
     coreClient.diff(before, after).then(o => { if (live) setOps(o) }, e => { if (live) setError((e as Error).message) })
     return () => { live = false }
-  }, [before, after])
+  }, [coreClient, before, after])
   if (error) return <p className="iss sev-error">No se pudo calcular el diff: {error}</p>
   if (!ops) return <p className="muted sm">Calculando diferencias…</p>
   return <DiffView ops={ops} />

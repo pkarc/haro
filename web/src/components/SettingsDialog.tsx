@@ -1,9 +1,11 @@
 import { LANGS, type Lang } from '../core/types'
-import { useApp } from '../store'
+import { useApp, useConfigStore } from '../store'
+import { DEFAULT_STORAGE_KEY } from '../store/store'
 import { confirmBox } from './dialogs'
 import { Modal } from './Modal'
 
 export function SettingsDialog({ onClose }: { onClose(): void }) {
+  const configStore = useConfigStore()
   const served = useApp(s => !!s.disk)
   const loadSample = useApp(s => s.loadSample)
   const toast = useApp(s => s.toast)
@@ -24,7 +26,7 @@ export function SettingsDialog({ onClose }: { onClose(): void }) {
         <button className="btn sm danger" onClick={async () => {
           onClose()
           if (await confirmBox('Se borrarán archivos, versiones y ajustes guardados en este navegador.', 'Borrar todo', true)) {
-            try { localStorage.removeItem('haro.v1') } catch { /* sin acceso al almacenamiento */ }
+            try { localStorage.removeItem(configStore.storageKey ?? DEFAULT_STORAGE_KEY) } catch { /* sin acceso al almacenamiento */ }
             location.reload()
           }
         }}>Borrar toda la sesión</button>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { AssistantDisabled, ChatPanel } from './assistant/ChatPanel'
 import { DialogHost } from './components/dialogs'
 import { Toasts } from './components/Toasts'
@@ -6,10 +6,35 @@ import { TopBar } from './components/TopBar'
 import { useMediaQuery } from './components/useMediaQuery'
 import { CodeView } from './editor/CodeView'
 import { ProblemsButton, ProblemsPanel } from './problems/ProblemsPanel'
-import { useApp } from './store'
+import type { CoreClient } from './core/client'
+import type { ConfigStore } from './core/configstore'
+import { AppContext, useApp, useAppApi, useAppContext } from './store'
+import { createAppStore } from './store/store'
 import { VisualView } from './visual/VisualView'
 
-export function App() {
+export interface AppProps {
+  client: CoreClient
+  store: ConfigStore
+  /** Contenido sobre la barra superior (p. ej. repositorio activo, sesión). */
+  header?: ReactNode
+  /** Botones extra en la barra superior, antes de Ajustes. */
+  actions?: ReactNode
+}
+
+/**
+ * La aplicación completa con el núcleo y el almacén de configuración
+ * inyectados. Crea su estado una vez por pareja (client, store); para cambiar
+ * de almacén, desmóntala o dale otra `key`.
+ */
+export function App({ client, store, header, actions }: AppProps) {
+  const appStore = useMemo(() => createAppStore(client, store), [client, store])
+  const value = useMemo(() => ({ client, configStore: store, store: appStore, header, actions }), [client, store, appStore, header, actions])
+  return <AppContext.Provider value={value}><AppShell /></AppContext.Provider>
+}
+
+function AppShell() {
+  const api = useAppApi()
+  const { header } = useAppContext()
   const ready = useApp(s => s.ready)
   const mode = useApp(s => s.mode)
   const setMode = useApp(s => s.setMode)
@@ -22,7 +47,7 @@ export function App() {
   const mobile = useMediaQuery('(max-width: 899px)')
   const [problems, setProblems] = useState(false)
 
-  useEffect(() => { void useApp.getState().init() }, [])
+  useEffect(() => { void api.getState().init() }, [api])
 
   // Ctrl/Cmd+Z fuera de campos de texto (dentro, cada uno gestiona el suyo).
   useEffect(() => {
@@ -31,18 +56,19 @@ export function App() {
       const t = e.target as HTMLElement | null
       if (t?.closest('input,textarea,select,[contenteditable="true"],.cm-editor')) return
       const k = e.key.toLowerCase()
-      if (k === 'z') { e.preventDefault(); if (e.shiftKey) useApp.getState().redo(); else useApp.getState().undo() }
-      else if (k === 'y') { e.preventDefault(); useApp.getState().redo() }
+      if (k === 'z') { e.preventDefault(); if (e.shiftKey) api.getState().redo(); else api.getState().undo() }
+      else if (k === 'y') { e.preventDefault(); api.getState().redo() }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [])
+  }, [api])
 
   if (!ready) return <div id="app"><p className="muted pad">Cargando…</p></div>
 
   const assistantVisible = mobile && showAssistant
   return (
     <div id="app" className={mobile ? 'mobile' : ''}>
+      {header}
       <TopBar />
       {error && <div className="iss sev-error net-error" role="alert"><span>Núcleo</span> {error}</div>}
       <main className={`layout${canAssist && !mobile && chatOpen ? ' with-chat' : ''}`}>
