@@ -1,16 +1,16 @@
 //go:build js && wasm
 
-// Módulo WebAssembly del núcleo de haro, para la web pública sin servidor: la
-// configuración nunca sale del navegador. Expone una única función global,
-// haroCore.call(método, jsonPeticion) → jsonRespuesta, y la web la envuelve
-// en WasmCoreClient (web/src/core/wasm.ts).
+// WebAssembly module of the haro core, for the public serverless web UI: the
+// configuration never leaves the browser. It exposes a single global function,
+// haroCore.call(method, jsonRequest) → jsonResponse, and the web UI wraps it
+// in WasmCoreClient (web/src/core/wasm.ts).
 //
-// Las peticiones y respuestas son JSON con los mismos nombres de campo
-// (camelCase) que el contrato proto/haro/v1/haro.proto, así que la web los
-// valida y completa con el código generado. Una respuesta es
-// {"result": …} o {"error": {"code", "message"}}.
+// Requests and responses are JSON with the same field names (camelCase) as the
+// proto/haro/v1/haro.proto contract, so the web UI validates and completes
+// them with the generated code. A response is {"result": …} or
+// {"error": {"code", "message"}}.
 //
-// Compilar: make wasm
+// Build: make wasm
 package main
 
 import (
@@ -35,7 +35,7 @@ func (r sourcesReq) sources() []core.Source {
 	return []core.Source{{Path: "haproxy.cfg", Text: r.Text}}
 }
 
-// codedError es un error con el código de la API (invalid_argument…).
+// codedError is an error with the API code (invalid_argument…).
 type codedError struct {
 	code string
 	err  error
@@ -47,11 +47,11 @@ func invalid(err error) error { return codedError{"invalid_argument", err} }
 
 func parseLang(s string) (core.Lang, error) {
 	if s == "" {
-		return core.LangES, nil
+		return core.LangDefault, nil
 	}
 	l, ok := core.ParseLang(s)
 	if !ok {
-		return "", invalid(fmt.Errorf("idioma desconocido %q (usa es o en)", s))
+		return "", invalid(fmt.Errorf("unknown language %q (use es or en)", s))
 	}
 	return l, nil
 }
@@ -72,7 +72,7 @@ var methods = map[string]func(raw []byte) (any, error){
 		}
 		if r.HAProxyVersion != "" {
 			if _, ok := core.ParseVersion(r.HAProxyVersion); !ok {
-				return nil, invalid(fmt.Errorf("versión de HAProxy no válida: %q", r.HAProxyVersion))
+				return nil, invalid(fmt.Errorf("invalid HAProxy version: %q", r.HAProxyVersion))
 			}
 		}
 		return core.AnalyzeConfigWith(r.sources(), core.LintOptions{Lang: lang, HAProxyVersion: r.HAProxyVersion}), nil
@@ -80,12 +80,17 @@ var methods = map[string]func(raw []byte) (any, error){
 	"apply": func(raw []byte) (any, error) {
 		var r struct {
 			sourcesReq
-			Ops []core.Op `json:"ops"`
+			Ops  []core.Op `json:"ops"`
+			Lang string    `json:"lang"`
 		}
 		if err := json.Unmarshal(raw, &r); err != nil {
 			return nil, invalid(err)
 		}
-		out, err := coreapi.Apply(r.sources(), r.Ops)
+		lang, err := parseLang(r.Lang)
+		if err != nil {
+			return nil, err
+		}
+		out, err := coreapi.Apply(r.sources(), r.Ops, lang)
 		var ae *core.ApplyError
 		if errors.As(err, &ae) {
 			return nil, invalid(ae)
@@ -144,11 +149,11 @@ var methods = map[string]func(raw []byte) (any, error){
 	},
 }
 
-// call atiende una llamada y siempre devuelve JSON.
+// call handles a call and always returns JSON.
 func call(method string, raw []byte) string {
 	fn, ok := methods[method]
 	if !ok {
-		return errJSON("unimplemented", fmt.Errorf("método desconocido: %s", method))
+		return errJSON("unimplemented", fmt.Errorf("unknown method: %s", method))
 	}
 	if len(raw) == 0 {
 		raw = []byte("{}")
@@ -177,16 +182,16 @@ func main() {
 	api := js.Global().Get("Object").New()
 	api.Set("call", js.FuncOf(func(_ js.Value, args []js.Value) any {
 		if len(args) < 1 {
-			return errJSON("invalid_argument", errors.New("falta el método"))
+			return errJSON("invalid_argument", errors.New("missing method"))
 		}
 		var raw []byte
 		if len(args) > 1 {
 			raw = []byte(args[1].String())
 		}
-		// Un pánico no debe dejar muerto el módulo: se devuelve como error.
+		// A panic must not leave the module dead: it is returned as an error.
 		defer func() { recover() }()
 		return call(args[0].String(), raw)
 	}))
 	js.Global().Set("haroCore", api)
-	select {} // el módulo se queda vivo atendiendo llamadas
+	select {} // the module stays alive serving calls
 }

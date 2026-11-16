@@ -7,15 +7,15 @@ import (
 	"strings"
 )
 
-// Las explicaciones usan un markdown mínimo: **negrita** y `código`.
-// La web lo convierte a HTML y la TUI a estilos de terminal.
+// Explanations use minimal markdown: **bold** and `code`.
+// The web converts it to HTML and the TUI to terminal styles.
 //
-// El idioma viaja con la llamada (tipo tr), nunca en una variable global: el
-// servidor atiende peticiones concurrentes con idiomas distintos. Cada frase
-// se escribe completa en los dos idiomas; cuando el orden de las palabras
-// cambia, se usan dos plantillas (fmt.Sprintf) en lugar de concatenar.
+// The language travels with the call (type tr), never in a global variable: the
+// server handles concurrent requests in different languages. Each phrase
+// is written in full in both languages; when the word order
+// changes, two templates (fmt.Sprintf) are used instead of concatenating.
 
-// Explanation es la explicación legible de una directiva.
+// Explanation is the human-readable explanation of a directive.
 type Explanation struct {
 	Text     string `json:"text"`
 	Category string `json:"category"`
@@ -25,16 +25,16 @@ type Explanation struct {
 func b(s string) string { return "**" + s + "**" }
 func c(s string) string { return "`" + s + "`" }
 
-// tr es el contexto de idioma de una explicación.
+// tr is the language context of an explanation.
 type tr struct{ lang Lang }
 
-// t elige el texto según el idioma.
+// t picks the text according to the language.
 func (x tr) t(es, en string) string { return x.lang.t(es, en) }
 
-// f es t seguido de fmt.Sprintf: dos plantillas completas, una por idioma.
+// f is t followed by fmt.Sprintf: two complete templates, one per language.
 func (x tr) f(es, en string, a ...any) string { return fmt.Sprintf(x.t(es, en), a...) }
 
-// kb devuelve los textos de la base de conocimiento del idioma.
+// kb returns the knowledge base texts for the language.
 func (x tr) kb() *KnowledgeText { return KB.Text(x.lang) }
 
 var reDuration = regexp.MustCompile(`^(\d+(?:\.\d+)?)(us|ms|s|m|h|d)?$`)
@@ -320,10 +320,10 @@ func (x tr) fetchSubject(fn, a string) (string, bool) {
 	return "", false
 }
 
-// ACLPhrase explica el criterio de una ACL, en español: `path_beg -i /api /v2`.
-func ACLPhrase(t []string) string { return ACLPhraseLang(t, LangES) }
+// ACLPhrase explains an ACL's criterion, in the default language: `path_beg -i /api /v2`.
+func ACLPhrase(t []string) string { return ACLPhraseLang(t, LangDefault) }
 
-// ACLPhraseLang es ACLPhrase en el idioma pedido.
+// ACLPhraseLang is ACLPhrase in the requested language.
 func ACLPhraseLang(t []string, lang Lang) string { return tr{lang}.aclPhrase(t) }
 
 func (x tr) aclPhrase(t []string) string {
@@ -392,8 +392,8 @@ func (x tr) aclPhrase(t []string) string {
 	case flags["-M"] != "":
 		out = subject + x.t(" está en el mapa ", " is in the map ") + c(flags["-M"])
 	case len(vals) > 0 && text.Operators[vals[0]] != "":
-		// Con un operador de comparación, lo que se compara es el número: la
-		// longitud (path_len) o el recuento (hdr_cnt), no el sujeto en sí.
+		// With a comparison operator, what is compared is the number: the
+		// length (path_len) or the count (hdr_cnt), not the subject itself.
 		subj := subject
 		switch match {
 		case "len":
@@ -431,10 +431,10 @@ func (x tr) aclPhrase(t []string) string {
 	return out
 }
 
-// CondPhrase explica una condición completa, en español.
-func CondPhrase(cd *Cond) string { return CondPhraseLang(cd, LangES) }
+// CondPhrase explains a complete condition, in the default language.
+func CondPhrase(cd *Cond) string { return CondPhraseLang(cd, LangDefault) }
 
-// CondPhraseLang es CondPhrase en el idioma pedido.
+// CondPhraseLang is CondPhrase in the requested language.
 func CondPhraseLang(cd *Cond, lang Lang) string { return tr{lang}.condPhrase(cd) }
 
 func (x tr) condPhrase(cd *Cond) string {
@@ -847,7 +847,7 @@ func init() {
 				"session":    x.t("Sesión TCP:", "TCP session:"),
 			}[arg(a, 0)]
 			if label == "" {
-				// Sin fase conocida, todo lo que sigue es la acción.
+				// With no known phase, everything that follows is the action.
 				return x.ruleDesc(a, "TCP:"), true
 			}
 			return x.ruleDesc(rest(a, 1), label), true
@@ -1222,11 +1222,11 @@ func init() {
 
 var reGlobalSetting = regexp.MustCompile(`^(ssl-|quic|httpclient\.|h1-|h2-|ocsp)`)
 
-// Describe explica una directiva en el contexto de su tipo de sección, en
-// español. Para otro idioma, usa DescribeLang.
-func Describe(l *Line, section string) Explanation { return DescribeLang(l, section, LangES) }
+// Describe explains a directive in the context of its section type, in the
+// default language. For another language, use DescribeLang.
+func Describe(l *Line, section string) Explanation { return DescribeLang(l, section, LangDefault) }
 
-// DescribeLang es Describe en el idioma pedido.
+// DescribeLang is Describe in the requested language.
 func DescribeLang(l *Line, section string, lang Lang) Explanation {
 	x := tr{lang}
 	info, known := KB.Directives[l.Keyword]
@@ -1263,8 +1263,8 @@ func DescribeLang(l *Line, section string, lang Lang) Explanation {
 	return ex
 }
 
-// DisplayArgs devuelve los argumentos tal como están escritos, ocultando
-// contraseñas.
+// DisplayArgs returns the arguments as written, hiding
+// passwords.
 func DisplayArgs(l *Line) string {
 	t := l.Text
 	if l.Comment != "" {

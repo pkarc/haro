@@ -7,39 +7,39 @@ import (
 	"strings"
 )
 
-// Operaciones de edición. Todas las interfaces (modo visual de la web, TUI,
-// MCP, asistente) editan a través de Apply para que el cambio en el texto sea
-// siempre mínimo: solo se toca lo que la operación necesita, y los archivos que
-// la operación no menciona no se tocan en absoluto.
+// Edit operations. All the interfaces (the web's visual mode, TUI,
+// MCP, assistant) edit through Apply so that the change to the text is
+// always minimal: only what the operation needs is touched, and files that
+// the operation does not mention are not touched at all.
 //
-// Los índices de sección son los de la vista unificada (Config.Merge), los
-// mismos que usan Issue.Section, LineExplanation.Section y la topología. Los
-// índices de línea (LineIndex) son posiciones dentro de Section.Lines, que
-// incluye comentarios y líneas en blanco. Las operaciones se aplican en orden,
-// y cada una ve el resultado de la anterior.
+// Section indices are those of the unified view (Config.Merge), the
+// same ones used by Issue.Section, LineExplanation.Section and the topology. Line
+// indices (LineIndex) are positions within Section.Lines, which
+// includes comments and blank lines. Operations are applied in order,
+// and each one sees the result of the previous one.
 
 //go:embed knowledge/templates.json
 var templatesJSON []byte
 
-// SectionTemplate es la plantilla de una sección nueva. Las líneas que
-// contienen {{backend}} se omiten si la configuración no tiene ningún backend.
+// SectionTemplate is the template of a new section. Lines that
+// contain {{backend}} are omitted if the configuration has no backend.
 type SectionTemplate struct {
 	Name  string   `json:"name"`
 	Lines []string `json:"lines"`
 }
 
-// Templates son las plantillas de sección por tipo, cargadas al iniciar.
+// Templates are the section templates by type, loaded at startup.
 var Templates = mustLoadTemplates()
 
 func mustLoadTemplates() map[string]SectionTemplate {
 	var t map[string]SectionTemplate
 	if err := json.Unmarshal(templatesJSON, &t); err != nil {
-		panic(fmt.Sprintf("haro: plantillas inválidas: %v", err))
+		panic(fmt.Sprintf("haro: invalid templates: %v", err))
 	}
 	return t
 }
 
-// Nombres de operación.
+// Operation names.
 const (
 	OpAddSection      = "add_section"
 	OpRemoveSection   = "remove_section"
@@ -51,8 +51,8 @@ const (
 	OpMoveDirective   = "move_directive"
 )
 
-// Op es una operación de edición serializable a JSON. Según Op se usan unos
-// campos u otros:
+// Op is an edit operation serializable to JSON. Depending on Op,
+// some fields or others are used:
 //
 //	add_section      Type, Name?, Template?, File?, At?
 //	remove_section   Section
@@ -63,10 +63,10 @@ const (
 //	remove_directive Section, LineIndex
 //	move_directive   Section, LineIndex, Delta
 //
-// Al crear o mover una sección, At y To son posiciones en la vista unificada.
-// File elige el archivo de destino; sin File, add_section deduce el archivo de
-// la sección que ocupa esa posición (o usa el último archivo, y el primero para
-// global) y move_section deja la sección en su archivo.
+// When creating or moving a section, At and To are positions in the unified view.
+// File chooses the destination file; without File, add_section infers the file from
+// the section occupying that position (or uses the last file, and the first for
+// global) and move_section leaves the section in its file.
 type Op struct {
 	Op         string `json:"op"`
 	Section    int    `json:"section,omitempty"`
@@ -82,37 +82,43 @@ type Op struct {
 	UpdateRefs bool   `json:"updateRefs,omitempty"`
 }
 
-// FileChange es el nuevo texto de un archivo modificado por Apply.
+// FileChange is the new text of a file modified by Apply.
 type FileChange struct {
 	File int    `json:"file"`
 	Path string `json:"path"`
 	Text string `json:"text"`
 }
 
-// ApplyError indica qué operación falló. Si una falla, no se aplica ninguna.
+// ApplyError says which operation failed. If one fails, none is applied.
 type ApplyError struct {
 	Index int    `json:"index"`
 	Op    string `json:"op"`
 	Msg   string `json:"message"`
+	lang  Lang
 }
 
 func (e *ApplyError) Error() string {
-	return fmt.Sprintf("operación %d (%s): %s", e.Index+1, e.Op, e.Msg)
+	return fmt.Sprintf(e.lang.t("operación %d (%s): %s", "operation %d (%s): %s"), e.Index+1, e.Op, e.Msg)
 }
 
-// Apply aplica las operaciones sobre una copia de cfg y devuelve la nueva
-// configuración (reanalizada, con los números de línea al día) y los archivos
-// cuyo texto cambió. cfg no se modifica. Si una operación falla no se aplica
-// ninguna y el error es un *ApplyError.
+// Apply applies the operations to a copy of cfg and returns the new
+// configuration (re-analyzed, with up-to-date line numbers) and the files
+// whose text changed. cfg is not modified. If an operation fails none is applied
+// and the error is an *ApplyError.
 func Apply(cfg *Config, ops ...Op) (*Config, []FileChange, error) {
+	return ApplyLang(cfg, LangDefault, ops...)
+}
+
+// ApplyLang is Apply with error messages in the requested language.
+func ApplyLang(cfg *Config, lang Lang, ops ...Op) (*Config, []FileChange, error) {
 	before := make([]Source, len(cfg.Files))
 	for i, f := range cfg.Files {
 		before[i] = Source{Path: f.Path, Text: Serialize(f.Doc)}
 	}
-	e := &editor{cfg: NewConfig(before)}
+	e := &editor{cfg: NewConfig(before), lang: lang}
 	for i, op := range ops {
 		if err := e.apply(op); err != nil {
-			return nil, nil, &ApplyError{Index: i, Op: op.Op, Msg: err.Error()}
+			return nil, nil, &ApplyError{Index: i, Op: op.Op, Msg: err.Error(), lang: lang}
 		}
 	}
 	after := make([]Source, len(e.cfg.Files))
@@ -127,7 +133,13 @@ func Apply(cfg *Config, ops ...Op) (*Config, []FileChange, error) {
 }
 
 type editor struct {
-	cfg *Config
+	cfg  *Config
+	lang Lang
+}
+
+// errf builds an error whose message depends on the language.
+func errf(lang Lang, es, en string, a ...any) error {
+	return fmt.Errorf(lang.t(es, en), a...)
 }
 
 func (e *editor) apply(op Op) error {
@@ -149,36 +161,36 @@ func (e *editor) apply(op Op) error {
 	case OpMoveDirective:
 		return e.moveDirective(op)
 	}
-	return fmt.Errorf("operación desconocida")
+	return errf(e.lang, "operación desconocida", "unknown operation")
 }
 
-// --- Bloques --------------------------------------------------------------
+// --- Blocks ---------------------------------------------------------------
 
-// El parser deja los comentarios que van justo encima de una cabecera al final
-// de la sección anterior. Para mover o borrar secciones hay que llevárselos
-// con ella, así que cada archivo se descompone temporalmente en bloques.
+// The parser leaves the comments right above a header at the end
+// of the previous section. To move or delete sections they must be carried
+// along with it, so each file is temporarily decomposed into blocks.
 
 type block struct {
-	lead  []*Line // comentarios sin indentar pegados a la cabecera
+	lead  []*Line // unindented comments attached to the header
 	sec   *Section
-	body  []*Line // líneas de la sección, sin los comentarios del bloque siguiente
-	dirty bool    // sección nueva o movida: hay que asegurar su separación
+	body  []*Line // lines of the section, without the next block's comments
+	dirty bool    // new or moved section: its separation must be ensured
 }
 
 type fileBlocks struct {
 	pre    []*Line
 	blocks []*block
-	endsNL bool // el archivo original terminaba con salto de línea
+	endsNL bool // the original file ended with a newline
 }
 
-// splitLead separa el final de lines en (resto, comentarios pegados a la
-// siguiente cabecera).
+// splitLead splits the end of lines into (rest, comments attached to the
+// next header).
 func splitLead(lines []*Line) (rest, lead []*Line) {
 	k := len(lines)
 	for k > 0 && lines[k-1].Kind == KindComment && lines[k-1].Indent == "" {
 		k--
 	}
-	// Expresión completa de corte: un append posterior no debe pisar los comentarios.
+	// Full slice expression: a later append must not overwrite the comments.
 	return lines[:k:k], lines[k:]
 }
 
@@ -210,8 +222,8 @@ func explode(doc *Doc) *fileBlocks {
 
 func blank() *Line { return &Line{Kind: KindBlank} }
 
-// implode vuelve a escribir los bloques en el documento. Solo añade líneas en
-// blanco alrededor de lo nuevo o movido y conserva el salto de línea final.
+// implode writes the blocks back into the document. It only adds blank lines
+// around what is new or moved and keeps the final newline.
 func (fb *fileBlocks) implode(doc *Doc) {
 	for i, b := range fb.blocks {
 		if !b.dirty {
@@ -251,7 +263,7 @@ func (fb *fileBlocks) implode(doc *Doc) {
 	}
 }
 
-// --- Localización ---------------------------------------------------------
+// --- Locating -----------------------------------------------------------
 
 func (e *editor) total() int {
 	n := 0
@@ -261,10 +273,10 @@ func (e *editor) total() int {
 	return n
 }
 
-// locate traduce un índice de la vista unificada a (archivo, posición en el archivo).
+// locate translates an index of the unified view into (file, position in the file).
 func (e *editor) locate(i int) (file, local int, err error) {
 	if i < 0 {
-		return 0, 0, fmt.Errorf("la sección %d no existe", i)
+		return 0, 0, errf(e.lang, "la sección %d no existe", "section %d does not exist", i)
 	}
 	for fi, f := range e.cfg.Files {
 		if i < len(f.Doc.Sections) {
@@ -272,7 +284,7 @@ func (e *editor) locate(i int) (file, local int, err error) {
 		}
 		i -= len(f.Doc.Sections)
 	}
-	return 0, 0, fmt.Errorf("la sección no existe (hay %d)", e.total())
+	return 0, 0, errf(e.lang, "la sección no existe (hay %d)", "the section does not exist (there are %d)", e.total())
 }
 
 func (e *editor) section(i int) (*Section, error) {
@@ -283,7 +295,7 @@ func (e *editor) section(i int) (*Section, error) {
 	return e.cfg.Files[fi].Doc.Sections[local], nil
 }
 
-// fileStart es el índice unificado de la primera sección del archivo fi.
+// fileStart is the unified index of the first section of file fi.
 func (e *editor) fileStart(fi int) int {
 	n := 0
 	for _, f := range e.cfg.Files[:fi] {
@@ -294,24 +306,24 @@ func (e *editor) fileStart(fi int) int {
 
 func (e *editor) checkFile(fi int) error {
 	if fi < 0 || fi >= len(e.cfg.Files) {
-		return fmt.Errorf("el archivo %d no existe (hay %d)", fi, len(e.cfg.Files))
+		return errf(e.lang, "el archivo %d no existe (hay %d)", "file %d does not exist (there are %d)", fi, len(e.cfg.Files))
 	}
 	return nil
 }
 
 func (e *editor) all() []*Section { return e.cfg.Merge().Sections }
 
-// --- Validación de nombres ------------------------------------------------
+// --- Name validation ---------------------------------------------------
 
-func validName(name string) error {
+func validName(name string, lang Lang) error {
 	if strings.ContainsAny(name, " \t\r\n#\"'\\") {
-		return fmt.Errorf("el nombre «%s» no puede contener espacios, comillas, # ni \\", name)
+		return errf(lang, "el nombre «%s» no puede contener espacios, comillas, # ni \\", "the name “%s” cannot contain spaces, quotes, # or \\", name)
 	}
 	return nil
 }
 
-// nameKeys son los espacios de nombres que ocupa una sección: un listen es a
-// la vez frontend y backend, igual que en el detector.
+// nameKeys are the namespaces a section occupies: a listen is both
+// frontend and backend, as in the detector.
 func nameKeys(typ string) []string {
 	if typ == "listen" {
 		return []string{"frontend", "backend"}
@@ -346,10 +358,10 @@ func uniqueName(e *editor, typ, base string) string {
 	return name
 }
 
-// --- Líneas ---------------------------------------------------------------
+// --- Lines -------------------------------------------------------------
 
-// detectIndent devuelve la indentación que usa la sección (o, si no tiene
-// directivas, su archivo) para que las líneas nuevas encajen con el estilo.
+// detectIndent returns the indentation the section uses (or, if it has no
+// directives, its file) so new lines match the style.
 func (e *editor) detectIndent(s *Section) string {
 	find := func(secs []*Section) string {
 		for _, sec := range secs {
@@ -370,29 +382,29 @@ func (e *editor) detectIndent(s *Section) string {
 	return DefaultIndent
 }
 
-// parseOpLine interpreta el texto de una directiva o comentario con la
-// indentación que tendrá. Rechaza saltos de línea, líneas vacías y cabeceras
-// de sección (que cambiarían la estructura del archivo al reescribirlo).
-func parseOpLine(text, indent string, file int) (*Line, error) {
+// parseOpLine interprets the text of a directive or comment with the
+// indentation it will have. It rejects line breaks, empty lines and section
+// headers (which would change the file's structure when rewritten).
+func parseOpLine(text, indent string, file int, lang Lang) (*Line, error) {
 	if strings.ContainsAny(text, "\r\n") {
-		return nil, fmt.Errorf("el texto debe ser una sola línea")
+		return nil, errf(lang, "el texto debe ser una sola línea", "the text must be a single line")
 	}
 	text = strings.TrimSpace(text)
 	if text == "" {
-		return nil, fmt.Errorf("el texto está vacío")
+		return nil, errf(lang, "el texto está vacío", "the text is empty")
 	}
 	l, sec := ParseLine(indent+text, 0)
 	if sec != nil {
-		return nil, fmt.Errorf("«%s» es una cabecera de sección, no una directiva; usa add_section", text)
+		return nil, errf(lang, "«%s» es una cabecera de sección, no una directiva; usa add_section", "“%s” is a section header, not a directive; use add_section", text)
 	}
 	l.File = file
 	l.Indent, l.IndentSet = indent, true
 	return l, nil
 }
 
-// bodyEnd es la posición donde acaba el contenido propio de la sección: antes
-// de las líneas en blanco finales y, si hay otra sección detrás en el archivo,
-// de los comentarios que pertenecen a su cabecera.
+// bodyEnd is the position where the section's own content ends: before
+// the trailing blank lines and, if another section follows in the file,
+// before the comments that belong to its header.
 func (e *editor) bodyEnd(s *Section) int {
 	lines := s.Lines
 	n := len(lines)
@@ -413,7 +425,7 @@ func (e *editor) lineAt(op Op) (*Section, *Line, error) {
 		return nil, nil, err
 	}
 	if op.LineIndex < 0 || op.LineIndex >= len(s.Lines) {
-		return nil, nil, fmt.Errorf("la línea %d no existe en la sección (tiene %d)", op.LineIndex, len(s.Lines))
+		return nil, nil, errf(e.lang, "la línea %d no existe en la sección (tiene %d)", "line %d does not exist in the section (it has %d)", op.LineIndex, len(s.Lines))
 	}
 	return s, s.Lines[op.LineIndex], nil
 }
@@ -423,14 +435,14 @@ func (e *editor) addDirective(op Op) error {
 	if err != nil {
 		return err
 	}
-	l, err := parseOpLine(op.Text, e.detectIndent(s), s.File)
+	l, err := parseOpLine(op.Text, e.detectIndent(s), s.File, e.lang)
 	if err != nil {
 		return err
 	}
 	at := e.bodyEnd(s)
 	if op.At != nil {
 		if *op.At < 0 || *op.At > len(s.Lines) {
-			return fmt.Errorf("la posición %d está fuera de la sección (tiene %d líneas)", *op.At, len(s.Lines))
+			return errf(e.lang, "la posición %d está fuera de la sección (tiene %d líneas)", "position %d is outside the section (it has %d lines)", *op.At, len(s.Lines))
 		}
 		at = *op.At
 	}
@@ -444,13 +456,13 @@ func (e *editor) updateDirective(op Op) error {
 		return err
 	}
 	if old.Kind == KindBlank {
-		return fmt.Errorf("la línea %d está en blanco; usa add_directive", op.LineIndex)
+		return errf(e.lang, "la línea %d está en blanco; usa add_directive", "line %d is blank; use add_directive", op.LineIndex)
 	}
 	indent := old.Indent
 	if indent == "" {
 		indent = e.detectIndent(s)
 	}
-	l, err := parseOpLine(op.Text, indent, s.File)
+	l, err := parseOpLine(op.Text, indent, s.File, e.lang)
 	if err != nil {
 		return err
 	}
@@ -467,16 +479,16 @@ func (e *editor) removeDirective(op Op) error {
 	return nil
 }
 
-// moveDirective intercambia la línea con su vecina no vacía |Delta| veces. Así
-// las líneas en blanco que agrupan la sección se quedan donde están. Se detiene
-// en los límites del contenido de la sección.
+// moveDirective swaps the line with its non-empty neighbor |Delta| times. This way
+// the blank lines that group the section stay where they are. It stops
+// at the limits of the section's content.
 func (e *editor) moveDirective(op Op) error {
 	s, l, err := e.lineAt(op)
 	if err != nil {
 		return err
 	}
 	if l.Kind == KindBlank {
-		return fmt.Errorf("no se puede mover una línea en blanco")
+		return errf(e.lang, "no se puede mover una línea en blanco", "cannot move a blank line")
 	}
 	step := 1
 	if op.Delta < 0 {
@@ -498,43 +510,43 @@ func (e *editor) moveDirective(op Op) error {
 	return nil
 }
 
-// --- Secciones ------------------------------------------------------------
+// --- Sections -----------------------------------------------------------
 
 func (e *editor) addSection(op Op) error {
 	info, ok := KB.Sections[op.Type]
 	if !ok {
-		return fmt.Errorf("tipo de sección desconocido: «%s»", op.Type)
+		return errf(e.lang, "tipo de sección desconocido: «%s»", "unknown section type: “%s”", op.Type)
 	}
 	if len(e.cfg.Files) == 0 {
-		return fmt.Errorf("no hay archivos donde añadir la sección")
+		return errf(e.lang, "no hay archivos donde añadir la sección", "there are no files to add the section to")
 	}
 	tpl := Templates[op.Type]
 	name := op.Name
 	switch info.Named {
 	case "none":
 		if name != "" {
-			return fmt.Errorf("la sección %s no lleva nombre", op.Type)
+			return errf(e.lang, "la sección %s no lleva nombre", "the %s section takes no name", op.Type)
 		}
 	case "required":
 		if name == "" {
 			name = uniqueName(e, op.Type, orDefault(tpl.Name, op.Type))
 		}
 	}
-	if err := validName(name); err != nil {
+	if err := validName(name, e.lang); err != nil {
 		return err
 	}
 	if op.Type == "global" {
 		for _, s := range e.all() {
 			if s.Type == "global" {
-				return fmt.Errorf("ya hay una sección global")
+				return errf(e.lang, "ya hay una sección global", "there is already a global section")
 			}
 		}
 	}
 	if e.nameTaken(op.Type, name, nil) {
-		return fmt.Errorf("ya existe una sección llamada «%s»", name)
+		return errf(e.lang, "ya existe una sección llamada «%s»", "a section named “%s” already exists", name)
 	}
 
-	// Archivo y posición dentro del archivo.
+	// File and position within the file.
 	var fi, local int
 	switch {
 	case op.File != nil:
@@ -546,14 +558,14 @@ func (e *editor) addSection(op Op) error {
 		if op.At != nil {
 			start := e.fileStart(fi)
 			if *op.At < start || *op.At > start+len(e.cfg.Files[fi].Doc.Sections) {
-				return fmt.Errorf("la posición %d queda fuera del archivo %d", *op.At, fi)
+				return errf(e.lang, "la posición %d queda fuera del archivo %d", "position %d is outside file %d", *op.At, fi)
 			}
 			local = *op.At - start
 		}
 	case op.At != nil:
 		at := *op.At
 		if at < 0 || at > e.total() {
-			return fmt.Errorf("la posición %d no es válida (hay %d secciones)", at, e.total())
+			return errf(e.lang, "la posición %d no es válida (hay %d secciones)", "position %d is not valid (there are %d sections)", at, e.total())
 		}
 		if at < e.total() {
 			fi, local, _ = e.locate(at)
@@ -623,9 +635,9 @@ func orDefault(s, def string) string {
 	return def
 }
 
-// defaultPosition es dónde va por defecto una sección nueva dentro del
-// archivo: global al principio, defaults justo después de global y el resto al
-// final.
+// defaultPosition is where a new section goes by default within the
+// file: global at the start, defaults right after global and the rest at the
+// end.
 func (e *editor) defaultPosition(fi int, typ string) int {
 	secs := e.cfg.Files[fi].Doc.Sections
 	switch typ {
@@ -656,7 +668,7 @@ func (e *editor) removeSection(op Op) error {
 
 func (e *editor) moveSection(op Op) error {
 	if op.To == nil {
-		return fmt.Errorf("falta la posición de destino (to)")
+		return errf(e.lang, "falta la posición de destino (to)", "missing destination position (to)")
 	}
 	sf, sl, err := e.locate(op.Section)
 	if err != nil {
@@ -669,7 +681,7 @@ func (e *editor) moveSection(op Op) error {
 			return err
 		}
 	}
-	// Posición final en la vista unificada, contando sin la sección movida.
+	// Final position in the unified view, counting without the moved section.
 	start, count := 0, len(e.cfg.Files[df].Doc.Sections)
 	for fi, f := range e.cfg.Files[:df] {
 		start += len(f.Doc.Sections)
@@ -682,7 +694,7 @@ func (e *editor) moveSection(op Op) error {
 	}
 	to := *op.To
 	if to < start || to > start+count {
-		return fmt.Errorf("la posición %d queda fuera del archivo %d (admite %d a %d)", to, df, start, start+count)
+		return errf(e.lang, "la posición %d queda fuera del archivo %d (admite %d a %d)", "position %d is outside file %d (allowed %d to %d)", to, df, start, start+count)
 	}
 	dl := to - start
 	if sf == df && dl == sl {
@@ -726,12 +738,12 @@ func (e *editor) renameSection(op Op) error {
 	}
 	info := KB.Sections[s.Type]
 	if info.Named == "none" {
-		return fmt.Errorf("la sección %s no lleva nombre", s.Type)
+		return errf(e.lang, "la sección %s no lleva nombre", "the %s section takes no name", s.Type)
 	}
 	if op.Name == "" && info.Named == "required" {
-		return fmt.Errorf("la sección %s necesita un nombre", s.Type)
+		return errf(e.lang, "la sección %s necesita un nombre", "the %s section needs a name", s.Type)
 	}
-	if err := validName(op.Name); err != nil {
+	if err := validName(op.Name, e.lang); err != nil {
 		return err
 	}
 	old := s.Name
@@ -739,7 +751,7 @@ func (e *editor) renameSection(op Op) error {
 		return nil
 	}
 	if e.nameTaken(s.Type, op.Name, s) {
-		return fmt.Errorf("ya existe una sección llamada «%s»", op.Name)
+		return errf(e.lang, "ya existe una sección llamada «%s»", "a section named “%s” already exists", op.Name)
 	}
 
 	spans := TokenSpans(s.Text)
@@ -754,7 +766,7 @@ func (e *editor) renameSection(op Op) error {
 	}
 	_, ns := ParseLine(s.Indent+text, s.Line)
 	if ns == nil {
-		return fmt.Errorf("no se pudo reescribir la cabecera")
+		return errf(e.lang, "no se pudo reescribir la cabecera", "could not rewrite the header")
 	}
 	s.Text, s.Tokens, s.Name, s.Comment = ns.Text, ns.Tokens, ns.Name, ns.Comment
 
@@ -764,9 +776,9 @@ func (e *editor) renameSection(op Op) error {
 	return nil
 }
 
-// updateRefs reescribe las referencias a una sección renombrada en todos los
-// archivos: default_backend y use_backend (si es backend o listen) y los
-// argumentos «table <nombre>» de stick, track-sc… (si es un proxy).
+// updateRefs rewrites the references to a renamed section in all
+// files: default_backend and use_backend (if it is a backend or listen) and the
+// "table <name>" arguments of stick, track-sc... (if it is a proxy).
 func (e *editor) updateRefs(typ, old, name string) {
 	isBackend := typ == "backend" || typ == "listen"
 	isProxy := isBackend || typ == "frontend"
@@ -775,7 +787,7 @@ func (e *editor) updateRefs(typ, old, name string) {
 			if l.Kind != KindDirective {
 				continue
 			}
-			var idx []int // posiciones en Args
+			var idx []int // positions in Args
 			switch {
 			case isBackend && (l.Keyword == "default_backend" || l.Keyword == "use_backend") && arg(l.Args, 0) == old:
 				idx = append(idx, 0)
@@ -795,7 +807,7 @@ func (e *editor) updateRefs(typ, old, name string) {
 				continue
 			}
 			text := l.Text
-			for k := len(idx) - 1; k >= 0; k-- { // de atrás hacia delante para no desplazar posiciones
+			for k := len(idx) - 1; k >= 0; k-- { // back to front so as not to shift positions
 				sp := spans[idx[k]+1]
 				text = text[:sp.Start] + QuoteToken(name) + text[sp.End:]
 			}

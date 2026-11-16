@@ -28,10 +28,10 @@ type goldenLine struct {
 	Known   bool   `json:"known"`
 }
 
-// goldenName devuelve la ruta del golden de un caso: español sin sufijo de
-// idioma (`x.golden.json`) e inglés con él (`x.golden.en.json`).
+// goldenName returns the golden path of a case: English has no language
+// suffix (`x.golden.json`) and Spanish does (`x.golden.es.json`).
 func goldenName(base string, lang Lang) string {
-	if lang == LangES {
+	if lang == LangDefault {
 		return base + ".golden.json"
 	}
 	return base + ".golden." + string(lang) + ".json"
@@ -193,7 +193,7 @@ func TestACLPhrase(t *testing.T) {
 		"hdr_dom(host) -i example.com": "el Host contiene el dominio `example.com` (sin distinguir mayúsculas)",
 	}
 	for in, want := range cases {
-		if got := ACLPhrase(strings.Fields(in)); got != want {
+		if got := ACLPhraseLang(strings.Fields(in), LangES); got != want {
 			t.Errorf("ACLPhrase(%q)\n got  %q\n want %q", in, got, want)
 		}
 	}

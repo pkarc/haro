@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// Severity es la gravedad de un problema.
+// Severity is the gravity of a problem.
 type Severity string
 
 const (
@@ -18,20 +18,20 @@ const (
 
 var sevRank = map[Severity]int{SevError: 0, SevWarn: 1, SevInfo: 2}
 
-// Issue es un problema detectado en la configuración.
+// Issue is a problem detected in the configuration.
 type Issue struct {
 	Rule     string   `json:"rule"`
-	File     int      `json:"file"` // índice del archivo dentro del Config
+	File     int      `json:"file"` // index of the file within the Config
 	Severity Severity `json:"severity"`
 	Line     int      `json:"line"`
-	Section  int      `json:"section"` // -1 si está fuera de secciones
+	Section  int      `json:"section"` // -1 if outside sections
 	Message  string   `json:"message"`
 }
 
-// Rules documenta cada regla del detector, en español. El identificador es
-// estable y sirve para desactivar reglas desde la configuración del usuario o
-// en CI. Para otro idioma, usa RulesFor.
-var Rules = rulesES
+// Rules documents each detector rule, in English. The identifier is
+// stable and is used to disable rules from the user's configuration or
+// in CI. For another language, use RulesFor.
+var Rules = rulesEN
 
 var rulesES = map[string]string{
 	"outside-section": "Directiva fuera de cualquier sección",
@@ -91,35 +91,35 @@ var rulesEN = map[string]string{
 	"newer-than-target":      "Directive newer than the target HAProxy version (--haproxy-version)",
 }
 
-// RulesFor devuelve las descripciones de las reglas en el idioma pedido.
+// RulesFor returns the rule descriptions in the requested language.
 func RulesFor(lang Lang) map[string]string {
-	if lang == LangEN {
-		return rulesEN
+	if lang == LangES {
+		return rulesES
 	}
-	return rulesES
+	return rulesEN
 }
 
 var reGlobalPrefix = regexp.MustCompile(`^(tune\.|ssl-|quic|httpclient|h1-|h2-|ocsp)`)
 var reWeakPass = regexp.MustCompile(`(?i):(admin|password|123456|cambiame|changeme|cambiar|secret|test|haproxy|root|1234|pass|qwerty|letmein)$`)
 
-// Lint analiza el documento y devuelve los problemas ordenados por línea,
-// con los mensajes en español. Es orientativo: la validación definitiva es
+// Lint analyzes the document and returns the problems sorted by line,
+// with English messages. It is indicative: the definitive validation is
 // `haproxy -c`.
-func Lint(doc *Doc) []Issue { return LintLang(doc, LangES) }
+func Lint(doc *Doc) []Issue { return LintLang(doc, LangDefault) }
 
-// LintLang es Lint con los mensajes en el idioma pedido.
+// LintLang is Lint with the messages in the requested language.
 func LintLang(doc *Doc, lang Lang) []Issue { return LintWith(doc, LintOptions{Lang: lang}) }
 
-// LintOptions son las opciones de LintWith.
+// LintOptions are the options of LintWith.
 type LintOptions struct {
 	Lang Lang
-	// HAProxyVersion es la versión objetivo («2.8», «v3.0», «2.8.3»). Si no
-	// está vacía y es válida, se avisa de lo que requiera una versión
-	// posterior (regla newer-than-target).
+	// HAProxyVersion is the target version ("2.8", "v3.0", "2.8.3"). If it is
+	// not empty and valid, warns about anything that requires a later
+	// version (rule newer-than-target).
 	HAProxyVersion string
 }
 
-// LintWith es Lint con opciones: idioma y versión objetivo de HAProxy.
+// LintWith is Lint with options: language and target HAProxy version.
 func LintWith(doc *Doc, opts LintOptions) []Issue {
 	lang := opts.Lang
 	issues := []Issue{}
@@ -286,7 +286,7 @@ func LintWith(doc *Doc, opts LintOptions) []Issue {
 	return issues
 }
 
-// fileLabel devuelve el nombre del archivo para los mensajes, si se conoce.
+// fileLabel returns the file name for messages, if known.
 func fileLabel(doc *Doc, i int, lang Lang) string {
 	if i >= 0 && i < len(doc.Files) && doc.Files[i] != "" {
 		return doc.Files[i]

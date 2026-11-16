@@ -11,9 +11,9 @@ import (
 	"github.com/pkarc/haro/core"
 )
 
-// expandPaths reproduce cómo carga HAProxy los argumentos de -f: cada
-// archivo en el orden dado y, para cada directorio, sus archivos `.cfg` no
-// ocultos en orden lexicográfico (LC_COLLATE=C), sin entrar en subdirectorios.
+// expandPaths reproduces how HAProxy loads the -f arguments: each file in
+// the given order and, for each directory, its non-hidden `.cfg` files in
+// lexicographic order (LC_COLLATE=C), without entering subdirectories.
 func expandPaths(args []string) ([]string, error) {
 	var out []string
 	for _, a := range args {
@@ -40,22 +40,22 @@ func expandPaths(args []string) ([]string, error) {
 				continue
 			}
 			p := filepath.Join(a, n)
-			if st, err := os.Stat(p); err != nil || st.IsDir() { // sigue enlaces simbólicos
+			if st, err := os.Stat(p); err != nil || st.IsDir() { // follows symlinks
 				continue
 			}
 			names = append(names, p)
 		}
-		sort.Strings(names) // orden de bytes, equivalente a LC_COLLATE=C
+		sort.Strings(names) // byte order, equivalent to LC_COLLATE=C
 		if len(names) == 0 {
-			return nil, fmt.Errorf("el directorio %s no contiene archivos .cfg", a)
+			return nil, fmt.Errorf("directory %s contains no .cfg files", a)
 		}
 		out = append(out, names...)
 	}
 	return out, nil
 }
 
-// readSources lee los archivos indicados (o el predeterminado si no hay
-// ninguno) siguiendo las reglas de carga de HAProxy.
+// readSources reads the given files (or the default one if there are none)
+// following HAProxy's loading rules.
 func readSources(args []string) ([]core.Source, error) {
 	if len(args) == 0 {
 		args = []string{defaultConfigPath}
@@ -71,7 +71,7 @@ func readSources(args []string) ([]core.Source, error) {
 		name := p
 		if p == "-" {
 			if stdinUsed {
-				return nil, fmt.Errorf("stdin («-») solo puede usarse una vez")
+				return nil, fmt.Errorf("stdin (“-”) can only be used once")
 			}
 			stdinUsed = true
 			b, err = io.ReadAll(os.Stdin)

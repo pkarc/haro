@@ -405,7 +405,7 @@ func TestApplyInverseOperations(t *testing.T) {
 		}
 		// Renombrar y volver, sin tocar referencias.
 		for i, s := range cfg.Merge().Sections {
-			if s.Name != "" && validName(s.Name) == nil && KB.Sections[s.Type].Named == "required" {
+			if s.Name != "" && validName(s.Name, LangDefault) == nil && KB.Sections[s.Type].Named == "required" {
 				check("renombrar y volver", Op{Op: OpRenameSection, Section: i, Name: "zz_haro"}, Op{Op: OpRenameSection, Section: i, Name: s.Name})
 				break
 			}
@@ -432,4 +432,18 @@ func firstDiff(a, b string) string {
 		}
 	}
 	return fmt.Sprintf("longitud distinta: %d vs %d líneas", len(al), len(bl))
+}
+
+func TestApplyErrorLang(t *testing.T) {
+	cfg := NewConfig([]Source{{Path: "a.cfg", Text: "frontend f\n    bind *:80\n"}})
+	op := Op{Op: OpRemoveSection, Section: 7}
+	for lang, want := range map[Lang]string{LangEN: "operation 1 (remove_section): the section does not exist (there are 1)", LangES: "operación 1 (remove_section): la sección no existe (hay 1)"} {
+		_, _, err := ApplyLang(cfg, lang, op)
+		if err == nil || err.Error() != want {
+			t.Errorf("ApplyLang(%q) = %v, quería %q", lang, err, want)
+		}
+	}
+	if _, _, err := Apply(cfg, op); err == nil || !strings.Contains(err.Error(), "operation 1") {
+		t.Errorf("Apply debe usar inglés por defecto: %v", err)
+	}
 }

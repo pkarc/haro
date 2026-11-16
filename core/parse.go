@@ -4,11 +4,11 @@ import (
 	"strings"
 )
 
-// DefaultIndent es la indentación que reciben las líneas nuevas.
+// DefaultIndent is the indentation that new lines get.
 const DefaultIndent = "    "
 
-// Tokenize divide una línea (sin indentación) en tokens respetando comillas
-// simples y dobles, escapes con barra invertida y comentarios con '#'.
+// Tokenize splits a line (without indentation) into tokens, respecting single
+// and double quotes, backslash escapes and '#' comments.
 func Tokenize(s string) (tokens []string, comment string) {
 	var cur strings.Builder
 	has := false
@@ -56,8 +56,8 @@ func Tokenize(s string) (tokens []string, comment string) {
 	return tokens, ""
 }
 
-// ParseLine interpreta una sola línea. Si es una cabecera de sección devuelve
-// la sección (sin líneas) y nil como línea.
+// ParseLine interprets a single line. If it is a section header it returns
+// the section (without lines) and nil as the line.
 func ParseLine(raw string, lineNo int) (*Line, *Section) {
 	raw = strings.TrimRight(raw, " \t\r")
 	trimmed := strings.TrimLeft(raw, " \t")
@@ -87,8 +87,8 @@ func ParseLine(raw string, lineNo int) (*Line, *Section) {
 	return &Line{Kind: KindDirective, Line: lineNo, Indent: indent, IndentSet: true, Text: trimmed, Keyword: kw, Args: args, Comment: comment}, nil
 }
 
-// Parse convierte el texto en un Doc sin perder comentarios, líneas en blanco
-// ni indentación.
+// Parse converts the text into a Doc without losing comments, blank lines
+// or indentation.
 func Parse(text string) *Doc {
 	text = strings.ReplaceAll(text, "\r\n", "\n")
 	text = strings.ReplaceAll(text, "\r", "\n")
@@ -111,8 +111,8 @@ func Parse(text string) *Doc {
 	return doc
 }
 
-// Serialize vuelve a escribir el Doc. Para un Doc recién parseado,
-// Serialize(Parse(t)) == t salvo espacios al final de línea y \r.
+// Serialize writes the Doc back out. For a freshly parsed Doc,
+// Serialize(Parse(t)) == t except for trailing spaces and \r.
 func Serialize(doc *Doc) string {
 	var b strings.Builder
 	first := true
@@ -145,8 +145,8 @@ func Serialize(doc *Doc) string {
 	return b.String()
 }
 
-// EnsureSeparation garantiza una línea en blanco al final de cada sección,
-// útil tras mover, añadir o borrar secciones.
+// EnsureSeparation guarantees a blank line at the end of each section,
+// useful after moving, adding or deleting sections.
 func EnsureSeparation(doc *Doc) {
 	blank := func() *Line { return &Line{Kind: KindBlank} }
 	if len(doc.Sections) > 0 && len(doc.Pre) > 0 && doc.Pre[len(doc.Pre)-1].Kind != KindBlank {
@@ -164,7 +164,7 @@ func EnsureSeparation(doc *Doc) {
 	}
 }
 
-// QuoteToken entrecomilla un token si contiene espacios o caracteres especiales.
+// QuoteToken quotes a token if it contains spaces or special characters.
 func QuoteToken(t string) string {
 	if t == "" || strings.ContainsAny(t, " \t#\"'\\") {
 		return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(t) + `"`
@@ -172,8 +172,8 @@ func QuoteToken(t string) string {
 	return t
 }
 
-// SplitCond separa los argumentos de una regla en la parte principal y la
-// condición (tras `if` o `unless`).
+// SplitCond splits a rule's arguments into the main part and the
+// condition (after `if` or `unless`).
 func SplitCond(args []string) (main []string, cond *Cond) {
 	for i, t := range args {
 		if t == "if" || t == "unless" {
@@ -183,14 +183,14 @@ func SplitCond(args []string) (main []string, cond *Cond) {
 	return args, nil
 }
 
-// Cond es la condición de una regla: `if a !b || { src 10.0.0.0/8 }`.
+// Cond is the condition of a rule: `if a !b || { src 10.0.0.0/8 }`.
 type Cond struct {
 	Negated bool     `json:"negated"`
 	Tokens  []string `json:"tokens"`
 }
 
-// ACLNames devuelve los nombres de ACL usados en la condición, ignorando las
-// ACL anónimas entre llaves y los operadores.
+// ACLNames returns the ACL names used in the condition, ignoring
+// anonymous ACLs between braces and the operators.
 func (c *Cond) ACLNames() []string {
 	var names []string
 	depth := 0
@@ -218,16 +218,16 @@ func (c *Cond) ACLNames() []string {
 	return names
 }
 
-// Span es la posición de un token dentro de una línea (desplazamientos en
-// bytes). Value es el token ya sin comillas ni escapes, igual que en Tokenize.
+// Span is the position of a token within a line (offsets in
+// bytes). Value is the token without quotes or escapes, as in Tokenize.
 type Span struct {
 	Start, End int
 	Value      string
 }
 
-// TokenSpans hace lo mismo que Tokenize, pero devuelve dónde empieza y acaba
-// cada token en el texto. Permite reescribir un token sin tocar el resto de la
-// línea.
+// TokenSpans does the same as Tokenize, but returns where each token
+// starts and ends in the text. It allows rewriting a token without touching the rest of the
+// line.
 func TokenSpans(s string) []Span {
 	var out []Span
 	var cur []byte

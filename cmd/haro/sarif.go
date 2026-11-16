@@ -13,8 +13,8 @@ import (
 	"github.com/pkarc/haro/core"
 )
 
-// Salida SARIF 2.1.0 de haro lint, para GitHub code scanning y otras
-// herramientas. Las reglas de core.Rules son las descripciones de las reglas.
+// SARIF 2.1.0 output of haro lint, for GitHub code scanning and other
+// tools. The core.Rules entries are the rule descriptions.
 
 const sarifSchema = "https://json.schemastore.org/sarif-2.1.0.json"
 
@@ -93,9 +93,9 @@ func sarifLevel(s core.Severity) string {
 	return "note"
 }
 
-// sarifURI convierte la ruta de un archivo en un URI. Las rutas dentro del
-// directorio de trabajo van relativas a %SRCROOT% (lo que espera GitHub); las
-// de fuera, como URI de archivo absoluto.
+// sarifURI converts a file path into a URI. Paths inside the working
+// directory are relative to %SRCROOT% (what GitHub expects); those
+// outside are an absolute file URI.
 func sarifURI(path, cwd string) sarifArtifactLocation {
 	abs, err := filepath.Abs(path)
 	if err == nil {
@@ -107,7 +107,7 @@ func sarifURI(path, cwd string) sarifArtifactLocation {
 	return sarifArtifactLocation{URI: (&url.URL{Path: filepath.ToSlash(path)}).String()}
 }
 
-// writeSARIF escribe el informe de los problemas encontrados en srcs.
+// writeSARIF writes the report of the problems found in srcs.
 func writeSARIF(w io.Writer, srcs []core.Source, issues []core.Issue, lang core.Lang) error {
 	coreRules := core.RulesFor(lang)
 	cwd, _ := os.Getwd()
@@ -124,7 +124,7 @@ func writeSARIF(w io.Writer, srcs []core.Source, issues []core.Issue, lang core.
 	}
 	run := sarifRun{
 		Tool: sarifTool{Driver: sarifDriver{Name: "haro", Version: version, InformationURI: "https://github.com/pkarc/haro", Rules: rules}},
-		// results nunca es null: GitHub lo rechaza.
+		// results is never null: GitHub rejects it.
 		Results:    []sarifResult{},
 		ColumnKind: "utf16CodeUnits",
 	}
@@ -142,26 +142,26 @@ func writeSARIF(w io.Writer, srcs []core.Source, issues []core.Issue, lang core.
 	return enc.Encode(sarifLog{Schema: sarifSchema, Version: "2.1.0", Runs: []sarifRun{run}})
 }
 
-// writeMarkdown escribe un resumen de los problemas en markdown, pensado para
-// comentarios de pull request.
-func writeMarkdown(w io.Writer, srcs []core.Source, issues []core.Issue) {
+// writeMarkdown writes a markdown summary of the problems, meant for pull
+// request comments.
+func writeMarkdown(w io.Writer, srcs []core.Source, issues []core.Issue, lang core.Lang) {
 	counts := map[core.Severity]int{}
 	for _, i := range issues {
 		counts[i.Severity]++
 	}
 	io.WriteString(w, "### haro lint\n\n")
 	if len(issues) == 0 {
-		io.WriteString(w, "✅ Sin problemas detectados. Valida siempre con `haproxy -c`.\n")
+		io.WriteString(w, tx(lang, "✅ Sin problemas detectados. Valida siempre con `haproxy -c`.\n", "✅ No problems found. Always validate with `haproxy -c`.\n"))
 		return
 	}
-	io.WriteString(w, plural(counts[core.SevError], "error", "errores")+", "+plural(counts[core.SevWarn], "aviso", "avisos")+", "+plural(counts[core.SevInfo], "sugerencia", "sugerencias")+"\n\n")
-	io.WriteString(w, "| | Ubicación | Problema | Regla |\n|---|---|---|---|\n")
+	io.WriteString(w, summary(lang, counts)+"\n\n")
+	io.WriteString(w, tx(lang, "| | Ubicación | Problema | Regla |\n|---|---|---|---|\n", "| | Location | Problem | Rule |\n|---|---|---|---|\n"))
 	const maxRows = 50
 	icon := map[core.Severity]string{core.SevError: "❌", core.SevWarn: "⚠️", core.SevInfo: "💡"}
 	esc := strings.NewReplacer("|", "\\|", "\n", " ")
 	for n, i := range issues {
 		if n == maxRows {
-			io.WriteString(w, "\n_… y "+plural(len(issues)-maxRows, "problema más", "problemas más")+". Ejecuta `haro lint` para verlos todos._\n")
+			io.WriteString(w, tx(lang, "\n_… y "+plural(len(issues)-maxRows, "problema más", "problemas más")+". Ejecuta `haro lint` para verlos todos._\n", "\n_… and "+plural(len(issues)-maxRows, "more problem", "more problems")+". Run `haro lint` to see them all._\n"))
 			break
 		}
 		io.WriteString(w, "| "+icon[i.Severity]+" | `"+esc.Replace(srcs[i.File].Path)+":"+strconv.Itoa(i.Line)+"` | "+esc.Replace(i.Message)+" | `"+i.Rule+"` |\n")

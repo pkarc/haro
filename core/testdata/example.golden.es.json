@@ -6,7 +6,7 @@
       "severity": "info",
       "line": 62,
       "section": 7,
-      "message": "The statistics page password looks like a placeholder. Change it."
+      "message": "La contraseña de la página de estadísticas parece de ejemplo. Cámbiala."
     }
   ],
   "explanations": [
@@ -14,315 +14,315 @@
       "line": 4,
       "keyword": "log",
       "args": "/dev/log local0",
-      "text": "Sends logs to the local syslog (`/dev/log`) · facility `local0`",
+      "text": "Envía logs al syslog local (`/dev/log`) · facility `local0`",
       "known": true
     },
     {
       "line": 5,
       "keyword": "log",
       "args": "/dev/log local1 notice",
-      "text": "Sends logs to the local syslog (`/dev/log`) · facility `local1` · only level `notice` or more severe",
+      "text": "Envía logs al syslog local (`/dev/log`) · facility `local1` · solo nivel `notice` o más grave",
       "known": true
     },
     {
       "line": 6,
       "keyword": "chroot",
       "args": "/var/lib/haproxy",
-      "text": "Confines the process to a directory (chroot) to limit the damage of a break-in: `/var/lib/haproxy`",
+      "text": "Encierra el proceso en un directorio (chroot) para limitar el daño de una intrusión: `/var/lib/haproxy`",
       "known": true
     },
     {
       "line": 7,
       "keyword": "stats",
       "args": "socket /run/haproxy/admin.sock mode 660 level admin",
-      "text": "Admin socket: Unix socket `/run/haproxy/admin.sock`, file permissions `660` with **administrator permissions**",
+      "text": "Socket de administración en socket Unix `/run/haproxy/admin.sock`, permisos de fichero `660` con **permisos de administrador**",
       "known": true
     },
     {
       "line": 8,
       "keyword": "stats",
       "args": "timeout 30s",
-      "text": "Statistics socket timeout: **30 s**",
+      "text": "Timeout del socket de estadísticas: **30 s**",
       "known": true
     },
     {
       "line": 9,
       "keyword": "user",
       "args": "haproxy",
-      "text": "Runs HAProxy as the user **haproxy**",
+      "text": "Ejecuta HAProxy como el usuario **haproxy**",
       "known": true
     },
     {
       "line": 10,
       "keyword": "group",
       "args": "haproxy",
-      "text": "Runs HAProxy with the group **haproxy**",
+      "text": "Ejecuta HAProxy con el grupo **haproxy**",
       "known": true
     },
     {
       "line": 11,
       "keyword": "daemon",
       "args": "",
-      "text": "Runs HAProxy in the background (as a daemon).",
+      "text": "Ejecuta HAProxy en segundo plano (como demonio).",
       "known": true
     },
     {
       "line": 12,
       "keyword": "maxconn",
       "args": "4096",
-      "text": "Maximum simultaneous connections for the whole process: **4096**",
+      "text": "Máximo de conexiones simultáneas de todo el proceso: **4096**",
       "known": true
     },
     {
       "line": 13,
       "keyword": "ssl-default-bind-options",
       "args": "ssl-min-ver TLSv1.2 no-tls-tickets",
-      "text": "Default TLS options on binds: minimum TLS `TLSv1.2`, no TLS tickets",
+      "text": "Opciones TLS por defecto en los bind: TLS mínimo `TLSv1.2`, sin tickets TLS",
       "known": true
     },
     {
       "line": 16,
       "keyword": "log",
       "args": "global",
-      "text": "Uses the log destinations defined in `global`",
+      "text": "Usa los destinos de log definidos en `global`",
       "known": true
     },
     {
       "line": 17,
       "keyword": "mode",
       "args": "http",
-      "text": "**HTTP mode** (layer 7): HAProxy parses requests, headers and paths, and can apply rules to them.",
+      "text": "**Modo HTTP** (capa 7): HAProxy interpreta peticiones, cabeceras y rutas, y puede aplicar reglas sobre ellas.",
       "known": true
     },
     {
       "line": 18,
       "keyword": "option",
       "args": "httplog",
-      "text": "Detailed **HTTP logs** (method, path, status code, timings)",
+      "text": "**Logs HTTP** detallados (método, ruta, código, tiempos)",
       "known": true
     },
     {
       "line": 19,
       "keyword": "option",
       "args": "dontlognull",
-      "text": "Does not log connections that send no data (probes, scanners)",
+      "text": "No registra conexiones que no envían datos (sondas, escáneres)",
       "known": true
     },
     {
       "line": 20,
       "keyword": "option",
       "args": "forwardfor",
-      "text": "Adds the **X-Forwarded-For** header with the client's real IP",
+      "text": "Añade la cabecera **X-Forwarded-For** con la IP real del cliente",
       "known": true
     },
     {
       "line": 21,
       "keyword": "timeout",
       "args": "connect 5s",
-      "text": "Maximum time to establish the TCP connection to a server: **5 s**",
+      "text": "Tiempo máximo para establecer la conexión TCP con un servidor: **5 s**",
       "known": true
     },
     {
       "line": 22,
       "keyword": "timeout",
       "args": "client 30s",
-      "text": "Maximum time of client inactivity: **30 s**",
+      "text": "Tiempo máximo de inactividad del cliente: **30 s**",
       "known": true
     },
     {
       "line": 23,
       "keyword": "timeout",
       "args": "server 30s",
-      "text": "Maximum time waiting for data from the server: **30 s**",
+      "text": "Tiempo máximo esperando datos del servidor: **30 s**",
       "known": true
     },
     {
       "line": 24,
       "keyword": "timeout",
       "args": "http-request 10s",
-      "text": "Maximum time to receive the complete HTTP request (protects against slowloris): **10 s**",
+      "text": "Tiempo máximo para recibir la petición HTTP completa (protege contra slowloris): **10 s**",
       "known": true
     },
     {
       "line": 25,
       "keyword": "retries",
       "args": "3",
-      "text": "Connection retries to a server before failing: **3**",
+      "text": "Reintentos de conexión a un servidor antes de fallar: **3**",
       "known": true
     },
     {
       "line": 28,
       "keyword": "bind",
       "args": "*:80",
-      "text": "Listens on all interfaces, port `80`",
+      "text": "Escucha en todas las interfaces, puerto `80`",
       "known": true
     },
     {
       "line": 29,
       "keyword": "http-request",
       "args": "redirect scheme https code 301",
-      "text": "Request: Redirects to **HTTPS** (301 permanent)",
+      "text": "Petición: Redirige a **HTTPS** (301 permanente)",
       "known": true
     },
     {
       "line": 32,
       "keyword": "bind",
       "args": "*:443 ssl crt /etc/haproxy/certs/sitio.pem alpn h2,http/1.1",
-      "text": "Listens on all interfaces, port `443` · **TLS / HTTPS** · certificate `/etc/haproxy/certs/sitio.pem` · ALPN `h2,http/1.1` (enables HTTP/2)",
+      "text": "Escucha en todas las interfaces, puerto `443` · **TLS / HTTPS** · certificado `/etc/haproxy/certs/sitio.pem` · ALPN `h2,http/1.1` (habilita HTTP/2)",
       "known": true
     },
     {
       "line": 33,
       "keyword": "http-request",
       "args": "set-header X-Forwarded-Proto https",
-      "text": "Request: Sets the header `X-Forwarded-Proto` = `https`",
+      "text": "Petición: Fija la cabecera `X-Forwarded-Proto` = `https`",
       "known": true
     },
     {
       "line": 34,
       "keyword": "acl",
       "args": "is_api path_beg /api",
-      "text": "Defines the condition `is_api`: the path starts with `/api`",
+      "text": "Define la condición `is_api`: la ruta empieza por `/api`",
       "known": true
     },
     {
       "line": 35,
       "keyword": "acl",
       "args": "is_static path_end .css .js .png .jpg .svg",
-      "text": "Defines the condition `is_static`: the path ends with `.css` or `.js` or `.png` or `.jpg` or `.svg`",
+      "text": "Define la condición `is_static`: la ruta termina en `.css` o `.js` o `.png` o `.jpg` o `.svg`",
       "known": true
     },
     {
       "line": 36,
       "keyword": "use_backend",
       "args": "api_servers if is_api",
-      "text": "Sends to the backend **api_servers** — if `is_api`",
+      "text": "Envía al backend **api_servers** — si `is_api`",
       "known": true
     },
     {
       "line": 37,
       "keyword": "use_backend",
       "args": "static_servers if is_static",
-      "text": "Sends to the backend **static_servers** — if `is_static`",
+      "text": "Envía al backend **static_servers** — si `is_static`",
       "known": true
     },
     {
       "line": 38,
       "keyword": "default_backend",
       "args": "web_servers",
-      "text": "Default backend: **web_servers** — receives everything that matches no `use_backend` rule",
+      "text": "Backend por defecto: **web_servers** — recibe todo lo que no coincide con ninguna regla `use_backend`",
       "known": true
     },
     {
       "line": 41,
       "keyword": "balance",
       "args": "roundrobin",
-      "text": "Load balancing: **round robin** weighted by server weights (dynamic)",
+      "text": "Reparto de carga: **turno rotativo** ponderado por pesos (dinámico)",
       "known": true
     },
     {
       "line": 42,
       "keyword": "option",
       "args": "httpchk GET /health",
-      "text": "**HTTP** health checks: sends `GET /health` to each server instead of just opening a TCP connection",
+      "text": "Health checks **HTTP**: envía `GET /health` a cada servidor en lugar de solo abrir TCP",
       "known": true
     },
     {
       "line": 43,
       "keyword": "http-check",
       "args": "expect status 200",
-      "text": "The check passes if the response status is **200**",
+      "text": "El check es correcto si responde con estado **200**",
       "known": true
     },
     {
       "line": 44,
       "keyword": "cookie",
       "args": "SERVERID insert indirect nocache",
-      "text": "Cookie-based persistence **SERVERID** · HAProxy creates it · not forwarded to the server · prevents caching — the client always goes back to the same server",
+      "text": "Persistencia por cookie **SERVERID** · HAProxy la crea · no se reenvía al servidor · evita que se cachee — el cliente vuelve siempre al mismo servidor",
       "known": true
     },
     {
       "line": 45,
       "keyword": "server",
       "args": "web1 10.0.0.11:8080 check cookie web1",
-      "text": "Server **web1** at `10.0.0.11:8080` · active health checks · cookie value `web1`",
+      "text": "Servidor **web1** en `10.0.0.11:8080` · health checks activos · valor de cookie `web1`",
       "known": true
     },
     {
       "line": 46,
       "keyword": "server",
       "args": "web2 10.0.0.12:8080 check cookie web2",
-      "text": "Server **web2** at `10.0.0.12:8080` · active health checks · cookie value `web2`",
+      "text": "Servidor **web2** en `10.0.0.12:8080` · health checks activos · valor de cookie `web2`",
       "known": true
     },
     {
       "line": 49,
       "keyword": "balance",
       "args": "leastconn",
-      "text": "Load balancing: picks the server with the **fewest active connections** (ideal for long sessions)",
+      "text": "Reparto de carga: al servidor con **menos conexiones activas** (ideal para sesiones largas)",
       "known": true
     },
     {
       "line": 50,
       "keyword": "server",
       "args": "api1 10.0.0.21:9000 check inter 2s fall 3 rise 2",
-      "text": "Server **api1** at `10.0.0.21:9000` · active health checks · check every **2 s** · marked down after **3** failures · healthy again after **2** successful checks",
+      "text": "Servidor **api1** en `10.0.0.21:9000` · health checks activos · check cada **2 s** · se marca caído tras **3** fallos · vuelve a estar sano tras **2** checks OK",
       "known": true
     },
     {
       "line": 51,
       "keyword": "server",
       "args": "api2 10.0.0.22:9000 check inter 2s fall 3 rise 2",
-      "text": "Server **api2** at `10.0.0.22:9000` · active health checks · check every **2 s** · marked down after **3** failures · healthy again after **2** successful checks",
+      "text": "Servidor **api2** en `10.0.0.22:9000` · health checks activos · check cada **2 s** · se marca caído tras **3** fallos · vuelve a estar sano tras **2** checks OK",
       "known": true
     },
     {
       "line": 52,
       "keyword": "server",
       "args": "api3 10.0.0.23:9000 check backup",
-      "text": "Server **api3** at `10.0.0.23:9000` · active health checks · **backup**: only receives traffic if the others go down",
+      "text": "Servidor **api3** en `10.0.0.23:9000` · health checks activos · **respaldo**: solo recibe tráfico si caen los demás",
       "known": true
     },
     {
       "line": 55,
       "keyword": "server",
       "args": "cdn1 10.0.0.31:80 check",
-      "text": "Server **cdn1** at `10.0.0.31:80` · active health checks",
+      "text": "Servidor **cdn1** en `10.0.0.31:80` · health checks activos",
       "known": true
     },
     {
       "line": 58,
       "keyword": "bind",
       "args": "*:8404",
-      "text": "Listens on all interfaces, port `8404`",
+      "text": "Escucha en todas las interfaces, puerto `8404`",
       "known": true
     },
     {
       "line": 59,
       "keyword": "stats",
       "args": "enable",
-      "text": "Enables the **statistics web page**",
+      "text": "Activa la **página web de estadísticas**",
       "known": true
     },
     {
       "line": 60,
       "keyword": "stats",
       "args": "uri /stats",
-      "text": "Statistics page at the path `/stats`",
+      "text": "Página de estadísticas en la ruta `/stats`",
       "known": true
     },
     {
       "line": 61,
       "keyword": "stats",
       "args": "refresh 10s",
-      "text": "The page reloads every **10 s**",
+      "text": "La página se recarga cada **10 s**",
       "known": true
     },
     {
       "line": 62,
       "keyword": "stats",
       "args": "auth admin:••••••",
-      "text": "Protected with the user **admin** and a password",
+      "text": "Protegida con el usuario **admin** y contraseña",
       "known": true
     }
   ],

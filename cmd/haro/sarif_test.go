@@ -86,7 +86,7 @@ func TestMarkdownSummary(t *testing.T) {
 	srcs := []core.Source{{Path: "a.cfg", Text: "frontend f\n    bind *:80\n    default_backend nope\n"}}
 	issues := core.Lint(core.NewConfig(srcs).Merge())
 	var buf bytes.Buffer
-	writeMarkdown(&buf, srcs, issues)
+	writeMarkdown(&buf, srcs, issues, core.LangDefault)
 	out := buf.String()
 	for _, want := range []string{"### haro lint", "1 error", "| ❌ | `a.cfg:3` |", "`backend-missing`"} {
 		if !bytes.Contains([]byte(out), []byte(want)) {
@@ -94,8 +94,8 @@ func TestMarkdownSummary(t *testing.T) {
 		}
 	}
 	buf.Reset()
-	writeMarkdown(&buf, srcs, nil)
-	if !bytes.Contains(buf.Bytes(), []byte("Sin problemas")) {
+	writeMarkdown(&buf, srcs, nil, core.LangDefault)
+	if !bytes.Contains(buf.Bytes(), []byte("No problems")) {
 		t.Errorf("sin problemas: %s", buf.String())
 	}
 }

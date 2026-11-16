@@ -350,12 +350,12 @@ func TestAnthropicStreamerRefusalAndErrors(t *testing.T) {
 		t.Errorf("refusal: %+v, %v", res, err)
 	}
 
-	for status, want := range map[int]string{401: "credenciales", 404: "modelo no encontrado", 429: "límite de uso"} {
+	for status, want := range map[int]string{401: "credentials", 404: "model not found", 429: "rate limit"} {
 		ts := fakeAnthropic(t, status, fmt.Sprintf(`{"type":"error","error":{"type":"x","message":"m%d"}}`, status), nil)
 		st := newAnthropicStreamer("", option.WithBaseURL(ts.URL), option.WithAPIKey("k"), option.WithMaxRetries(0))
 		_, err := st.Stream(context.Background(), "s", []core.AssistMessage{{Role: "user", Content: "x"}}, func(string) error { return nil })
 		if err == nil || !strings.Contains(err.Error(), want) {
-			t.Errorf("HTTP %d: error %v, quería «%s»", status, err, want)
+			t.Errorf("HTTP %d: error %v, want “%s”", status, err, want)
 		}
 	}
 }
@@ -372,14 +372,14 @@ func TestFinishAssistCLIWriteValidatesAndBacksUp(t *testing.T) {
 		t.Fatalf("propuesta de prueba: %+v", good.Proposal)
 	}
 	// Sin --write no escribe.
-	if err := finishAssistCLI(good, srcs, []string{p}, false, true); err != nil {
+	if err := finishAssistCLI(good, srcs, []string{p}, false, true, core.LangDefault); err != nil {
 		t.Fatal(err)
 	}
 	if b, _ := os.ReadFile(p); string(b) != assistCfgText {
 		t.Error("sin --write no debe tocar el archivo")
 	}
 	// Con --write --yes escribe y deja .bak.
-	if err := finishAssistCLI(good, srcs, []string{p}, true, true); err != nil {
+	if err := finishAssistCLI(good, srcs, []string{p}, true, true, core.LangDefault); err != nil {
 		t.Fatal(err)
 	}
 	if b, _ := os.ReadFile(p); !strings.Contains(string(b), "default_backend app") {
@@ -392,15 +392,15 @@ func TestFinishAssistCLIWriteValidatesAndBacksUp(t *testing.T) {
 	os.WriteFile(p, []byte(assistCfgText), 0o640)
 	srcs, _ = readSources([]string{p})
 	bad := assistOutcome{Result: assistResult{StopReason: "end_turn"}, Proposal: core.Proposal{Changes: []core.FileChange{{File: 0, Path: p, Text: strings.Replace(assistCfgText, "default_backend nope", "default_backend otro_inexistente", 1)}}}}
-	err := finishAssistCLI(bad, srcs, []string{p}, true, true)
-	if err == nil || !strings.Contains(err.Error(), "no se guardó") {
+	err := finishAssistCLI(bad, srcs, []string{p}, true, true, core.LangDefault)
+	if err == nil || !strings.Contains(err.Error(), "not saved") {
 		t.Errorf("una propuesta inválida no debe guardarse: %v", err)
 	}
 	if b, _ := os.ReadFile(p); string(b) != assistCfgText {
 		t.Error("el archivo cambió pese al rechazo")
 	}
 	// Una negativa del modelo es un error claro.
-	if err := finishAssistCLI(assistOutcome{Result: assistResult{StopReason: "refusal", RefusalCategory: "cyber"}}, srcs, nil, false, false); err == nil || !strings.Contains(err.Error(), "declinó") {
+	if err := finishAssistCLI(assistOutcome{Result: assistResult{StopReason: "refusal", RefusalCategory: "cyber"}}, srcs, nil, false, false, core.LangDefault); err == nil || !strings.Contains(err.Error(), "declined") {
 		t.Errorf("refusal: %v", err)
 	}
 }

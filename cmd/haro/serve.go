@@ -19,19 +19,19 @@ import (
 	"github.com/pkarc/haro/web"
 )
 
-// El API local es el servicio Connect definido en proto/haro/v1/haro.proto
-// (ver rpc.go). Hablan con él la web (cliente TypeScript generado) y cualquier
-// cliente Connect, gRPC o HTTP+JSON.
+// The local API is the Connect service defined in proto/haro/v1/haro.proto
+// (see rpc.go). The web UI (generated TypeScript client) and any Connect, gRPC
+// or HTTP+JSON client talk to it.
 
 type server struct {
-	// paths son los argumentos de --file tal cual (archivos o directorios).
-	// Se expanden en cada petición para reflejar archivos nuevos o borrados.
+	// paths are the --file arguments as given (files or directories).
+	// They are expanded on every request to reflect new or deleted files.
 	paths      []string
 	allowWrite bool
 	haproxyBin string
-	// assist es el asistente con IA; nil si no se inició con --assistant.
+	// assist is the AI assistant; nil if not started with --assistant.
 	assist streamer
-	// assistModel es el nombre del modelo, para informar en las capacidades.
+	// assistModel is the model name, reported in the capabilities.
 	assistModel string
 }
 
@@ -42,15 +42,15 @@ func (m *multiFlag) Set(v string) error { *m = append(*m, v); return nil }
 
 func runServe(args []string) error {
 	fls := flag.NewFlagSet("serve", flag.ExitOnError)
-	addr := fls.String("addr", "127.0.0.1:7468", "dirección de escucha (por seguridad, solo localhost por defecto)")
+	addr := fls.String("addr", "127.0.0.1:7468", "listen address (localhost only by default, for safety)")
 	var files multiFlag
-	fls.Var(&files, "file", "archivo o directorio de configuración; repítelo para varios, en el orden de haproxy -f")
-	allowWrite := fls.Bool("allow-write", false, "permite guardar desde la web (siempre valida antes y crea copia .bak)")
-	bin := fls.String("haproxy", "haproxy", "binario de haproxy para validar con -c")
-	assistant := fls.Bool("assistant", false, "activa el asistente con IA: ENVÍA la configuración a la API de Anthropic desde este servidor (clave en ANTHROPIC_API_KEY o `ant auth login`; nunca llega al navegador)")
-	assistModel := fls.String("assistant-model", envOr("HARO_ASSISTANT_MODEL", defaultAssistantModel), "modelo de Anthropic del asistente")
+	fls.Var(&files, "file", "configuration file or directory; repeat for several, in haproxy -f order")
+	allowWrite := fls.Bool("allow-write", false, "allow saving from the web UI (always validates first and creates a .bak copy)")
+	bin := fls.String("haproxy", "haproxy", "haproxy binary used to validate with -c")
+	assistant := fls.Bool("assistant", false, "enable the AI assistant: SENDS the configuration to the Anthropic API from this server (key in ANTHROPIC_API_KEY or `ant auth login`; it never reaches the browser)")
+	assistModel := fls.String("assistant-model", envOr("HARO_ASSISTANT_MODEL", defaultAssistantModel), "Anthropic model for the assistant")
 	fls.Usage = func() {
-		fmt.Fprintln(fls.Output(), "Uso: haro serve [opciones]")
+		fmt.Fprintln(fls.Output(), "Usage: haro serve [options]")
 		fls.PrintDefaults()
 	}
 	fls.Parse(args)
@@ -61,10 +61,10 @@ func runServe(args []string) error {
 	}
 	if *assistant {
 		s.assist, s.assistModel = newAnthropicStreamer(*assistModel), *assistModel
-		log.Printf("⚠ asistente activado: la configuración que le envíes saldrá hacia la API de Anthropic (modelo %s)", *assistModel)
+		log.Printf("⚠ assistant enabled: the configuration you send to it will go to the Anthropic API (model %s)", *assistModel)
 	}
 	if s.allowWrite && len(s.paths) == 0 {
-		return errors.New("--allow-write requiere al menos un --file")
+		return errors.New("--allow-write requires at least one --file")
 	}
 	if len(s.paths) > 0 {
 		if _, err := expandPaths(s.paths); err != nil {
@@ -80,7 +80,7 @@ func runServe(args []string) error {
 		loopback = true
 	}
 	if !loopback {
-		log.Printf("⚠ escuchando en %s: cualquiera en la red podrá ver y analizar configuraciones. No hay autenticación.", *addr)
+		log.Printf("⚠ listening on %s: anyone on the network can view and analyze configurations. There is no authentication.", *addr)
 	}
 
 	var handler http.Handler = limitBody(s.routes())
@@ -88,12 +88,12 @@ func runServe(args []string) error {
 		handler = localOnly(handler)
 	}
 	srv := &http.Server{Addr: *addr, Handler: handler, ReadHeaderTimeout: 10 * time.Second}
-	log.Printf("haro %s escuchando en http://%s", version, *addr)
+	log.Printf("haro %s listening on http://%s", version, *addr)
 	if len(s.paths) > 0 {
-		log.Printf("configuración: %s (escritura %s)", strings.Join(s.paths, " "), map[bool]string{true: "permitida", false: "desactivada"}[s.allowWrite])
+		log.Printf("configuration: %s (writing %s)", strings.Join(s.paths, " "), map[bool]string{true: "allowed", false: "disabled"}[s.allowWrite])
 	}
 	if s.haproxyBin == "" {
-		log.Printf("no se encontró el binario de haproxy: la validación real (haproxy -c) no estará disponible")
+		log.Printf("haproxy binary not found: real validation (haproxy -c) will not be available")
 	}
 	return srv.ListenAndServe()
 }
@@ -105,8 +105,8 @@ func (s *server) routes() *http.ServeMux {
 	return mux
 }
 
-// localOnly rechaza peticiones cuyo Host no sea local, para evitar ataques de
-// DNS rebinding desde páginas web abiertas en el mismo equipo.
+// localOnly rejects requests whose Host is not local, to prevent DNS
+// rebinding attacks from web pages open on the same machine.
 func localOnly(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		host, _, err := net.SplitHostPort(r.Host)
@@ -114,7 +114,7 @@ func localOnly(h http.Handler) http.Handler {
 			host = r.Host
 		}
 		if ip := net.ParseIP(host); host != "localhost" && (ip == nil || !ip.IsLoopback()) {
-			http.Error(w, "host no permitido", http.StatusForbidden)
+			http.Error(w, "host not allowed", http.StatusForbidden)
 			return
 		}
 		h.ServeHTTP(w, r)
@@ -134,8 +134,8 @@ type checkResult struct {
 	Output    string `json:"output"`
 }
 
-// check valida con `haproxy -c`, escribiendo cada archivo en un directorio
-// temporal y pasándolos con -f en el mismo orden.
+// check validates with `haproxy -c`, writing each file to a temporary
+// directory and passing them with -f in the same order.
 func (s *server) check(ctx context.Context, srcs []core.Source) (checkResult, error) {
 	if s.haproxyBin == "" {
 		return checkResult{Available: false}, nil
@@ -161,32 +161,31 @@ func (s *server) check(ctx context.Context, srcs []core.Source) (checkResult, er
 	return checkResult{Available: true, OK: err == nil, Output: strings.NewReplacer(replacer...).Replace(string(out))}, nil
 }
 
-// saved describe un archivo guardado.
+// saved describes a saved file.
 type saved struct{ Path, Backup string }
 
-// putOutcome es el resultado de guardar. Un guardado rechazado por la
-// validación no es un fallo del servidor: lleva el motivo en Err y, según quién
-// lo rechazó, la salida de haproxy -c (Check) o el error del detector (Issue).
+// putOutcome is the result of saving. A save rejected by validation is not a
+// server failure: it carries the reason in Err and, depending on who rejected
+// it, the output of haproxy -c (Check) or the detector error (Issue).
 type putOutcome struct {
 	Saved []saved
 	Err   string
 	Check *checkResult
 	Issue *core.Issue
-	Path  string // archivo del error del detector
+	Path  string // file of the detector error
 }
 
-// errClient es un error de la petición (no del servidor).
+// errClient is a request error (not a server one).
 type errClient string
 
 func (e errClient) Error() string { return string(e) }
 
-// put guarda uno o varios archivos de la configuración servida. Se validan
-// juntos (la configuración completa, con todos los cambios aplicados) y se
-// guardan todo o nada: un cambio que toca dos archivos a la vez, como renombrar
-// un backend y sus referencias, no puede quedar a medias. Valida con `haproxy
-// -c` o, si no está instalado, con el detector de haro. Escribe de forma
-// atómica, deja una copia .bak de cada archivo y, si una escritura falla,
-// restaura los ya escritos.
+// put saves one or more files of the served configuration. They are validated
+// together (the full configuration with all changes applied) and saved all or
+// nothing: a change touching two files at once, such as renaming a backend and
+// its references, cannot be left half done. It validates with `haproxy -c` or,
+// if not installed, with haro's detector. It writes atomically, leaves a .bak
+// copy of each file and, if a write fails, restores those already written.
 func (s *server) put(ctx context.Context, changes []core.Source) (putOutcome, error) {
 	var out putOutcome
 	if !s.allowWrite {
@@ -210,7 +209,7 @@ func (s *server) put(ctx context.Context, changes []core.Source) (putOutcome, er
 			}
 		}
 		if idx < 0 {
-			return out, errClient("ese archivo no forma parte de la configuración servida")
+			return out, errClient("that file is not part of the served configuration")
 		}
 		srcs[idx].Text = c.Text
 		touched[idx] = true
@@ -222,15 +221,15 @@ func (s *server) put(ctx context.Context, changes []core.Source) (putOutcome, er
 	}
 	out.Check = &res
 	if res.Available && !res.OK {
-		out.Err = "haproxy -c rechazó la configuración; no se guardó"
+		out.Err = "haproxy -c rejected the configuration; not saved"
 		return out, nil
 	}
 	if !res.Available {
-		// Sin haproxy instalado, el detector de haro es la única barrera.
+		// Without haproxy installed, haro's detector is the only barrier.
 		for _, i := range core.Lint(core.NewConfig(srcs).Merge()) {
 			if i.Severity == core.SevError {
 				i := i
-				out.Err = "la configuración tiene errores y no hay haproxy para validarla; no se guardó"
+				out.Err = "the configuration has errors and there is no haproxy to validate it; not saved"
 				out.Issue, out.Path = &i, srcs[i.File].Path
 				return out, nil
 			}
@@ -243,7 +242,7 @@ func (s *server) put(ctx context.Context, changes []core.Source) (putOutcome, er
 			continue
 		}
 		if err := writeFile(srcs[i].Path, srcs[i].Text, true); err != nil {
-			for _, j := range written { // deshacer lo ya escrito
+			for _, j := range written { // undo what was already written
 				_ = writeFile(srcs[j].Path, old[j], false)
 			}
 			return out, err
@@ -254,10 +253,10 @@ func (s *server) put(ctx context.Context, changes []core.Source) (putOutcome, er
 	return out, nil
 }
 
-var errDenied = errors.New("la escritura está desactivada; inicia haro serve con --allow-write")
+var errDenied = errors.New("writing is disabled; start haro serve with --allow-write")
 
-// writeFile escribe el archivo de forma atómica (temporal + rename), con copia
-// .bak de la versión anterior si backup es true.
+// writeFile writes the file atomically (temp + rename), with a .bak copy of
+// the previous version if backup is true.
 func writeFile(path, text string, backup bool) error {
 	mode := os.FileMode(0o640)
 	if old, err := os.ReadFile(path); err == nil {
@@ -266,7 +265,7 @@ func writeFile(path, text string, backup bool) error {
 		}
 		if backup {
 			if err := os.WriteFile(path+".bak", old, mode); err != nil {
-				return fmt.Errorf("no se pudo crear la copia de seguridad: %w", err)
+				return fmt.Errorf("could not create the backup copy: %w", err)
 			}
 		}
 	}

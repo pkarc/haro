@@ -15,21 +15,21 @@ import (
 	"github.com/pkarc/haro/core"
 )
 
-// haro template: plantillas completas por tecnología (Nextcloud, PostgreSQL…).
-// La lógica (parámetros, validación, nombres sin colisiones, operaciones de
-// edición) vive en core; aquí solo se lee la configuración, se muestra el diff
-// y, con --write, se guarda con las mismas garantías que haro serve.
+// haro template: full templates by technology (Nextcloud, PostgreSQL…).
+// The logic (parameters, validation, collision-free names, edit operations)
+// lives in core; here we only read the configuration, show the diff and, with
+// --write, save it with the same guarantees as haro serve.
 
-const templateUsage = `Uso:
-  haro template list [--lang es|en] [--format text|json]
-  haro template show <id> [--lang es|en] [--format text|json]
-  haro template add <id> [--param clave=valor]... [--lang es|en] [--write] [rutas...]
+const templateUsage = `Usage:
+  haro template list [--lang en|es] [--format text|json]
+  haro template show <id> [--lang en|es] [--format text|json]
+  haro template add <id> [--param key=value]... [--lang en|es] [--write] [paths...]
 
-list y show enseñan las plantillas y sus parámetros. add muestra el diff unificado de
-añadir la plantilla a la configuración y NO escribe nada; con --write guarda (valida
-la configuración completa con haproxy -c, escritura atómica y copia .bak).
-Los parámetros de tipo lista aceptan varios --param con la misma clave o valores
-separados por comas: --param servers=10.0.0.10:80,10.0.0.11:80
+list and show display the templates and their parameters. add shows the unified diff of
+adding the template to the configuration and writes NOTHING; with --write it saves (validates
+the full configuration with haproxy -c, atomic write and .bak copy).
+List-type parameters accept several --param with the same key or comma-separated
+values: --param servers=10.0.0.10:80,10.0.0.11:80
 `
 
 func runTemplate(args []string) error { return templateCmd(args, os.Stdout, os.Stderr) }
@@ -51,7 +51,7 @@ func templateCmd(args []string, stdout, stderr io.Writer) error {
 		fmt.Fprint(stdout, templateUsage)
 		return nil
 	default:
-		fmt.Fprintf(stderr, "haro template: subcomando desconocido %q\n\n%s", sub, templateUsage)
+		fmt.Fprintf(stderr, "haro template: unknown subcommand %q\n\n%s", sub, templateUsage)
 		return exitError(2)
 	}
 	if errors.Is(err, errHelpShown) {
@@ -60,8 +60,8 @@ func templateCmd(args []string, stdout, stderr io.Writer) error {
 	return err
 }
 
-// parseArgs analiza opciones y posicionales mezclados (el paquete flag se
-// detiene en el primer posicional) y los devuelve en orden.
+// parseArgs parses mixed options and positionals (package flag stops at the
+// first positional) and returns the positionals in order.
 func parseArgs(fs *flag.FlagSet, args []string) (pos []string, err error) {
 	for {
 		if err := fs.Parse(args); err != nil {
@@ -78,22 +78,22 @@ func parseArgs(fs *flag.FlagSet, args []string) (pos []string, err error) {
 	}
 }
 
-// errHelpShown indica que ya se imprimió la ayuda de -h: terminar sin error.
-var errHelpShown = errors.New("ayuda mostrada")
+// errHelpShown means the -h help was already printed: finish without an error.
+var errHelpShown = errors.New("help shown")
 
-// parseID devuelve el primer posicional (el id) y el resto.
+// parseID returns the first positional (the id) and the rest.
 func parseID(fs *flag.FlagSet, args []string) (id string, rest []string, err error) {
 	pos, err := parseArgs(fs, args)
 	if err != nil {
 		return "", nil, err
 	}
 	if len(pos) == 0 {
-		return "", nil, errors.New("falta el id de la plantilla (haro template list las enseña)")
+		return "", nil, errors.New("missing template id (haro template list shows them)")
 	}
 	return pos[0], pos[1:], nil
 }
 
-// newFlagSet crea un FlagSet que escribe en stderr y no termina el proceso.
+// newFlagSet creates a FlagSet that writes to stderr and does not end the process.
 func newFlagSet(name string, stderr io.Writer) *flag.FlagSet {
 	fs := flag.NewFlagSet(name, flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -102,12 +102,12 @@ func newFlagSet(name string, stderr io.Writer) *flag.FlagSet {
 
 func templateList(args []string, stdout, stderr io.Writer) error {
 	fs := newFlagSet("template list", stderr)
-	format := fs.String("format", "text", "formato de salida: text | json")
+	format := fs.String("format", "text", "output format: text | json")
 	langArg := langFlag(fs)
 	if pos, err := parseArgs(fs, args); err != nil {
 		return err
 	} else if len(pos) > 0 {
-		return fmt.Errorf("sobra el argumento %q", pos[0])
+		return fmt.Errorf("unexpected argument %q", pos[0])
 	}
 	lang, err := resolveLang(*langArg)
 	if err != nil {
@@ -142,20 +142,20 @@ func findTemplate(id string, lang core.Lang) (core.TechTemplate, error) {
 		}
 		ids = append(ids, t.ID)
 	}
-	return core.TechTemplate{}, fmt.Errorf("plantilla desconocida %q (disponibles: %s)", id, strings.Join(ids, ", "))
+	return core.TechTemplate{}, fmt.Errorf("unknown template %q (available: %s)", id, strings.Join(ids, ", "))
 }
 
 func templateShow(args []string, stdout, stderr io.Writer) error {
 	fs := newFlagSet("template show", stderr)
-	format := fs.String("format", "text", "formato de salida: text | json")
-	noColor := fs.Bool("no-color", false, "sin colores")
+	format := fs.String("format", "text", "output format: text | json")
+	noColor := fs.Bool("no-color", false, "no colors")
 	langArg := langFlag(fs)
 	id, rest, err := parseID(fs, args)
 	if err != nil {
 		return err
 	}
 	if len(rest) > 0 {
-		return fmt.Errorf("sobra el argumento %q", rest[0])
+		return fmt.Errorf("unexpected argument %q", rest[0])
 	}
 	lang, err := resolveLang(*langArg)
 	if err != nil {
@@ -169,18 +169,18 @@ func templateShow(args []string, stdout, stderr io.Writer) error {
 		return writeJSON(stdout, t)
 	}
 	st := newStyle(*noColor)
-	fmt.Fprintf(stdout, "%s  %s\n%s\n\nParámetros:\n", st.bold(t.ID), st.dim("("+t.Kind+") "+t.Name), t.Description)
+	fmt.Fprintf(stdout, "%s  %s\n%s\n\n"+tx(lang, "Parámetros", "Parameters")+":\n", st.bold(t.ID), st.dim("("+t.Kind+") "+t.Name), t.Description)
 	var ex []string
 	for _, p := range t.Params {
-		req := "opcional"
+		req := tx(lang, "opcional", "optional")
 		switch {
 		case p.Required:
-			req = "obligatorio"
+			req = tx(lang, "obligatorio", "required")
 		case p.Default != nil:
-			req = fmt.Sprintf("por defecto %v", p.Default)
+			req = fmt.Sprintf(tx(lang, "por defecto %v", "default %v"), p.Default)
 		}
 		if p.DependsOn != "" {
-			req += ", si " + p.DependsOn
+			req += tx(lang, ", si ", ", if ") + p.DependsOn
 		}
 		fmt.Fprintf(stdout, "  %s  %s\n", st.cyan(fmt.Sprintf("%-15s", p.Key)), st.dim(fmt.Sprintf("%-6s %s", p.Type, req)))
 		fmt.Fprintf(stdout, "      %s\n", p.Label)
@@ -191,12 +191,12 @@ func templateShow(args []string, stdout, stderr io.Writer) error {
 			ex = append(ex, fmt.Sprintf("--param %s=%s", p.Key, p.Example))
 		}
 	}
-	fmt.Fprintf(stdout, "\nEjemplo:\n  haro template add %s %s [rutas...]\n", t.ID, strings.Join(ex, " "))
+	fmt.Fprintf(stdout, "\n"+tx(lang, "Ejemplo", "Example")+":\n  haro template add %s %s ["+tx(lang, "rutas", "paths")+"...]\n", t.ID, strings.Join(ex, " "))
 	return nil
 }
 
-// paramFlag acumula los --param clave=valor. Repetir una clave junta los
-// valores con comas (para las listas).
+// paramFlag accumulates the --param key=value pairs. Repeating a key joins
+// the values with commas (for lists).
 type paramFlag map[string]string
 
 func (p paramFlag) String() string { return fmt.Sprint(map[string]string(p)) }
@@ -204,7 +204,7 @@ func (p paramFlag) Set(v string) error {
 	k, val, ok := strings.Cut(v, "=")
 	k = strings.TrimSpace(k)
 	if !ok || k == "" {
-		return fmt.Errorf("usa --param clave=valor (recibí %q)", v)
+		return fmt.Errorf("use --param key=value (got %q)", v)
 	}
 	if old, dup := p[k]; dup {
 		val = old + "," + val
@@ -216,13 +216,13 @@ func (p paramFlag) Set(v string) error {
 func templateAdd(args []string, stdout, stderr io.Writer) error {
 	fs := newFlagSet("template add", stderr)
 	params := paramFlag{}
-	fs.Var(params, "param", "parámetro clave=valor; repítelo para varios (haro template show <id> los lista)")
-	write := fs.Bool("write", false, "guarda el resultado (valida con haproxy -c, escritura atómica y copia .bak); por defecto solo muestra el diff")
-	bin := fs.String("haproxy", "haproxy", "binario de haproxy para validar con -c al escribir")
-	noColor := fs.Bool("no-color", false, "sin colores")
+	fs.Var(params, "param", "parameter key=value; repeat it for several (haro template show <id> lists them)")
+	write := fs.Bool("write", false, "save the result (validates with haproxy -c, atomic write and .bak copy); by default it only shows the diff")
+	bin := fs.String("haproxy", "haproxy", "haproxy binary used to validate with -c when writing")
+	noColor := fs.Bool("no-color", false, "no colors")
 	langArg := langFlag(fs)
 	fs.Usage = func() {
-		fmt.Fprintln(fs.Output(), "Uso: haro template add <id> [opciones] [archivo|directorio]...")
+		fmt.Fprintln(fs.Output(), "Usage: haro template add <id> [options] [file|directory]...")
 		fs.PrintDefaults()
 	}
 	id, paths, err := parseID(fs, args)
@@ -238,7 +238,7 @@ func templateAdd(args []string, stdout, stderr io.Writer) error {
 	}
 	for _, p := range paths {
 		if p == "-" {
-			return errors.New("«-» (stdin) no es válido aquí: indica archivos o directorios")
+			return errors.New("“-” (stdin) is not valid here: give files or directories")
 		}
 	}
 	srcs, err := readSources(paths)
@@ -254,7 +254,7 @@ func templateAdd(args []string, stdout, stderr io.Writer) error {
 	if err != nil {
 		return err
 	}
-	out, changes, err := core.Apply(cfg, ops...)
+	out, changes, err := core.ApplyLang(cfg, lang, ops...)
 	if err != nil {
 		return err
 	}
@@ -277,7 +277,7 @@ func templateAdd(args []string, stdout, stderr io.Writer) error {
 		}
 	}
 
-	// Problemas que aparecen con el cambio y no estaban antes (p. ej. un servidor TLS sin verificar).
+	// Problems that appear with the change and were not there before (e.g. a TLS server without verification).
 	seen := map[string]int{}
 	for _, i := range core.LintWith(cfg.Merge(), core.LintOptions{Lang: lang}) {
 		seen[i.Rule+"\x00"+i.Message]++
@@ -288,24 +288,24 @@ func templateAdd(args []string, stdout, stderr io.Writer) error {
 			seen[k]--
 			continue
 		}
-		fmt.Fprintf(stderr, "%s:%d: %s %s %s\n", out.Files[i.File].Path, i.Line, st.sev(i.Severity), i.Message, st.dim("["+i.Rule+"]"))
+		fmt.Fprintf(stderr, "%s:%d: %s %s %s\n", out.Files[i.File].Path, i.Line, st.sev(i.Severity, lang), i.Message, st.dim("["+i.Rule+"]"))
 	}
 
 	if !*write {
-		fmt.Fprintln(stderr, st.dim("No se ha modificado ningún archivo. Añade --write para guardar (valida con haproxy -c y deja copia .bak)."))
+		fmt.Fprintln(stderr, st.dim(tx(lang, "No se ha modificado ningún archivo. Añade --write para guardar (valida con haproxy -c y deja copia .bak).", "No file was modified. Add --write to save (validates with haproxy -c and leaves a .bak copy).")))
 		return nil
 	}
 	if len(changes) == 0 {
-		fmt.Fprintln(stderr, "Nada que guardar: la plantilla no cambia ningún archivo.")
+		fmt.Fprintln(stderr, tx(lang, "Nada que guardar: la plantilla no cambia ningún archivo.", "Nothing to save: the template does not change any file."))
 		return nil
 	}
-	return writeChanges(stderr, paths, *bin, changes)
+	return writeChanges(stderr, paths, *bin, changes, lang)
 }
 
-// writeChanges guarda los cambios con las mismas garantías que haro serve
-// (server.put): valida la configuración completa con haproxy -c (o con el
-// detector si no hay binario), escritura atómica y copia .bak.
-func writeChanges(stderr io.Writer, paths []string, bin string, changes []core.FileChange) error {
+// writeChanges saves the changes with the same guarantees as haro serve
+// (server.put): validates the full configuration with haproxy -c (or with the
+// detector if there is no binary), atomic write and .bak copy.
+func writeChanges(stderr io.Writer, paths []string, bin string, changes []core.FileChange, lang core.Lang) error {
 	s := &server{paths: paths, allowWrite: true}
 	if p, err := exec.LookPath(bin); err == nil {
 		s.haproxyBin = p
@@ -319,7 +319,7 @@ func writeChanges(stderr io.Writer, paths []string, bin string, changes []core.F
 		return err
 	}
 	if res.Err != "" {
-		msg := "no se guardó: " + res.Err
+		msg := tx(lang, "no se guardó: ", "not saved: ") + res.Err
 		if res.Check != nil && res.Check.Output != "" {
 			msg += "\n" + strings.TrimSpace(res.Check.Output)
 		}
@@ -329,13 +329,13 @@ func writeChanges(stderr io.Writer, paths []string, bin string, changes []core.F
 		return errors.New(msg)
 	}
 	if s.haproxyBin == "" {
-		fmt.Fprintln(stderr, "Aviso: no se encontró haproxy; se validó solo con el detector de haro. Valida con haproxy -c.")
+		fmt.Fprintln(stderr, tx(lang, "Aviso: no se encontró haproxy; se validó solo con el detector de haro. Valida con haproxy -c.", "Warning: haproxy not found; validated only with haro's detector. Validate with haproxy -c."))
 	}
 	var names []string
 	for _, sv := range res.Saved {
 		names = append(names, sv.Path)
 	}
 	sort.Strings(names)
-	fmt.Fprintf(stderr, "Guardado en %s (copia .bak junto a cada archivo).\n", strings.Join(names, ", "))
+	fmt.Fprintf(stderr, tx(lang, "Guardado en %s (copia .bak junto a cada archivo).\n", "Saved to %s (.bak copy next to each file).\n"), strings.Join(names, ", "))
 	return nil
 }

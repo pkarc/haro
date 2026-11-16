@@ -7,23 +7,23 @@ import (
 	"strings"
 )
 
-// Asistente: construcción del contexto que se envía al modelo y extracción de
-// la configuración propuesta de su respuesta. El núcleo no llama a ninguna API:
-// eso lo hacen `haro serve`, la CLI y la TUI (cmd/haro/assist.go), para que
-// core siga sin dependencias y compilable a WASM.
+// Assistant: building the context sent to the model and extracting the
+// proposed configuration from its answer. The core calls no API:
+// that is done by `haro serve`, the CLI and the TUI (cmd/haro/assist.go), so
+// core stays dependency-free and compilable to WASM.
 
-// AssistMessage es un turno de la conversación con el asistente.
+// AssistMessage is one turn of the conversation with the assistant.
 type AssistMessage struct {
-	Role    string `json:"role"` // "user" o "assistant"
+	Role    string `json:"role"` // "user" or "assistant"
 	Content string `json:"content"`
 }
 
-// MaxAssistContext es el tamaño máximo (en bytes) de la configuración que se
-// envía al asistente. Más allá no se trunca en silencio: se rechaza.
+// MaxAssistContext is the maximum size (in bytes) of the configuration
+// sent to the assistant. Beyond it, it is not silently truncated: it is rejected.
 const MaxAssistContext = 400 << 10
 
-// AssistSystemPrompt es el prompt de sistema del asistente. Es fijo para cada
-// idioma (así el modelo lo puede cachear); lo que cambia en cada turno va en
+// AssistSystemPrompt is the assistant's system prompt. It is fixed for each
+// language (so the model can cache it); what changes on each turn goes in
 // AssistContext.
 func AssistSystemPrompt(lang Lang) string {
 	tr := tr{lang}
@@ -68,10 +68,10 @@ How to answer:
 - haro's analyzer is indicative: remind the user to validate with haproxy -c before applying in production.
 - Do not repeat passwords or secrets from the configuration outside the code blocks.`
 
-// AssistContext construye el bloque <haro_context> con la configuración, los
-// problemas y las secciones. Va delante de la petición del usuario en cada
-// turno, para que el modelo vea siempre la configuración actual (el usuario
-// puede haber aplicado propuestas entre turnos).
+// AssistContext builds the <haro_context> block with the configuration, the
+// problems and the sections. It goes before the user's request on every
+// turn, so the model always sees the current configuration (the user
+// may have applied proposals between turns).
 func AssistContext(srcs []Source, a Analysis, lang Lang) (string, error) {
 	total := 0
 	for _, s := range srcs {
@@ -108,35 +108,35 @@ func AssistContext(srcs []Source, a Analysis, lang Lang) (string, error) {
 	return b.String(), nil
 }
 
-// escapeContext evita que el contenido de un archivo cierre las etiquetas del contexto.
+// escapeContext prevents a file's content from closing the context tags.
 func escapeContext(s string) string {
 	return strings.NewReplacer("</file>", `<\/file>`, "</haro_context>", `<\/haro_context>`).Replace(s)
 }
 
-// Proposal es la configuración propuesta extraída de una respuesta del asistente.
+// Proposal is the proposed configuration extracted from an assistant answer.
 type Proposal struct {
-	// Changes son los archivos propuestos, con su texto completo, solo los que
-	// difieren del actual.
+	// Changes are the proposed files, with their full text, only those that
+	// differ from the current one.
 	Changes []FileChange `json:"changes"`
-	// Explanation es el texto de la respuesta fuera de los bloques de código de configuración.
+	// Explanation is the answer text outside the configuration code blocks.
 	Explanation string `json:"explanation"`
-	// Unmatched cuenta los bloques de configuración que no se pudieron asociar a un archivo.
+	// Unmatched counts the configuration blocks that could not be matched to a file.
 	Unmatched int `json:"unmatched"`
-	// Truncated indica que la respuesta terminó dentro de un bloque de código
-	// (cortada por el límite de tokens): ese bloque se descarta, porque un
-	// archivo a medias nunca debe proponerse como configuración.
+	// Truncated indicates the answer ended inside a code block
+	// (cut off by the token limit): that block is discarded, because a
+	// half file must never be proposed as a configuration.
 	Truncated bool `json:"truncated"`
 }
 
 var reFenceOpen = regexp.MustCompile("^```([^\\n]*)$")
 
-// fenceLangs son los lenguajes de bloque que se consideran configuración.
+// fenceLangs are the block languages considered configuration.
 var fenceLangs = map[string]bool{"": true, "haproxy": true, "cfg": true, "conf": true, "haproxy.cfg": true}
 
-// ExtractProposal busca en la respuesta los bloques de código de configuración
-// (```haproxy path=…) y los asocia a los archivos actuales: por ruta exacta,
-// por nombre de archivo si es único o, con un solo archivo, sin ruta. Descarta
-// los bloques que no cambian nada.
+// ExtractProposal looks in the answer for configuration code blocks
+// (```haproxy path=...) and matches them to the current files: by exact path,
+// by file name if unique or, with a single file, without a path. It discards
+// blocks that change nothing.
 func ExtractProposal(response string, current []Source) Proposal {
 	var p Proposal
 	var prose []string
@@ -166,9 +166,9 @@ func ExtractProposal(response string, current []Source) Proposal {
 			p.Truncated = true
 			break
 		}
-		i = j // salta el cierre
+		i = j // skip the closing fence
 		if !fenceLangs[lang] {
-			// Un bloque de otro tipo (json, bash…) es parte de la explicación.
+			// A block of another kind (json, bash...) is part of the explanation.
 			prose = append(prose, "```"+m[1], body, "```")
 			continue
 		}
@@ -189,8 +189,8 @@ func ExtractProposal(response string, current []Source) Proposal {
 		if Normalize(text) == Normalize(current[k].Text) {
 			continue
 		}
-		// El bloque de código llega sin el salto de línea final: se iguala al del
-		// archivo actual para no introducir un cambio falso al guardar.
+		// The code block arrives without the trailing newline: it is made to match the
+		// current file's so as not to introduce a false change on save.
 		if strings.HasSuffix(current[k].Text, "\n") && !strings.HasSuffix(text, "\n") {
 			text += "\n"
 		}
@@ -203,7 +203,7 @@ func ExtractProposal(response string, current []Source) Proposal {
 	return p
 }
 
-// matchFile asocia la ruta de un bloque con un archivo de la configuración.
+// matchFile matches a block's path to a file of the configuration.
 func matchFile(path string, current []Source) int {
 	if path == "" {
 		if len(current) == 1 {
@@ -221,7 +221,7 @@ func matchFile(path string, current []Source) int {
 	for i, s := range current {
 		if s.Path[strings.LastIndexAny(s.Path, `/\`)+1:] == base {
 			if found >= 0 {
-				return -1 // ambiguo
+				return -1 // ambiguous
 			}
 			found = i
 		}

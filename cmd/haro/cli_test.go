@@ -20,8 +20,8 @@ func TestResolveLang(t *testing.T) {
 		t.Error("un idioma desconocido debe ser error")
 	}
 	t.Setenv("LANG", "")
-	if got, _ := resolveLang(""); got != core.LangES {
-		t.Errorf("sin entorno debe ser español, fue %q", got)
+	if got, _ := resolveLang(""); got != core.LangEN {
+		t.Errorf("sin entorno debe ser inglés, fue %q", got)
 	}
 }
 

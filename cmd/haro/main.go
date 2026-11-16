@@ -1,4 +1,4 @@
-// Comando haro: lee, entiende y valida configuraciones de HAProxy.
+// Command haro: reads, explains and validates HAProxy configurations.
 package main
 
 import (
@@ -6,33 +6,33 @@ import (
 	"os"
 )
 
-// version se sobrescribe al compilar: -ldflags "-X main.version=v0.1.0".
+// version is overridden at build time: -ldflags "-X main.version=v0.1.0".
 var version = "dev"
 
-const usage = `haro — readout para configuraciones de HAProxy
+const usage = `haro — HAProxy readout
 
-Uso:
-  haro                          Interfaz de terminal (en un terminal interactivo)
-  haro tui     [rutas...]       Interfaz de terminal para navegar la configuración
-  haro lint    [rutas...]       Detecta problemas (código de salida 1 si hay errores)
-  haro explain [rutas...]       Explica cada sección y directiva en lenguaje humano
-  haro diff    <antes> <después> Compara dos configuraciones
-  haro template list|show|add   Plantillas completas por tecnología (Nextcloud, PostgreSQL…)
-  haro serve   [opciones]       Abre la interfaz web local
-  haro assist  "petición" [rutas...]  Pregunta o pide cambios al asistente (envía la configuración a Anthropic)
-  haro mcp     [opciones]       Servidor MCP por stdio (para Claude Code, Claude Desktop…)
-  haro version                  Muestra la versión
+Usage:
+  haro                          Terminal UI (in an interactive terminal)
+  haro tui     [paths...]       Terminal UI to browse the configuration
+  haro lint    [paths...]       Detect problems (exit code 1 if there are errors)
+  haro explain [paths...]       Explain every section and directive in plain language
+  haro diff    <before> <after> Compare two configurations
+  haro template list|show|add   Full templates by technology (Nextcloud, PostgreSQL…)
+  haro serve   [options]        Open the local web interface
+  haro assist  "request" [paths...]  Ask or request changes from the assistant (sends the configuration to Anthropic)
+  haro mcp     [options]        MCP server over stdio (for Claude Code, Claude Desktop…)
+  haro version                  Print the version
 
-Las rutas pueden ser archivos o directorios y se cargan como con haproxy -f:
-en orden, y de cada directorio sus .cfg no ocultos en orden lexicográfico.
-Sin rutas, se lee /etc/haproxy/haproxy.cfg; usa "-" para stdin.
-Ejecuta "haro <comando> -h" para ver las opciones de cada comando.
+Paths can be files or directories and are loaded like haproxy -f:
+in order, and from each directory its non-hidden .cfg files in lexicographic order.
+With no paths, /etc/haproxy/haproxy.cfg is read; use "-" for stdin.
+Run "haro <command> -h" to see the options of each command.
 `
 
 func main() {
 	if len(os.Args) < 2 {
-		// Sin argumentos: la interfaz de terminal si hay terminal; si no (un
-		// pipe, un script), la ayuda de siempre.
+		// No arguments: the terminal UI if there is a terminal; otherwise (a
+		// pipe, a script) the usual help.
 		if isTerminal(os.Stdin) && isTerminal(os.Stdout) {
 			if err := runTUI(nil); err != nil {
 				fmt.Fprintln(os.Stderr, "haro:", err)
@@ -67,7 +67,7 @@ func main() {
 	case "help", "-h", "--help":
 		fmt.Print(usage)
 	default:
-		fmt.Fprintf(os.Stderr, "haro: comando desconocido %q\n\n%s", cmd, usage)
+		fmt.Fprintf(os.Stderr, "haro: unknown command %q\n\n%s", cmd, usage)
 		os.Exit(2)
 	}
 	if err != nil {
@@ -79,7 +79,7 @@ func main() {
 	}
 }
 
-// exitError permite terminar con un código concreto sin imprimir nada más.
+// exitError lets the program exit with a specific code without printing anything else.
 type exitError int
 
 func (e exitError) Error() string { return fmt.Sprintf("exit %d", int(e)) }

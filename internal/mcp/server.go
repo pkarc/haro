@@ -187,7 +187,7 @@ func (s *Server) fail(id json.RawMessage, code int, msg string, data any) {
 func (s *Server) handleLine(ctx context.Context, line []byte) {
 	var req request
 	if err := json.Unmarshal(line, &req); err != nil {
-		s.fail(nil, CodeParse, "JSON inválido", nil)
+		s.fail(nil, CodeParse, "invalid JSON", nil)
 		return
 	}
 	if req.Method == "" {
@@ -310,7 +310,7 @@ func (s *Server) initialize(params json.RawMessage) (any, error) {
 		ProtocolVersion string `json:"protocolVersion"`
 	}
 	if err := json.Unmarshal(params, &p); err != nil {
-		return nil, &rpcError{Code: CodeInvalidParams, Message: "initialize: parámetros inválidos"}
+		return nil, &rpcError{Code: CodeInvalidParams, Message: "initialize: invalid params"}
 	}
 	// Si se conoce la versión pedida, se responde con la misma; si no, con la
 	// más reciente de la era legada.

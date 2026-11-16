@@ -5,11 +5,11 @@ import (
 	"strings"
 )
 
-// Version es una versión de HAProxy reducida a mayor.menor.
+// Version is a HAProxy version reduced to major.minor.
 type Version struct{ Major, Minor int }
 
-// ParseVersion interpreta «2.8», «2.8.3», «v3.0» o «3.0-dev». Compara
-// numéricamente (2.10 > 2.9), no como texto.
+// ParseVersion interprets "2.8", "2.8.3", "v3.0" or "3.0-dev". Compares
+// numerically (2.10 > 2.9), not as text.
 func ParseVersion(s string) (Version, bool) {
 	s = strings.TrimPrefix(strings.TrimPrefix(strings.TrimSpace(s), "v"), "V")
 	parts := strings.Split(s, ".")
@@ -28,7 +28,7 @@ func ParseVersion(s string) (Version, bool) {
 	return Version{maj, min}, true
 }
 
-// Less indica si v es anterior a o.
+// Less reports whether v is earlier than o.
 func (v Version) Less(o Version) bool {
 	return v.Major < o.Major || (v.Major == o.Major && v.Minor < o.Minor)
 }

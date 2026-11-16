@@ -17,14 +17,14 @@ import (
 	"github.com/pkarc/haro/internal/coreapi"
 )
 
-// Implementación de los servicios Connect de proto/haro/v1/haro.proto. La
-// conversión entre las estructuras del núcleo y los mensajes del contrato vive
-// aquí, nunca dentro de core, para que el núcleo siga sin dependencias.
+// Implementation of the Connect services of proto/haro/v1/haro.proto. The
+// conversion between core structures and contract messages lives here, never
+// inside core, so the core stays dependency-free.
 //
-// Las estructuras del núcleo ya se serializan a JSON con los mismos nombres
-// (camelCase) que el mapeo JSON de protobuf, así que se convierte pasando por
-// JSON. La conversión es estricta: si el núcleo añade un campo que el contrato
-// no tiene, falla, y lo detecta TestRPCContract.
+// Core structures already serialize to JSON with the same (camelCase) names as
+// protobuf's JSON mapping, so conversion goes through JSON. It is strict: if
+// the core adds a field the contract lacks, it fails, and TestRPCContract
+// catches it.
 
 func (s *server) mountRPC(mux *http.ServeMux) {
 	opts := []connect.HandlerOption{connect.WithReadMaxBytes(10 << 20)}
@@ -33,19 +33,19 @@ func (s *server) mountRPC(mux *http.ServeMux) {
 	mux.Handle(harov1connect.NewAssistServiceHandler(assistService{s}, opts...))
 }
 
-// toProto copia v (estructura del núcleo) en el mensaje m.
+// toProto copies v (a core structure) into message m.
 func toProto[M proto.Message](v any, m M) (M, error) {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return m, err
 	}
 	if err := (protojson.UnmarshalOptions{}).Unmarshal(b, m); err != nil {
-		return m, fmt.Errorf("el núcleo y el contrato proto no coinciden: %w", err)
+		return m, fmt.Errorf("core and proto contract do not match: %w", err)
 	}
 	return m, nil
 }
 
-// fromProto copia el mensaje m en v (estructura del núcleo).
+// fromProto copies message m into v (a core structure).
 func fromProto(m proto.Message, v any) error {
 	b, err := protojson.Marshal(m)
 	if err != nil {
@@ -54,15 +54,15 @@ func fromProto(m proto.Message, v any) error {
 	return json.Unmarshal(b, v)
 }
 
-// requestLang interpreta el campo lang de una petición: vacío es español y un
-// idioma que el núcleo no conoce es un error del cliente.
+// requestLang interprets the lang field of a request: empty is English and a
+// language the core does not know is a client error.
 func requestLang(v string) (core.Lang, error) {
 	if v == "" {
-		return core.LangES, nil
+		return core.LangDefault, nil
 	}
 	l, ok := core.ParseLang(v)
 	if !ok {
-		return "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("idioma desconocido %q (usa es o en)", v))
+		return "", connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("unknown language %q (use es or en)", v))
 	}
 	return l, nil
 }
@@ -77,8 +77,8 @@ func changesToProto(changes []core.FileChange) []*harov1.FileChange {
 
 func internal(err error) error { return connect.NewError(connect.CodeInternal, err) }
 
-// sources reúne los archivos de una petición: files si llega, o text como un
-// único haproxy.cfg.
+// sources gathers the files of a request: files if present, or text as a
+// single haproxy.cfg.
 func sources(text string, files []*harov1.SourceFile) []core.Source {
 	if len(files) > 0 {
 		out := make([]core.Source, len(files))
@@ -120,10 +120,14 @@ func (c coreService) Analyze(_ context.Context, req *connect.Request[harov1.Anal
 	return connect.NewResponse(out), nil
 }
 
-// Apply aplica operaciones de edición sin tocar el disco: guardar es
-// ConfigService.PutConfig, con todas sus validaciones. Los archivos sin
-// cambios vuelven con su texto original, byte a byte.
+// Apply applies edit operations without touching the disk: saving is
+// ConfigService.PutConfig, with all its validations. Unchanged files
+// come back with their original text, byte for byte.
 func (c coreService) Apply(_ context.Context, req *connect.Request[harov1.ApplyRequest]) (*connect.Response[harov1.ApplyResponse], error) {
+	lang, err := requestLang(req.Msg.Lang)
+	if err != nil {
+		return nil, err
+	}
 	srcs := sources(req.Msg.Text, req.Msg.Files)
 	ops := make([]core.Op, len(req.Msg.Ops))
 	for i, op := range req.Msg.Ops {
@@ -131,7 +135,7 @@ func (c coreService) Apply(_ context.Context, req *connect.Request[harov1.ApplyR
 			return nil, internal(err)
 		}
 	}
-	res, err := coreapi.Apply(srcs, ops)
+	res, err := coreapi.Apply(srcs, ops, lang)
 	if err != nil {
 		var ae *core.ApplyError
 		if errors.As(err, &ae) {
@@ -143,8 +147,8 @@ func (c coreService) Apply(_ context.Context, req *connect.Request[harov1.ApplyR
 	return connect.NewResponse(out), nil
 }
 
-// ListTemplates lista las plantillas completas por tecnología (Nextcloud,
-// PostgreSQL…) con sus parámetros, en el idioma pedido.
+// ListTemplates lists the complete per-technology templates (Nextcloud,
+// PostgreSQL...) with their parameters, in the requested language.
 func (c coreService) ListTemplates(_ context.Context, req *connect.Request[harov1.ListTemplatesRequest]) (*connect.Response[harov1.ListTemplatesResponse], error) {
 	lang, err := requestLang(req.Msg.Lang)
 	if err != nil {
@@ -161,9 +165,9 @@ func (c coreService) ListTemplates(_ context.Context, req *connect.Request[harov
 	return connect.NewResponse(out), nil
 }
 
-// RenderTemplate genera las operaciones de una plantilla por tecnología y las
-// aplica sin tocar el disco, para que la interfaz muestre el diff antes de
-// aceptar. Guardar sigue siendo ConfigService.PutConfig (o Apply con las ops).
+// RenderTemplate generates the operations of a per-technology template and
+// applies them without touching the disk, so the interface shows the diff
+// before accepting. Saving is still ConfigService.PutConfig (or Apply with the ops).
 func (c coreService) RenderTemplate(_ context.Context, req *connect.Request[harov1.RenderTemplateRequest]) (*connect.Response[harov1.RenderTemplateResponse], error) {
 	lang, err := requestLang(req.Msg.Lang)
 	if err != nil {
@@ -232,7 +236,7 @@ func (c configService) GetCapabilities(context.Context, *connect.Request[harov1.
 
 func (c configService) GetConfig(context.Context, *connect.Request[harov1.GetConfigRequest]) (*connect.Response[harov1.ConfigFile], error) {
 	if len(c.s.paths) == 0 {
-		return nil, connect.NewError(connect.CodeNotFound, errors.New("haro serve se inició sin --file"))
+		return nil, connect.NewError(connect.CodeNotFound, errors.New("haro serve was started without --file"))
 	}
 	srcs, err := readSources(c.s.paths)
 	if err != nil {
@@ -241,9 +245,9 @@ func (c configService) GetConfig(context.Context, *connect.Request[harov1.GetCon
 	return connect.NewResponse(&harov1.ConfigFile{Files: sourceFiles(srcs)}), nil
 }
 
-// PutConfig guarda uno o varios archivos (ver server.put). Un guardado
-// rechazado por la validación responde con saved=false y el motivo, no con un
-// error de RPC.
+// PutConfig saves one or more files (see server.put). A save rejected
+// by validation answers with saved=false and the reason, not with an
+// RPC error.
 func (c configService) PutConfig(ctx context.Context, req *connect.Request[harov1.PutConfigRequest]) (*connect.Response[harov1.PutConfigResponse], error) {
 	changes := []core.Source{{Path: req.Msg.Path, Text: req.Msg.Text}}
 	if len(req.Msg.Files) > 0 {

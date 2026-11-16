@@ -1,35 +1,35 @@
 package core
 
-// HAProxy puede cargar varios archivos (`-f a.cfg -f conf.d/`). Se procesan
-// en el orden de carga como si fueran uno solo, con dos reglas:
-//   - cada archivo empieza fuera de cualquier sección: una sección no puede
-//     repartirse entre archivos;
-//   - lo demás sí cruza archivos: la herencia de `defaults`, las referencias a
-//     backends, los nombres duplicados…
+// HAProxy can load several files (`-f a.cfg -f conf.d/`). They are processed
+// in load order as if they were one, with two rules:
+//   - each file starts outside any section: a section cannot be
+//     split across files;
+//   - everything else does cross files: `defaults` inheritance, references to
+//     backends, duplicate names...
 //
-// Config representa ese conjunto. La expansión de directorios (solo los
-// `.cfg` no ocultos, en orden lexicográfico) la hace quien lee del disco,
-// porque el núcleo no accede al sistema de archivos: así funciona igual en el
-// CLI, en `haro serve` y en WASM.
+// Config represents that set. Directory expansion (only non-hidden
+// `.cfg` files, in lexicographic order) is done by whoever reads from disk,
+// because the core does not access the file system: that way it works the same in the
+// CLI, in `haro serve` and in WASM.
 
-// Source es un archivo de configuración ya leído.
+// Source is a configuration file already read.
 type Source struct {
 	Path string `json:"path"`
 	Text string `json:"text"`
 }
 
-// File es un archivo parseado dentro de un Config.
+// File is a parsed file within a Config.
 type File struct {
 	Path string `json:"path"`
 	Doc  *Doc   `json:"doc"`
 }
 
-// Config es una configuración formada por uno o varios archivos, en orden de carga.
+// Config is a configuration made up of one or more files, in load order.
 type Config struct {
 	Files []*File `json:"files"`
 }
 
-// NewConfig parsea cada archivo y marca sus líneas y secciones con su índice.
+// NewConfig parses each file and marks its lines and sections with their index.
 func NewConfig(sources []Source) *Config {
 	cfg := &Config{Files: make([]*File, len(sources))}
 	for i, src := range sources {
@@ -48,9 +48,9 @@ func NewConfig(sources []Source) *Config {
 	return cfg
 }
 
-// Merge devuelve una vista unificada en orden de carga. Las secciones y
-// líneas son los mismos punteros que en cada archivo, así que editar a
-// través de la vista unificada modifica el archivo correspondiente.
+// Merge returns a unified view in load order. The sections and
+// lines are the same pointers as in each file, so editing through
+// the unified view modifies the corresponding file.
 func (c *Config) Merge() *Doc {
 	m := &Doc{Pre: []*Line{}, Sections: []*Section{}, Files: make([]string, len(c.Files))}
 	for i, f := range c.Files {
@@ -61,23 +61,23 @@ func (c *Config) Merge() *Doc {
 	return m
 }
 
-// Serialize devuelve el texto del archivo i.
+// Serialize returns the text of file i.
 func (c *Config) Serialize(i int) string {
 	return Serialize(c.Files[i].Doc)
 }
 
-// AnalyzeConfig analiza una configuración de varios archivos. Las líneas de
-// problemas y explicaciones son relativas a su archivo (campo File).
-// Los textos salen en español; para otro idioma, usa AnalyzeConfigLang.
-func AnalyzeConfig(sources []Source) Analysis { return AnalyzeConfigLang(sources, LangES) }
+// AnalyzeConfig analyzes a multi-file configuration. The lines of
+// problems and explanations are relative to their file (File field).
+// The texts come out in English; for another language, use AnalyzeConfigLang.
+func AnalyzeConfig(sources []Source) Analysis { return AnalyzeConfigLang(sources, LangDefault) }
 
-// AnalyzeConfigLang es AnalyzeConfig con los textos en el idioma pedido.
+// AnalyzeConfigLang is AnalyzeConfig with the texts in the requested language.
 func AnalyzeConfigLang(sources []Source, lang Lang) Analysis {
 	return analyzeDoc(NewConfig(sources).Merge(), lang)
 }
 
-// AnalyzeConfigWith es AnalyzeConfigLang con opciones del detector (idioma y
-// versión objetivo de HAProxy).
+// AnalyzeConfigWith is AnalyzeConfigLang with detector options (language and
+// target HAProxy version).
 func AnalyzeConfigWith(sources []Source, opts LintOptions) Analysis {
 	return analyzeDocWith(NewConfig(sources).Merge(), opts)
 }

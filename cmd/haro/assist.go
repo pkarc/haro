@@ -16,19 +16,19 @@ import (
 	"github.com/pkarc/haro/core"
 )
 
-// Asistente con IA. La construcción del contexto y la extracción de la
-// propuesta están en core (core/assist.go); aquí vive solo la llamada a la API
-// de Anthropic, que es lo único que sale de la máquina.
+// AI assistant. Context building and proposal extraction live in core
+// (core/assist.go); only the call to the Anthropic API lives here, which is
+// the only thing that leaves the machine.
 //
-// Envía la configuración (con sus contraseñas y direcciones) a la API de
-// Anthropic. Por eso es opt-in: `haro serve --assistant` o el comando `haro
-// assist`. La clave (ANTHROPIC_API_KEY o un perfil de `ant auth login`) la lee
-// el SDK en el servidor local; nunca llega al navegador.
+// It sends the configuration (with its passwords and addresses) to the
+// Anthropic API. That is why it is opt-in: `haro serve --assistant` or the
+// `haro assist` command. The key (ANTHROPIC_API_KEY or an `ant auth login`
+// profile) is read by the SDK on the local server; it never reaches the browser.
 
-// defaultAssistantModel es el modelo del asistente salvo que se indique otro.
+// defaultAssistantModel is the assistant model unless another is given.
 const defaultAssistantModel = "claude-opus-5-5"
 
-// assistResult resume cómo terminó una respuesta.
+// assistResult summarizes how a response ended.
 type assistResult struct {
 	StopReason      string
 	RefusalCategory string
@@ -36,8 +36,8 @@ type assistResult struct {
 	OutputTokens    int64
 }
 
-// streamer envía una conversación al modelo y entrega la respuesta por trozos.
-// La implementación real usa el SDK de Anthropic; los tests, una falsa.
+// streamer sends a conversation to the model and delivers the response in
+// chunks. The real implementation uses the Anthropic SDK; tests use a fake.
 type streamer interface {
 	Stream(ctx context.Context, system string, msgs []core.AssistMessage, onText func(string) error) (assistResult, error)
 }
@@ -64,7 +64,7 @@ func (a *anthropicStreamer) Stream(ctx context.Context, system string, msgs []co
 			params[i] = anthropic.NewUserMessage(block)
 		}
 	}
-	// Pensamiento adaptativo; el prompt de sistema es estable y se cachea.
+	// Adaptive thinking; the system prompt is stable and is cached.
 	adaptive := anthropic.ThinkingConfigAdaptiveParam{}
 	stream := a.client.Messages.NewStreaming(ctx, anthropic.MessageNewParams{
 		Model:     anthropic.Model(a.model),
@@ -100,42 +100,42 @@ func (a *anthropicStreamer) Stream(ctx context.Context, system string, msgs []co
 	return res, nil
 }
 
-// assistError traduce los errores del SDK a mensajes útiles para el usuario.
+// assistError translates SDK errors into useful messages for the user.
 func assistError(err error) error {
 	var apierr *anthropic.Error
 	if errors.As(err, &apierr) {
 		switch apierr.StatusCode {
 		case 401:
-			return errors.New("la API de Anthropic rechazó las credenciales: define ANTHROPIC_API_KEY o ejecuta `ant auth login`")
+			return errors.New("the Anthropic API rejected the credentials: set ANTHROPIC_API_KEY or run `ant auth login`")
 		case 403:
-			return errors.New("la API de Anthropic denegó el acceso (permisos o modelo no disponible para tu cuenta)")
+			return errors.New("the Anthropic API denied access (permissions, or model not available for your account)")
 		case 404:
-			return errors.New("modelo no encontrado en la API de Anthropic: revisa --assistant-model")
+			return errors.New("model not found in the Anthropic API: check --assistant-model")
 		case 429:
-			return errors.New("límite de uso de la API de Anthropic alcanzado: espera un momento y reintenta")
+			return errors.New("Anthropic API rate limit reached: wait a moment and retry")
 		}
-		return fmt.Errorf("error de la API de Anthropic (%d): %s", apierr.StatusCode, apierr.Error())
+		return fmt.Errorf("Anthropic API error (%d): %s", apierr.StatusCode, apierr.Error())
 	}
 	if strings.Contains(err.Error(), "could not resolve authentication") || strings.Contains(err.Error(), "apiKey") {
-		return errors.New("faltan credenciales de Anthropic: define ANTHROPIC_API_KEY o ejecuta `ant auth login`")
+		return errors.New("missing Anthropic credentials: set ANTHROPIC_API_KEY or run `ant auth login`")
 	}
 	return err
 }
 
-// Límites de la conversación: protegen el coste y el tamaño de la petición.
+// Conversation limits: they protect the cost and size of the request.
 const (
 	maxAssistMessages = 40
 	maxAssistHistory  = 200 << 10
 )
 
-// validateConversation comprueba que la conversación es válida (alterna roles y
-// termina con un turno del usuario) y no es desmesurada.
+// validateConversation checks that the conversation is valid (alternating
+// roles, ending with a user turn) and not oversized.
 func validateConversation(msgs []core.AssistMessage) error {
 	if len(msgs) == 0 {
-		return errors.New("falta la petición del usuario")
+		return errors.New("missing user request")
 	}
 	if len(msgs) > maxAssistMessages {
-		return fmt.Errorf("la conversación tiene más de %d mensajes: empieza una nueva", maxAssistMessages)
+		return fmt.Errorf("the conversation has more than %d messages: start a new one", maxAssistMessages)
 	}
 	total := 0
 	for i, m := range msgs {
@@ -144,34 +144,34 @@ func validateConversation(msgs []core.AssistMessage) error {
 			want = "assistant"
 		}
 		if m.Role != want {
-			return fmt.Errorf("el mensaje %d debe ser del rol %q", i+1, want)
+			return fmt.Errorf("message %d must have role %q", i+1, want)
 		}
 		if strings.TrimSpace(m.Content) == "" {
-			return fmt.Errorf("el mensaje %d está vacío", i+1)
+			return fmt.Errorf("message %d is empty", i+1)
 		}
 		total += len(m.Content)
 	}
 	if msgs[len(msgs)-1].Role != "user" {
-		return errors.New("la conversación debe terminar con un mensaje del usuario")
+		return errors.New("the conversation must end with a user message")
 	}
 	if total > maxAssistHistory {
-		return fmt.Errorf("la conversación ocupa más de %d KB: empieza una nueva", maxAssistHistory>>10)
+		return fmt.Errorf("the conversation is larger than %d KB: start a new one", maxAssistHistory>>10)
 	}
 	return nil
 }
 
-// assistOutcome es el resultado completo de un turno del asistente.
+// assistOutcome is the complete result of an assistant turn.
 type assistOutcome struct {
 	Text     string
 	Proposal core.Proposal
-	// IssuesAfter son los problemas de la configuración con la propuesta aplicada.
+	// IssuesAfter are the configuration problems with the proposal applied.
 	IssuesAfter []core.Issue
 	Result      assistResult
 }
 
-// runAssist ejecuta un turno: construye el contexto con la configuración
-// actual, envía la conversación, va entregando el texto y al final extrae la
-// propuesta y analiza cómo quedaría la configuración.
+// runAssist runs a turn: builds the context with the current configuration,
+// sends the conversation, delivers the text as it arrives and finally extracts
+// the proposal and analyzes how the configuration would look.
 func runAssist(ctx context.Context, st streamer, srcs []core.Source, msgs []core.AssistMessage, lang core.Lang, onText func(string) error) (assistOutcome, error) {
 	var out assistOutcome
 	if err := validateConversation(msgs); err != nil {
@@ -210,14 +210,14 @@ func runAssist(ctx context.Context, st streamer, srcs []core.Source, msgs []core
 
 func runAssistCmd(args []string) error {
 	fs := flag.NewFlagSet("assist", flag.ExitOnError)
-	langFlag := fs.String("lang", "", "idioma: es o en (por defecto, el del entorno)")
-	model := fs.String("model", envOr("HARO_ASSISTANT_MODEL", defaultAssistantModel), "modelo de Anthropic")
-	write := fs.Bool("write", false, "escribe la propuesta (valida la configuración completa y deja copia .bak)")
-	yes := fs.Bool("yes", false, "con --write, no pide confirmación")
+	langFlag := fs.String("lang", "", "language: en or es (default: from the environment)")
+	model := fs.String("model", envOr("HARO_ASSISTANT_MODEL", defaultAssistantModel), "Anthropic model")
+	write := fs.Bool("write", false, "write the proposal (validates the full configuration and leaves a .bak copy)")
+	yes := fs.Bool("yes", false, "with --write, do not ask for confirmation")
 	fs.Usage = func() {
-		fmt.Fprintln(fs.Output(), "Uso: haro assist [opciones] \"petición\" [archivo|directorio]...")
-		fmt.Fprintln(fs.Output(), "Pregunta o pide cambios al asistente. ENVÍA LA CONFIGURACIÓN a la API de Anthropic.")
-		fmt.Fprintln(fs.Output(), "Necesita ANTHROPIC_API_KEY (o `ant auth login`). Sin --write solo muestra el diff propuesto.")
+		fmt.Fprintln(fs.Output(), "Usage: haro assist [options] \"request\" [file|directory]...")
+		fmt.Fprintln(fs.Output(), "Ask or request changes from the assistant. SENDS THE CONFIGURATION to the Anthropic API.")
+		fmt.Fprintln(fs.Output(), "Needs ANTHROPIC_API_KEY (or `ant auth login`). Without --write it only shows the proposed diff.")
 		fs.PrintDefaults()
 	}
 	pos, err := parseArgs(fs, args)
@@ -238,14 +238,14 @@ func runAssistCmd(args []string) error {
 	}
 	for _, p := range paths {
 		if p == "-" {
-			return errors.New("haro assist no lee de stdin; indica archivos o directorios")
+			return errors.New("haro assist does not read from stdin; give files or directories")
 		}
 	}
 	srcs, err := readSources(paths)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(os.Stderr, "haro: la configuración se envía a la API de Anthropic (modelo "+*model+")")
+	fmt.Fprintln(os.Stderr, "haro: the configuration is sent to the Anthropic API (model "+*model+")")
 	st := newAnthropicStreamer(*model)
 	out, err := runAssist(context.Background(), st, srcs, []core.AssistMessage{{Role: "user", Content: request}}, lang, func(t string) error {
 		_, err := io.WriteString(os.Stdout, t)
@@ -255,28 +255,28 @@ func runAssistCmd(args []string) error {
 	if err != nil {
 		return err
 	}
-	return finishAssistCLI(out, srcs, paths, *write, *yes)
+	return finishAssistCLI(out, srcs, paths, *write, *yes, lang)
 }
 
-// finishAssistCLI muestra el diff de la propuesta y, con --write, la guarda.
-func finishAssistCLI(out assistOutcome, srcs []core.Source, paths []string, write, yes bool) error {
+// finishAssistCLI shows the proposal diff and, with --write, saves it.
+func finishAssistCLI(out assistOutcome, srcs []core.Source, paths []string, write, yes bool, lang core.Lang) error {
 	switch out.Result.StopReason {
 	case "refusal":
-		return fmt.Errorf("el modelo declinó la petición (%s)", out.Result.RefusalCategory)
+		return fmt.Errorf(tx(lang, "el modelo declinó la petición (%s)", "the model declined the request (%s)"), out.Result.RefusalCategory)
 	case "max_tokens":
-		fmt.Fprintln(os.Stderr, "haro: la respuesta se cortó por el límite de tokens")
+		fmt.Fprintln(os.Stderr, tx(lang, "haro: la respuesta se cortó por el límite de tokens", "haro: the response was cut off by the token limit"))
 	}
 	p := out.Proposal
 	if p.Truncated {
-		fmt.Fprintln(os.Stderr, "haro: un bloque de configuración quedó cortado y se descartó")
+		fmt.Fprintln(os.Stderr, tx(lang, "haro: un bloque de configuración quedó cortado y se descartó", "haro: a configuration block was cut off and discarded"))
 	}
 	if p.Unmatched > 0 {
-		fmt.Fprintf(os.Stderr, "haro: %d bloque(s) de configuración no se pudieron asociar a un archivo y se descartaron\n", p.Unmatched)
+		fmt.Fprintf(os.Stderr, tx(lang, "haro: %d bloque(s) de configuración no se pudieron asociar a un archivo y se descartaron\n", "haro: %d configuration block(s) could not be matched to a file and were discarded\n"), p.Unmatched)
 	}
 	if len(p.Changes) == 0 {
 		return nil
 	}
-	fmt.Println("\n── propuesta ──")
+	fmt.Println(tx(lang, "\n── propuesta ──", "\n── proposal ──"))
 	for _, ch := range p.Changes {
 		fmt.Print(core.UnifiedDiff(ch.Path, srcs[ch.File].Text, ch.Text, 3))
 	}
@@ -286,17 +286,17 @@ func finishAssistCLI(out assistOutcome, srcs []core.Source, paths []string, writ
 			errs++
 		}
 	}
-	fmt.Printf("\nTras aplicarla: %s.\n", plural(errs, "error", "errores"))
+	fmt.Printf(tx(lang, "\nTras aplicarla: %s.\n", "\nAfter applying it: %s.\n"), plural(errs, "error", tx(lang, "errores", "errors")))
 	if !write {
-		fmt.Println("Para escribirla: repite con --write (o aplícala desde la interfaz).")
+		fmt.Println(tx(lang, "Para escribirla: repite con --write (o aplícala desde la interfaz).", "To write it: repeat with --write (or apply it from the interface)."))
 		return nil
 	}
 	if !yes {
-		fmt.Print("¿Escribir estos cambios? [s/N] ")
+		fmt.Print(tx(lang, "¿Escribir estos cambios? [s/N] ", "Write these changes? [y/N] "))
 		var ans string
 		fmt.Scanln(&ans)
 		if a := strings.ToLower(strings.TrimSpace(ans)); a != "s" && a != "y" && a != "si" && a != "sí" && a != "yes" {
-			fmt.Println("No se escribió nada.")
+			fmt.Println(tx(lang, "No se escribió nada.", "Nothing was written."))
 			return nil
 		}
 	}
@@ -305,15 +305,15 @@ func finishAssistCLI(out assistOutcome, srcs []core.Source, paths []string, writ
 		return err
 	}
 	for _, sv := range res.Saved {
-		fmt.Printf("Guardado %s (copia en %s)\n", sv.Path, sv.Backup)
+		fmt.Printf(tx(lang, "Guardado %s (copia en %s)\n", "Saved %s (backup at %s)\n"), sv.Path, sv.Backup)
 	}
 	return nil
 }
 
-// saveProposal guarda los archivos de una propuesta con las mismas garantías
-// que `haro serve --allow-write`: valida la configuración completa (haproxy -c
-// o el detector), escribe de forma atómica y deja copia .bak. Si la validación
-// la rechaza, el error explica el motivo y no se escribe nada.
+// saveProposal saves the files of a proposal with the same guarantees as
+// `haro serve --allow-write`: validates the full configuration (haproxy -c or
+// the detector), writes atomically and leaves a .bak copy. If validation
+// rejects it, the error explains why and nothing is written.
 func saveProposal(ctx context.Context, paths []string, changes []core.FileChange) (putOutcome, error) {
 	files := make([]core.Source, len(changes))
 	for i, ch := range changes {
@@ -335,7 +335,7 @@ func saveProposal(ctx context.Context, paths []string, changes []core.FileChange
 		if res.Issue != nil {
 			msg += fmt.Sprintf("\n%s:%d: %s", res.Path, res.Issue.Line, res.Issue.Message)
 		}
-		return res, errors.New("no se guardó: " + msg)
+		return res, errors.New("not saved: " + msg)
 	}
 	return res, nil
 }

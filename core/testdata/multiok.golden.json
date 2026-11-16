@@ -6,7 +6,7 @@
       "line": 3,
       "keyword": "log",
       "args": "/dev/log local0",
-      "text": "Envía logs al syslog local (`/dev/log`) · facility `local0`",
+      "text": "Sends logs to the local syslog (`/dev/log`) · facility `local0`",
       "known": true
     },
     {
@@ -14,7 +14,7 @@
       "line": 4,
       "keyword": "maxconn",
       "args": "4096",
-      "text": "Máximo de conexiones simultáneas de todo el proceso: **4096**",
+      "text": "Maximum simultaneous connections for the whole process: **4096**",
       "known": true
     },
     {
@@ -22,7 +22,7 @@
       "line": 7,
       "keyword": "mode",
       "args": "http",
-      "text": "**Modo HTTP** (capa 7): HAProxy interpreta peticiones, cabeceras y rutas, y puede aplicar reglas sobre ellas.",
+      "text": "**HTTP mode** (layer 7): HAProxy parses requests, headers and paths, and can apply rules to them.",
       "known": true
     },
     {
@@ -30,7 +30,7 @@
       "line": 8,
       "keyword": "timeout",
       "args": "connect 5s",
-      "text": "Tiempo máximo para establecer la conexión TCP con un servidor: **5 s**",
+      "text": "Maximum time to establish the TCP connection to a server: **5 s**",
       "known": true
     },
     {
@@ -38,7 +38,7 @@
       "line": 9,
       "keyword": "timeout",
       "args": "client 30s",
-      "text": "Tiempo máximo de inactividad del cliente: **30 s**",
+      "text": "Maximum time of client inactivity: **30 s**",
       "known": true
     },
     {
@@ -46,7 +46,7 @@
       "line": 10,
       "keyword": "timeout",
       "args": "server 30s",
-      "text": "Tiempo máximo esperando datos del servidor: **30 s**",
+      "text": "Maximum time waiting for data from the server: **30 s**",
       "known": true
     },
     {
@@ -54,7 +54,7 @@
       "line": 2,
       "keyword": "bind",
       "args": "*:80",
-      "text": "Escucha en todas las interfaces, puerto `80`",
+      "text": "Listens on all interfaces, port `80`",
       "known": true
     },
     {
@@ -62,7 +62,7 @@
       "line": 3,
       "keyword": "acl",
       "args": "is_api path_beg /api",
-      "text": "Define la condición `is_api`: la ruta empieza por `/api`",
+      "text": "Defines the condition `is_api`: the path starts with `/api`",
       "known": true
     },
     {
@@ -70,7 +70,7 @@
       "line": 4,
       "keyword": "use_backend",
       "args": "api if is_api",
-      "text": "Envía al backend **api** — si `is_api`",
+      "text": "Sends to the backend **api** — if `is_api`",
       "known": true
     },
     {
@@ -78,7 +78,7 @@
       "line": 5,
       "keyword": "default_backend",
       "args": "app",
-      "text": "Backend por defecto: **app** — recibe todo lo que no coincide con ninguna regla `use_backend`",
+      "text": "Default backend: **app** — receives everything that matches no `use_backend` rule",
       "known": true
     },
     {
@@ -86,7 +86,7 @@
       "line": 8,
       "keyword": "server",
       "args": "a1 10.0.0.1:8080 check",
-      "text": "Servidor **a1** en `10.0.0.1:8080` · health checks activos",
+      "text": "Server **a1** at `10.0.0.1:8080` · active health checks",
       "known": true
     },
     {
@@ -94,7 +94,7 @@
       "line": 3,
       "keyword": "balance",
       "args": "leastconn",
-      "text": "Reparto de carga: al servidor con **menos conexiones activas** (ideal para sesiones largas)",
+      "text": "Load balancing: picks the server with the **fewest active connections** (ideal for long sessions)",
       "known": true
     },
     {
@@ -102,7 +102,7 @@
       "line": 4,
       "keyword": "server",
       "args": "api1 10.0.0.21:9000 check",
-      "text": "Servidor **api1** en `10.0.0.21:9000` · health checks activos",
+      "text": "Server **api1** at `10.0.0.21:9000` · active health checks",
       "known": true
     }
   ],

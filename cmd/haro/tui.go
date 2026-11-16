@@ -11,7 +11,7 @@ import (
 	"github.com/pkarc/haro/internal/tui"
 )
 
-// isTerminal indica si f es un terminal interactivo (no un pipe ni un archivo).
+// isTerminal reports whether f is an interactive terminal (not a pipe or a file).
 func isTerminal(f *os.File) bool {
 	fi, err := f.Stat()
 	return err == nil && fi.Mode()&os.ModeCharDevice != 0
@@ -19,16 +19,16 @@ func isTerminal(f *os.File) bool {
 
 func runTUI(args []string) error {
 	fs := flag.NewFlagSet("tui", flag.ExitOnError)
-	noColor := fs.Bool("no-color", false, "sin colores (también con NO_COLOR)")
-	noWatch := fs.Bool("no-watch", false, "no recargar al cambiar los archivos")
+	noColor := fs.Bool("no-color", false, "no colors (also with NO_COLOR)")
+	noWatch := fs.Bool("no-watch", false, "do not reload when the files change")
 	langArg := langFlag(fs)
 	versionArg := versionFlag(fs)
-	editor := fs.String("editor", "", "editor para la tecla e (por defecto $VISUAL o $EDITOR)")
-	assistant := fs.Bool("assistant", false, "activa el asistente con IA (tecla a): ENVÍA la configuración a la API de Anthropic (clave en ANTHROPIC_API_KEY o `ant auth login`)")
-	assistModel := fs.String("assistant-model", envOr("HARO_ASSISTANT_MODEL", defaultAssistantModel), "modelo de Anthropic del asistente")
+	editor := fs.String("editor", "", "editor for the e key (default $VISUAL or $EDITOR)")
+	assistant := fs.Bool("assistant", false, "enable the AI assistant (key a): SENDS the configuration to the Anthropic API (key in ANTHROPIC_API_KEY or `ant auth login`)")
+	assistModel := fs.String("assistant-model", envOr("HARO_ASSISTANT_MODEL", defaultAssistantModel), "Anthropic model for the assistant")
 	fs.Usage = func() {
-		fmt.Fprintln(fs.Output(), "Uso: haro tui [opciones] [archivo|directorio]...")
-		fmt.Fprintln(fs.Output(), "Interfaz de terminal para navegar la configuración. Sin rutas, abre /etc/haproxy/haproxy.cfg.")
+		fmt.Fprintln(fs.Output(), "Usage: haro tui [options] [file|directory]...")
+		fmt.Fprintln(fs.Output(), "Terminal UI to browse the configuration. With no paths, opens /etc/haproxy/haproxy.cfg.")
 		fs.PrintDefaults()
 	}
 	fs.Parse(args)
@@ -42,27 +42,27 @@ func runTUI(args []string) error {
 	paths := fs.Args()
 	for _, p := range paths {
 		if p == "-" {
-			return errors.New("la interfaz de terminal no puede leer de stdin; usa haro lint o haro explain")
+			return errors.New("the terminal UI cannot read from stdin; use haro lint or haro explain")
 		}
 	}
 	if !isTerminal(os.Stdin) || !isTerminal(os.Stdout) {
-		return errors.New("la interfaz de terminal necesita un terminal interactivo; usa haro lint o haro explain en pipes")
+		return errors.New("the terminal UI needs an interactive terminal; use haro lint or haro explain in pipes")
 	}
 	load := func() ([]core.Source, error) { return readSources(paths) }
-	if _, err := load(); err != nil { // falla antes de abrir la pantalla si no hay nada que leer
-		return fmt.Errorf("no se pudo leer la configuración: %w\nIndica la ruta: haro tui archivo.cfg", err)
+	if _, err := load(); err != nil { // fail before opening the screen if there is nothing to read
+		return fmt.Errorf("could not read the configuration: %w\nGive the path: haro tui file.cfg", err)
 	}
 	opts := tui.Options{Load: load, Dirs: paths, Editor: *editor, Lang: lang, HAProxyVersion: *versionArg, NoColor: *noColor, NoWatch: *noWatch}
 	if *assistant {
-		fmt.Fprintln(os.Stderr, "haro: asistente activado: la configuración se envía a la API de Anthropic (modelo "+*assistModel+")")
+		fmt.Fprintln(os.Stderr, "haro: assistant enabled: the configuration is sent to the Anthropic API (model "+*assistModel+")")
 		opts.Assist, opts.Save = tuiAssist(newAnthropicStreamer(*assistModel), paths, load), tuiSave(paths)
 		opts.AssistModel = *assistModel
 	}
 	return tui.Run(opts)
 }
 
-// tuiAssist conecta el asistente de la TUI con runAssist. Lee la configuración
-// al enviar cada petición, así el modelo siempre ve la versión vigente.
+// tuiAssist connects the TUI assistant to runAssist. It reads the configuration
+// on every request, so the model always sees the current version.
 func tuiAssist(st streamer, paths []string, load func() ([]core.Source, error)) func(context.Context, []core.AssistMessage, core.Lang, func(string)) (tui.AssistOutcome, error) {
 	return func(ctx context.Context, msgs []core.AssistMessage, lang core.Lang, onText func(string)) (tui.AssistOutcome, error) {
 		srcs, err := load()
@@ -77,7 +77,7 @@ func tuiAssist(st streamer, paths []string, load func() ([]core.Source, error)) 
 	}
 }
 
-// tuiSave guarda una propuesta como `haro serve --allow-write`: valida, escritura atómica y .bak.
+// tuiSave saves a proposal like `haro serve --allow-write`: validates, atomic write and .bak.
 func tuiSave(paths []string) func([]core.FileChange) error {
 	return func(changes []core.FileChange) error {
 		_, err := saveProposal(context.Background(), paths, changes)

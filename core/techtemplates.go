@@ -11,38 +11,38 @@ import (
 	"strings"
 )
 
-// Plantillas por tecnología: configuraciones completas (frontends y backends)
-// para publicar un servicio concreto (Nextcloud, PostgreSQL…) detrás de HAProxy.
-// Son datos, no código: un JSON por tecnología en knowledge/templates/. Este
-// archivo contiene el motor mínimo que los interpreta; no hay ningún motor de
-// plantillas externo.
+// Per-technology templates: complete configurations (frontends and backends)
+// to publish a specific service (Nextcloud, PostgreSQL...) behind HAProxy.
+// They are data, not code: one JSON per technology in knowledge/templates/. This
+// file holds the minimal engine that interprets them; there is no external
+// template engine.
 //
-// Formato de un archivo (ver también CONTRIBUTING.md):
+// Format of a file (see also CONTRIBUTING.md):
 //
-//	id, kind        «web» (HTTP con TLS; el motor genera los frontends) o «tcp»
-//	name, description   {"es": …, "en": …}
-//	params          parámetros: key, label, help, type (string|int|list|bool),
-//	                default, required, dependsOn (otro parámetro bool anterior:
-//	                solo se usa si es verdadero), example, validate
-//	sections        secciones a generar: type, suffix (se añade al nombre base),
-//	                if (condición) y lines
+//	id, kind        "web" (HTTP with TLS; the engine generates the frontends) or "tcp"
+//	name, description   {"es": ..., "en": ...}
+//	params          parameters: key, label, help, type (string|int|list|bool),
+//	                default, required, dependsOn (another, earlier bool parameter:
+//	                only used if true), example, validate
+//	sections        sections to generate: type, suffix (appended to the base name),
+//	                if (condition) and lines
 //
-// Cada línea de una sección es un texto o un objeto con:
+// Each line of a section is a text or an object with:
 //
-//	text      la directiva, con marcadores {{clave}}
-//	if        condición: «clave», «!clave» o varias unidas con «&» (todas deben cumplirse);
-//	          además de los parámetros vale «logging» (la configuración tiene un destino
-//	          de logs, así que tiene sentido fijar el formato con option tcplog)
-//	each      clave de un parámetro lista: se genera una línea por elemento
-//	where     con each: «first» (solo el primer elemento) o «rest» (todos menos el primero)
-//	comment   {"es": …, "en": …}: genera un comentario «# …» localizado
+//	text      the directive, with {{key}} placeholders
+//	if        condition: "key", "!key" or several joined with "&" (all must hold);
+//	          besides the parameters, "logging" is valid (the configuration has a log
+//	          destination, so it makes sense to set the format with option tcplog)
+//	each      key of a list parameter: one line is generated per element
+//	where     with each: "first" (only the first element) or "rest" (all but the first)
+//	comment   {"es": ..., "en": ...}: generates a localized "# ..." comment
 //
-// En text valen los marcadores {{clave}} de cualquier parámetro, {{base}} (el
-// nombre base ya sin colisiones) y, dentro de each, {{item}}, {{host}},
-// {{port}} y {{n}} (posición desde 1). Para kind=web el motor añade los
-// parámetros «domain» y «cert» y genera los frontends (puerto 80 con
-// redirección a HTTPS y puerto 443 con TLS y ALPN) apuntando a {{base}}; el
-// JSON solo describe el backend y lo extra.
+// In text, the {{key}} placeholders of any parameter are valid, plus {{base}} (the
+// base name already free of collisions) and, inside each, {{item}}, {{host}},
+// {{port}} and {{n}} (position from 1). For kind=web the engine adds the
+// parameters "domain" and "cert" and generates the frontends (port 80 with
+// redirect to HTTPS and port 443 with TLS and ALPN) pointing at {{base}}; the
+// JSON only describes the backend and the extras.
 
 //go:embed knowledge/templates/*.json
 var techFS embed.FS
@@ -53,10 +53,10 @@ type i18n struct {
 }
 
 func (s i18n) get(l Lang) string {
-	if l == LangEN && s.EN != "" {
-		return s.EN
+	if l == LangES && s.ES != "" {
+		return s.ES
 	}
-	return s.ES
+	return s.EN
 }
 
 type techParamDef struct {
@@ -79,7 +79,7 @@ type techLine struct {
 	Comment *i18n
 }
 
-// UnmarshalJSON admite una cadena (solo texto) o un objeto.
+// UnmarshalJSON accepts a string (text only) or an object.
 func (l *techLine) UnmarshalJSON(b []byte) error {
 	var s string
 	if json.Unmarshal(b, &s) == nil {
@@ -123,7 +123,7 @@ var techDefs = mustLoadTechDefs()
 func mustLoadTechDefs() []*techDef {
 	defs, err := loadTechDefs(techFS, "knowledge/templates")
 	if err != nil {
-		panic("haro: plantillas por tecnología inválidas: " + err.Error())
+		panic("haro: invalid technology templates: " + err.Error())
 	}
 	return defs
 }
@@ -149,7 +149,7 @@ func loadTechDefs(fsys fs.FS, dir string) ([]*techDef, error) {
 			return nil, fmt.Errorf("%s: %w", e.Name(), err)
 		}
 		if d.ID+".json" != e.Name() {
-			return nil, fmt.Errorf("%s: el id «%s» debe coincidir con el nombre del archivo", e.Name(), d.ID)
+			return nil, fmt.Errorf("%s: the id “%s” must match the file name", e.Name(), d.ID)
 		}
 		d.Params = withCommonParams(&d)
 		if err := d.validate(); err != nil {
@@ -161,7 +161,7 @@ func loadTechDefs(fsys fs.FS, dir string) ([]*techDef, error) {
 	return defs, nil
 }
 
-// withCommonParams antepone a las plantillas web los parámetros comunes.
+// withCommonParams prepends the common parameters to the web templates.
 func withCommonParams(d *techDef) []techParamDef {
 	if d.Kind != "web" {
 		return d.Params
@@ -179,12 +179,12 @@ func withCommonParams(d *techDef) []techParamDef {
 
 var placeholderRE = regexp.MustCompile(`\{\{([a-z_0-9]+)\}\}`)
 
-// validate comprueba que la plantilla está bien formada: es lo que hace
-// fallar al arrancar (y en los tests) a una plantilla con un error de
-// escritura, en vez de descubrirlo al usarla.
+// validate checks that the template is well formed: it is what makes
+// a template with a typo fail at startup (and in tests),
+// instead of discovering it on use.
 func (d *techDef) validate() error {
 	if d.Kind != "web" && d.Kind != "tcp" {
-		return fmt.Errorf("kind debe ser web o tcp, no «%s»", d.Kind)
+		return fmt.Errorf("kind must be web or tcp, not “%s”", d.Kind)
 	}
 	if d.Name.ES == "" || d.Name.EN == "" || d.Description.ES == "" || d.Description.EN == "" {
 		return fmt.Errorf("name y description necesitan es y en")
@@ -193,28 +193,28 @@ func (d *techDef) validate() error {
 	for i := range d.Params {
 		p := &d.Params[i]
 		if _, dup := keys[p.Key]; dup || p.Key == "" {
-			return fmt.Errorf("parámetro repetido o sin clave: «%s»", p.Key)
+			return fmt.Errorf("duplicate or keyless parameter: “%s”", p.Key)
 		}
 		switch p.Type {
 		case "string", "int", "list", "bool":
 		default:
-			return fmt.Errorf("parámetro %s: tipo «%s» desconocido", p.Key, p.Type)
+			return fmt.Errorf("parameter %s: unknown type “%s”", p.Key, p.Type)
 		}
 		if p.Label.ES == "" || p.Label.EN == "" {
-			return fmt.Errorf("parámetro %s: label necesita es y en", p.Key)
+			return fmt.Errorf("parameter %s: label needs es and en", p.Key)
 		}
 		if p.DependsOn != "" {
 			dep, ok := keys[p.DependsOn]
 			if !ok || dep.Type != "bool" {
-				return fmt.Errorf("parámetro %s: dependsOn debe ser un bool declarado antes", p.Key)
+				return fmt.Errorf("parameter %s: dependsOn must be a bool declared earlier", p.Key)
 			}
 		}
 		if p.Required && p.Default != nil {
-			return fmt.Errorf("parámetro %s: un parámetro obligatorio no lleva valor por defecto", p.Key)
+			return fmt.Errorf("parameter %s: a required parameter takes no default value", p.Key)
 		}
 		if p.Default != nil {
-			if _, err := coerceParam(p, p.Default, LangES); err != nil {
-				return fmt.Errorf("parámetro %s: valor por defecto inválido: %v", p.Key, err)
+			if _, err := coerceParam(p, p.Default, LangDefault); err != nil {
+				return fmt.Errorf("parameter %s: invalid default value: %v", p.Key, err)
 			}
 		}
 		keys[p.Key] = p
@@ -222,7 +222,7 @@ func (d *techDef) validate() error {
 	checkCond := func(c string) error {
 		for _, k := range splitCond(c) {
 			if _, ok := keys[k.key]; !ok && k.key != "logging" {
-				return fmt.Errorf("la condición «%s» usa un parámetro que no existe", c)
+				return fmt.Errorf("the condition “%s” uses a parameter that does not exist", c)
 			}
 		}
 		return nil
@@ -233,7 +233,7 @@ func (d *techDef) validate() error {
 	hasBackend := false
 	for _, s := range d.Sections {
 		if s.Type != "frontend" && s.Type != "backend" && s.Type != "listen" {
-			return fmt.Errorf("tipo de sección no permitido: «%s»", s.Type)
+			return fmt.Errorf("section type not allowed: “%s”", s.Type)
 		}
 		if s.Type == "backend" && s.Suffix == "" {
 			hasBackend = true
@@ -252,11 +252,11 @@ func (d *techDef) validate() error {
 				continue
 			}
 			if strings.TrimSpace(l.Text) == "" {
-				return fmt.Errorf("línea vacía en la sección %s", s.Type)
+				return fmt.Errorf("empty line in section %s", s.Type)
 			}
 			if l.Each != "" {
 				if p := keys[l.Each]; p == nil || p.Type != "list" {
-					return fmt.Errorf("each «%s» no es un parámetro lista", l.Each)
+					return fmt.Errorf("each “%s” is not a list parameter", l.Each)
 				}
 				if l.Where != "" && l.Where != "first" && l.Where != "rest" {
 					return fmt.Errorf("where debe ser first o rest")
@@ -270,22 +270,22 @@ func (d *techDef) validate() error {
 				case keys[k] != nil, k == "base":
 				case l.Each != "" && (k == "item" || k == "host" || k == "port" || k == "n"):
 				default:
-					return fmt.Errorf("marcador {{%s}} desconocido en «%s»", k, l.Text)
+					return fmt.Errorf("unknown marker {{%s}} in “%s”", k, l.Text)
 				}
 			}
 		}
 	}
 	if !hasBackend {
-		return fmt.Errorf("falta la sección backend sin suffix (la que recibe el tráfico)")
+		return fmt.Errorf("missing backend section without suffix (the one that receives traffic)")
 	}
 	return nil
 }
 
-// ---------- API pública ----------
+// ---------- public API ----------
 
-// TemplateParam describe un parámetro de una plantilla por tecnología, con los
-// textos en el idioma pedido. Default es nil si no tiene valor por defecto;
-// si no, un string, un número, un bool o una lista de strings.
+// TemplateParam describes a parameter of a per-technology template, with the
+// texts in the requested language. Default is nil if it has no default value;
+// otherwise a string, a number, a bool or a list of strings.
 type TemplateParam struct {
 	Key       string `json:"key"`
 	Label     string `json:"label"`
@@ -293,11 +293,11 @@ type TemplateParam struct {
 	Type      string `json:"type"` // string | int | list | bool
 	Default   any    `json:"defaultValue,omitempty"`
 	Required  bool   `json:"required,omitempty"`
-	DependsOn string `json:"dependsOn,omitempty"` // solo se usa si ese parámetro bool es verdadero
+	DependsOn string `json:"dependsOn,omitempty"` // only used if that bool parameter is true
 	Example   string `json:"example,omitempty"`
 }
 
-// TechTemplate son los metadatos de una plantilla por tecnología.
+// TechTemplate is the metadata of a per-technology template.
 type TechTemplate struct {
 	ID          string          `json:"id"`
 	Name        string          `json:"name"`
@@ -306,8 +306,8 @@ type TechTemplate struct {
 	Params      []TemplateParam `json:"params"`
 }
 
-// TechTemplates lista las plantillas por tecnología (ordenadas por id) con los
-// textos en el idioma pedido.
+// TechTemplates lists the per-technology templates (sorted by id) with the
+// texts in the requested language.
 func TechTemplates(lang Lang) []TechTemplate {
 	out := make([]TechTemplate, len(techDefs))
 	for i, d := range techDefs {
@@ -325,9 +325,9 @@ func TechTemplates(lang Lang) []TechTemplate {
 	return out
 }
 
-// TemplateError es un error de los parámetros (o de la plantilla pedida), con
-// el mensaje en el idioma de la petición. Param es la clave del parámetro
-// afectado, si la hay.
+// TemplateError is an error in the parameters (or in the requested template), with
+// the message in the request's language. Param is the key of the affected
+// parameter, if any.
 type TemplateError struct {
 	Param string `json:"param,omitempty"`
 	Msg   string `json:"message"`
@@ -337,7 +337,7 @@ func (e *TemplateError) Error() string { return e.Msg }
 
 func terr(param string, msg string) *TemplateError { return &TemplateError{Param: param, Msg: msg} }
 
-// ---------- parámetros ----------
+// ---------- parameters ----------
 
 type paramVals map[string]any
 
@@ -354,7 +354,7 @@ func validPort(s string) bool {
 	return err == nil && n >= 1 && n <= 65535 && s == strconv.Itoa(n)
 }
 
-// checkString valida un valor de texto según el validador del parámetro.
+// checkString validates a text value according to the parameter's validator.
 func checkString(p *techParamDef, v string, lang Lang) error {
 	label := p.Label.get(lang)
 	switch p.Validate {
@@ -415,9 +415,9 @@ func zeroValue(p *techParamDef) any {
 	return ""
 }
 
-// coerceParam convierte y valida el valor crudo de un parámetro. Admite los
-// tipos que llegan de JSON (float64, []any) y de la línea de comandos (todo
-// texto: las listas separadas por comas, espacios o saltos de línea).
+// coerceParam converts and validates a parameter's raw value. It accepts the
+// types that arrive from JSON (float64, []any) and from the command line (all
+// text: lists separated by commas, spaces or line breaks).
 func coerceParam(p *techParamDef, raw any, lang Lang) (any, error) {
 	label := p.Label.get(lang)
 	bad := func(es, en string) error {
@@ -534,9 +534,9 @@ func truthy(v any) bool {
 	return false
 }
 
-// resolveParams valida los parámetros recibidos y devuelve el valor de cada
-// uno (con los valores por defecto aplicados). Los parámetros cuyo dependsOn
-// es falso se ignoran y valen su valor vacío.
+// resolveParams validates the received parameters and returns the value of each
+// one (with defaults applied). Parameters whose dependsOn
+// is false are ignored and take their empty value.
 func resolveParams(d *techDef, in map[string]any, lang Lang) (paramVals, error) {
 	known := map[string]bool{}
 	for _, p := range d.Params {
@@ -593,7 +593,7 @@ func resolveParams(d *techDef, in map[string]any, lang Lang) (paramVals, error) 
 	return vals, nil
 }
 
-// ---------- condiciones y sustitución ----------
+// ---------- conditions and substitution ----------
 
 type condTerm struct {
 	key string
@@ -642,9 +642,9 @@ func substitute(text string, vals paramVals, extra map[string]string) string {
 	})
 }
 
-// ---------- generación ----------
+// ---------- generation ----------
 
-// genSection es una sección a crear: su nombre ya es definitivo.
+// genSection is a section to create: its name is already final.
 type genSection struct {
 	typ, name string
 	lines     []string
@@ -676,9 +676,9 @@ func (d *techDef) lineTexts(s techSection, vals paramVals, base string, lang Lan
 	return out
 }
 
-// takenNames son los nombres de frontend, backend y listen existentes. Se
-// tratan como un único espacio de nombres: HAProxy 3.3 ya no admite un
-// frontend y un backend con el mismo nombre.
+// takenNames are the existing frontend, backend and listen names. They are
+// treated as a single namespace: HAProxy 3.3 no longer allows a
+// frontend and a backend with the same name.
 func takenNames(secs []*Section) map[string]bool {
 	m := map[string]bool{}
 	for _, s := range secs {
@@ -689,8 +689,8 @@ func takenNames(secs []*Section) map[string]bool {
 	return m
 }
 
-// pickBase busca el menor nombre base (id, id_2, id_3…) cuyos nombres derivados
-// estén todos libres.
+// pickBase finds the smallest base name (id, id_2, id_3...) whose derived names
+// are all free.
 func pickBase(id string, suffixes []string, taken map[string]bool) string {
 	for k := 1; ; k++ {
 		base := id
@@ -719,8 +719,8 @@ func hasBindPort(l *Line, port string) bool {
 	return false
 }
 
-// findBind busca un frontend en modo http con un bind en ese puerto, con o sin
-// TLS. Devuelve la sección y la línea del bind.
+// findBind finds an http-mode frontend with a bind on that port, with or without
+// TLS. It returns the section and the bind's line.
 func findBind(doc *Doc, eff []Effective, port string, ssl bool) (si, li int, ok bool) {
 	for si, s := range doc.Sections {
 		if s.Type != "frontend" || eff[si].Mode != "http" {
@@ -735,7 +735,7 @@ func findBind(doc *Doc, eff []Effective, port string, ssl bool) (si, li int, ok 
 	return 0, 0, false
 }
 
-// redirectsToHTTPS indica si el frontend ya tiene una redirección a https.
+// redirectsToHTTPS reports whether the frontend already has a redirect to https.
 func redirectsToHTTPS(s *Section) bool {
 	for _, l := range s.Lines {
 		if l.Kind != KindDirective {
@@ -756,9 +756,9 @@ func redirectsToHTTPS(s *Section) bool {
 	return false
 }
 
-// withCert devuelve el texto de un bind con ssl al que se le añade un
-// certificado más. ok=false si no hace falta tocarlo (el certificado ya está o
-// el bind carga un directorio de certificados).
+// withCert returns the text of an ssl bind with one more certificate
+// added. ok=false if it does not need touching (the certificate is already there or
+// the bind loads a certificate directory).
 func withCert(l *Line, cert string) (text string, ok bool) {
 	args := l.Args
 	last := -1
@@ -786,8 +786,8 @@ func withCert(l *Line, cert string) (text string, ok bool) {
 	return text, true
 }
 
-// timeoutsMissing indica qué timeouts no están en el último defaults de la
-// configuración (el que heredarán las secciones nuevas, que van al final).
+// timeoutsMissing reports which timeouts are not in the last defaults of the
+// configuration (the one the new sections will inherit, which go at the end).
 func timeoutsMissing(secs []*Section) map[string]bool {
 	miss := map[string]bool{"connect": true, "client": true, "server": true}
 	var last *Section
@@ -797,7 +797,7 @@ func timeoutsMissing(secs []*Section) map[string]bool {
 		}
 	}
 	if last == nil {
-		return map[string]bool{} // se añade un defaults con los tres
+		return map[string]bool{} // a defaults with all three is added
 	}
 	for _, l := range last.Lines {
 		if l.Kind == KindDirective && l.Keyword == "timeout" {
@@ -807,10 +807,10 @@ func timeoutsMissing(secs []*Section) map[string]bool {
 	return miss
 }
 
-// loggingConfigured indica si las secciones nuevas tendrán un destino de logs:
-// fijar option httplog o tcplog sin él hace que HAProxy avise de que el
-// formato se ignora. Si no hay defaults se añade el de la plantilla (con
-// log global), así que depende de que el global tenga alguna línea log.
+// loggingConfigured reports whether the new sections will have a log destination:
+// setting option httplog or tcplog without one makes HAProxy warn that the
+// format is ignored. If there are no defaults, the template's is added (with
+// log global), so it depends on the global having some log line.
 func loggingConfigured(secs []*Section) bool {
 	var global, last *Section
 	for _, s := range secs {
@@ -843,7 +843,7 @@ func loggingConfigured(secs []*Section) bool {
 	return false
 }
 
-// ensureTimeouts añade a la sección los timeouts que le faltan, justo detrás del mode.
+// ensureTimeouts adds to the section the timeouts it lacks, right after the mode.
 func ensureTimeouts(g *genSection, miss map[string]bool) {
 	has := func(name string) bool {
 		for _, l := range g.lines {
@@ -882,21 +882,21 @@ func ensureTimeouts(g *genSection, miss map[string]bool) {
 
 func ptr(i int) *int { return &i }
 
-// RenderTechTemplate genera las operaciones de edición que añaden la plantilla
-// con esos parámetros a la configuración existente (nil = vacía). Aplícalas
-// con Apply. Los parámetros llevan valores tipados (string, número, bool,
-// lista); desde la línea de comandos pueden llegar como texto.
+// RenderTechTemplate generates the edit operations that add the template
+// with those parameters to the existing configuration (nil = empty). Apply them
+// with Apply. Parameters carry typed values (string, number, bool,
+// list); from the command line they may arrive as text.
 //
-// Hace lo siguiente:
-//   - valida los parámetros y devuelve un *TemplateError en el idioma pedido;
-//   - elige nombres que no colisionen con las secciones existentes (sufijos _2…);
-//   - reutiliza el global y el defaults que ya existan y solo añade los que
-//     falten; si el último defaults no tiene los timeouts, los pone en las
-//     secciones nuevas;
-//   - en las plantillas web, si ya hay un frontend http con TLS en el puerto 443
-//     añade ahí la ACL por dominio y el use_backend (y el certificado al bind), en
-//     vez de crear un segundo bind en el mismo puerto; lo mismo con la
-//     redirección en el puerto 80.
+// It does the following:
+//   - validates the parameters and returns a *TemplateError in the requested language;
+//   - picks names that do not collide with the existing sections (suffixes _2...);
+//   - reuses the global and defaults that already exist and only adds those
+//     that are missing; if the last defaults lacks the timeouts, it puts them in the
+//     new sections;
+//   - in web templates, if there is already an http frontend with TLS on port 443
+//     it adds the domain ACL and the use_backend there (and the certificate to the bind),
+//     instead of creating a second bind on the same port; the same for the
+//     redirect on port 80.
 func RenderTechTemplate(id string, params map[string]any, existing *Config, lang Lang) ([]Op, error) {
 	var d *techDef
 	for _, x := range techDefs {
@@ -928,7 +928,7 @@ func RenderTechTemplate(id string, params map[string]any, existing *Config, lang
 
 	var ops []Op
 
-	// Frontends de las plantillas web: crearlos o unirse a los que ya hay.
+	// Frontends of the web templates: create them or join the existing ones.
 	var newFrontends []techSection
 	if d.Kind == "web" {
 		domain := vals["domain"].(string)
@@ -946,7 +946,7 @@ func RenderTechTemplate(id string, params map[string]any, existing *Config, lang
 					break
 				}
 			}
-			if at == len(s.Lines) { // sin default_backend: al final del contenido, antes de los blancos
+			if at == len(s.Lines) { // no default_backend: at the end of the content, before the blanks
 				for at > 0 && s.Lines[at-1].Kind == KindBlank {
 					at--
 				}
@@ -970,7 +970,7 @@ func RenderTechTemplate(id string, params map[string]any, existing *Config, lang
 		}
 	}
 
-	// Las ops de unión llevan «{{base}}»: se sustituye cuando se conoce el nombre.
+	// The join ops carry "{{base}}": it is substituted once the name is known.
 	var plan []techSection
 	plan = append(plan, newFrontends...)
 	for _, s := range d.Sections {
@@ -997,13 +997,13 @@ func RenderTechTemplate(id string, params map[string]any, existing *Config, lang
 	for i := range gens {
 		ensureTimeouts(&gens[i], miss)
 	}
-	// Comentario de procedencia al principio de la primera sección.
+	// Provenance comment at the start of the first section.
 	gens[0].lines = append([]string{"# " + lang.t(
 		fmt.Sprintf("%s: generado con la plantilla de haro", d.Name.get(lang)),
 		fmt.Sprintf("%s: generated with the haro template", d.Name.get(lang)))}, gens[0].lines...)
 
-	// global y defaults: solo los que falten, y detrás de las ops de unión
-	// (que usan los índices originales).
+	// global and defaults: only those that are missing, and after the join ops
+	// (which use the original indices).
 	gi, di := -1, -1
 	for i, s := range secs {
 		if s.Type == "global" && gi < 0 {
@@ -1020,7 +1020,7 @@ func RenderTechTemplate(id string, params map[string]any, existing *Config, lang
 	}
 	if di < 0 {
 		op := Op{Op: OpAddSection, Type: "defaults", Template: true}
-		if gi < 0 { // el global nuevo está en la posición 0 del archivo 0
+		if gi < 0 { // the new global is at position 0 of file 0
 			op.File, op.At = ptr(0), ptr(1)
 		} else {
 			op.File, op.At = ptr(secs[gi].File), ptr(gi+1)

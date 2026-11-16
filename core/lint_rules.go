@@ -6,13 +6,13 @@ import (
 	"strings"
 )
 
-// Reglas del detector de seguridad, buenas prácticas y versiones. Se
-// ejecutan después de las reglas estructurales de LintLang.
+// Security, best-practice and version detector rules. They are
+// run after LintLang's structural rules.
 
 var reWeakUserPass = regexp.MustCompile(`(?i)^(test|admin|password|haproxy|changeme|cambiame|cambiar|123456|1234|12345678|secret|root|pass|qwerty|letmein)$`)
 
-// internalPorts son puertos de servicios que casi nunca deben estar abiertos
-// a todo Internet.
+// internalPorts are ports of services that should almost never be open
+// to the whole Internet.
 var internalPorts = map[string]string{
 	"1433": "SQL Server", "3306": "MySQL/MariaDB", "5432": "PostgreSQL", "6379": "Redis",
 	"9200": "Elasticsearch", "9300": "Elasticsearch", "11211": "Memcached", "27017": "MongoDB",
@@ -20,8 +20,8 @@ var internalPorts = map[string]string{
 
 var legacyTLS = map[string]bool{"sslv3": true, "tlsv1.0": true, "tlsv1.1": true, "force-sslv3": true, "force-tlsv10": true, "force-tlsv11": true}
 
-// bindAddrs devuelve host y puerto de cada dirección de una línea bind.
-// Los sockets Unix y los descriptores no tienen host ni puerto.
+// bindAddrs returns the host and port of each address on a bind line.
+// Unix sockets and descriptors have no host or port.
 func bindAddrs(arg0 string) (out []struct{ Host, Port string }) {
 	for _, a := range strings.Split(arg0, ",") {
 		if i := strings.Index(a, "@"); i > 0 {
@@ -58,8 +58,8 @@ func isPublicHost(h string) bool {
 	return false
 }
 
-// publicBind indica si alguna dirección de la línea bind escucha en todas las
-// interfaces. Si ports no es nil, además el puerto debe estar en el mapa.
+// publicBind reports whether any address of the bind line listens on all
+// interfaces. If ports is not nil, the port must also be in the map.
 func publicBind(l *Line, ports map[string]string) (port string, ok bool) {
 	for _, a := range bindAddrs(arg(l.Args, 0)) {
 		if !isPublicHost(a.Host) {
@@ -75,8 +75,8 @@ func publicBind(l *Line, ports map[string]string) (port string, ok bool) {
 	return "", false
 }
 
-// restrictsBySource indica si la sección limita el acceso por IP de origen o
-// con autenticación o reglas de denegación.
+// restrictsBySource reports whether the section limits access by source IP or
+// with authentication or deny rules.
 func restrictsBySource(dirs []*Line) bool {
 	for _, l := range dirs {
 		switch l.Keyword {
@@ -103,8 +103,8 @@ func restrictsBySource(dirs []*Line) bool {
 	return false
 }
 
-// forwardforState dice si la sección activa (on) o desactiva (off)
-// explícitamente option forwardfor, contando lo heredado de defaults.
+// forwardforState says whether the section explicitly enables (on) or disables (off)
+// option forwardfor, counting what is inherited from defaults.
 func forwardforState(doc *Doc, eff []Effective, i int) (on, off bool) {
 	scan := func(s *Section) {
 		for _, l := range s.Directives() {
@@ -144,8 +144,8 @@ func hasCheck(dirs []*Line) (servers int, checked bool) {
 	return
 }
 
-// lintExtra devuelve los problemas de las reglas de seguridad, buenas
-// prácticas y versión objetivo.
+// lintExtra returns the problems of the security, best-practice
+// and target-version rules.
 func lintExtra(doc *Doc, eff []Effective, lang Lang, opts LintOptions) []Issue {
 	var out []Issue
 	add := func(rule string, sev Severity, s *Section, si, line int, es, en string, a ...any) {
@@ -153,7 +153,7 @@ func lintExtra(doc *Doc, eff []Effective, lang Lang, opts LintOptions) []Issue {
 	}
 	target, hasTarget := ParseVersion(opts.HAProxyVersion)
 
-	// frontends que apuntan a cada backend (para option forwardfor).
+	// frontends that point to each backend (for option forwardfor).
 	feOf := map[string][]int{}
 	for i, s := range doc.Sections {
 		if s.Type != "frontend" && s.Type != "listen" {
@@ -234,7 +234,7 @@ func lintExtra(doc *Doc, eff []Effective, lang Lang, opts LintOptions) []Issue {
 
 		switch s.Type {
 		case "frontend", "listen":
-			// La restricción puede estar en la propia sección o en un backend al que envía.
+			// The restriction may be in the section itself or in a backend it sends to.
 			protected := restrictsBySource(dirs)
 			for _, l := range dirs {
 				name := ""
@@ -278,7 +278,7 @@ func lintExtra(doc *Doc, eff []Effective, lang Lang, opts LintOptions) []Issue {
 				}
 				if _, ok := publicBind(l, nil); ok && statsOn && !protected {
 					add("stats-exposed", SevWarn, s, i, l.Line, "%s publica la página de estadísticas en una dirección pública sin autenticación ni restricción por IP.", "%s publishes the statistics page on a public address with no authentication or IP restriction.", label)
-					statsOn = false // un aviso por sección
+					statsOn = false // one warning per section
 				}
 				if p, ok := publicBind(l, internalPorts); ok && !protected && !(set["ssl"] && kv(l.Args, "verify") == "required") {
 					add("internal-port-public", SevWarn, s, i, l.Line, "El puerto %s (%s) está abierto a todas las interfaces sin ACL por IP de origen.", "Port %s (%s) is open on all interfaces with no source-IP ACL.", p, internalPorts[p])
@@ -291,8 +291,8 @@ func lintExtra(doc *Doc, eff []Effective, lang Lang, opts LintOptions) []Issue {
 
 		if (s.Type == "backend" || s.Type == "listen") && eff[i].Mode == "http" {
 			if n, _ := hasCheck(dirs); n > 0 {
-				// Solo cuando alguna entrada que llega aquí termina TLS: es el caso en
-				// que la IP del cliente se pierde sin remedio y no hay duda de la sugerencia.
+				// Only when some entry that arrives here terminates TLS: that is the case in
+				// which the client IP is lost for good and the suggestion is beyond doubt.
 				tls := s.Type == "listen" && terminatesTLS(s)
 				on, off := forwardforState(doc, eff, i)
 				if s.Type == "backend" {
@@ -323,7 +323,7 @@ func lintExtra(doc *Doc, eff []Effective, lang Lang, opts LintOptions) []Issue {
 	return out
 }
 
-// terminatesTLS indica si la sección tiene algún bind con ssl.
+// terminatesTLS reports whether the section has any bind with ssl.
 func terminatesTLS(s *Section) bool {
 	for _, l := range s.Directives() {
 		if l.Keyword == "bind" && toSet(l.Args)["ssl"] {

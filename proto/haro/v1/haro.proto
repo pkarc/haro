@@ -1,10 +1,10 @@
-// Contrato del núcleo de haro. Es la fuente de verdad de los tipos que
-// comparten el servidor Go (`haro serve`) y la web en TypeScript.
+// haro core contract. It is the source of truth for the types shared by the Go
+// server (`haro serve`) and the TypeScript web UI.
 //
-// `haro serve` implementa estos servicios con Connect (rutas
-// /haro.v1.CoreService/* y /haro.v1.ConfigService/*; admite Connect, gRPC y
-// gRPC-Web, con mensajes protobuf o JSON). El código de Go (gen/) y de
-// TypeScript (web/src/gen) se genera con `make proto`.
+// `haro serve` implements these services with Connect (routes
+// /haro.v1.CoreService/* and /haro.v1.ConfigService/*; it supports Connect,
+// gRPC and gRPC-Web, with protobuf or JSON messages). The Go (gen/) and
+// TypeScript (web/src/gen) code is generated with `make proto`.
 syntax = "proto3";
 
 package haro.v1;
@@ -14,52 +14,52 @@ import "google/protobuf/struct.proto";
 option go_package = "github.com/pkarc/haro/gen/haro/v1;harov1";
 
 service CoreService {
-  // Analiza una configuración: árbol, problemas, explicaciones, herencia y topología.
+  // Analyzes a configuration: tree, problems, explanations, inheritance and topology.
   rpc Analyze(AnalyzeRequest) returns (Analysis);
-  // Compara dos configuraciones línea a línea.
+  // Compares two configurations line by line.
   rpc Diff(DiffRequest) returns (DiffResponse);
-  // Aplica operaciones de edición y devuelve los archivos resultantes, sin
-  // escribir en disco. Es la única vía de edición de todas las interfaces.
+  // Applies edit operations and returns the resulting files, without writing
+  // to disk. It is the only editing path for all interfaces.
   rpc Apply(ApplyRequest) returns (ApplyResponse);
-  // Datos de la base de conocimiento que necesitan las interfaces (autocompletado, modo visual).
+  // Knowledge base data the interfaces need (autocompletion, visual mode).
   rpc GetKnowledge(GetKnowledgeRequest) returns (Knowledge);
-  // Valida con el binario real de HAProxy (`haproxy -c`), si está disponible.
+  // Validates with the real HAProxy binary (`haproxy -c`), if available.
   rpc Check(CheckRequest) returns (CheckResult);
-  // Plantillas completas por tecnología (Nextcloud, PostgreSQL…): metadatos y parámetros.
+  // Full templates by technology (Nextcloud, PostgreSQL…): metadata and parameters.
   rpc ListTemplates(ListTemplatesRequest) returns (ListTemplatesResponse);
-  // Renderiza una plantilla por tecnología: devuelve las operaciones de edición
-  // y el resultado de aplicarlas (como Apply), sin escribir en disco, para
-  // poder mostrar el diff antes de aceptar.
+  // Renders a technology template: returns the edit operations and the result
+  // of applying them (like Apply), without writing to disk, so the diff can be
+  // shown before accepting.
   rpc RenderTemplate(RenderTemplateRequest) returns (RenderTemplateResponse);
 }
 
-// Asistente con IA. Solo existe si `haro serve` se inició con --assistant: la
-// configuración se envía a la API de Anthropic desde el servidor local (la
-// clave nunca llega al navegador). Sin --assistant devuelve UNIMPLEMENTED.
+// AI assistant. It only exists if `haro serve` was started with --assistant:
+// the configuration is sent to the Anthropic API from the local server (the
+// key never reaches the browser). Without --assistant it returns UNIMPLEMENTED.
 service AssistService {
-  // Conversa sobre la configuración. La respuesta llega en streaming: trozos de
-  // texto, y al final la propuesta de configuración extraída y el cierre.
+  // Chats about the configuration. The response is streamed: chunks of text,
+  // and at the end the extracted configuration proposal and the closing event.
   rpc Assist(AssistRequest) returns (stream AssistEvent);
 }
 
 service ConfigService {
   rpc GetCapabilities(GetCapabilitiesRequest) returns (Capabilities);
   rpc GetConfig(GetConfigRequest) returns (ConfigFile);
-  // Guarda solo si --allow-write está activo y la validación pasa.
+  // Saves only if --allow-write is active and validation passes.
   rpc PutConfig(PutConfigRequest) returns (PutConfigResponse);
 }
 
-// Un único texto (text) o varios archivos (files) en orden de carga, como
-// `haproxy -f a.cfg -f b.cfg`. Si llega files, text se ignora.
+// A single text (text) or several files (files) in load order, like
+// `haproxy -f a.cfg -f b.cfg`. If files is present, text is ignored.
 message AnalyzeRequest {
   string text = 1;
   repeated SourceFile files = 2;
-  // Idioma de las explicaciones y de los mensajes del detector: "es" o "en".
-  // Vacío = español. Cualquier otro valor es un error (INVALID_ARGUMENT).
+  // Language of the explanations and detector messages: "es" | "en";
+  // empty = English. Any other value is an error (INVALID_ARGUMENT).
   string lang = 3;
-  // Versión de HAProxy objetivo ("2.8", "v3.0"…). Si se indica, el detector
-  // avisa de lo que requiera una versión posterior (regla newer-than-target).
-  // Vacío = sin versión objetivo. Un valor no válido es INVALID_ARGUMENT.
+  // Target HAProxy version ("2.8", "v3.0"…). If given, the detector warns
+  // about anything that needs a later version (newer-than-target rule).
+  // Empty = no target version. An invalid value is INVALID_ARGUMENT.
   string haproxy_version = 4;
 }
 
@@ -76,8 +76,8 @@ message Analysis {
   Topology topology = 5;
 }
 
-// Con varios archivos, Doc es la vista unificada en orden de carga y files
-// lista las rutas; cada sección y línea indica su archivo.
+// With several files, Doc is the unified view in load order and files lists
+// the paths; each section and line states its file.
 message Doc {
   repeated Line pre = 1;
   repeated Section sections = 2;
@@ -117,7 +117,7 @@ message Issue {
 }
 
 message Explanation {
-  string text = 1; // markdown mínimo: **negrita** y `código`
+  string text = 1; // minimal markdown: **bold** and `code`
   string category = 2;
   bool known = 3;
 }
@@ -184,10 +184,10 @@ message Edge {
   int32 line = 6;
 }
 
-// Operación de edición. Según op se usan unos campos u otros (ver core/edit.go):
+// Edit operation. Depending on op, some fields or others are used (see core/edit.go):
 // add_section, remove_section, move_section, rename_section, add_directive,
-// update_directive, remove_directive, move_directive. Los índices de sección son
-// los de la vista unificada; line_index es la posición en Section.lines.
+// update_directive, remove_directive, move_directive. Section indexes are those
+// of the unified view; line_index is the position in Section.lines.
 message Op {
   string op = 1;
   int32 section = 2;
@@ -203,12 +203,13 @@ message Op {
   bool update_refs = 12;
 }
 
-// Aplica ops en orden sobre los archivos (o sobre text). Si una falla no se
-// aplica ninguna.
+// Applies ops in order to the files (or to text). If one fails, none is applied.
 message ApplyRequest {
   string text = 1;
   repeated SourceFile files = 2;
   repeated Op ops = 3;
+  // Language of the error messages: "es" | "en"; empty = English.
+  string lang = 4;
 }
 
 message FileChange {
@@ -218,12 +219,12 @@ message FileChange {
 }
 
 message ApplyResponse {
-  repeated SourceFile files = 1;    // todos los archivos, en orden de carga
-  repeated FileChange changes = 2;  // solo los que cambiaron
+  repeated SourceFile files = 1;    // all files, in load order
+  repeated FileChange changes = 2;  // only those that changed
 }
 
 message GetKnowledgeRequest {
-  // Idioma de los textos: "es" o "en". Vacío = español.
+  // Language of the texts: "es" | "en"; empty = English.
   string lang = 1;
 }
 
@@ -232,26 +233,26 @@ message SectionInfo {
   string named = 2; // required | optional | none
   string title = 3;
   string description = 4;
-  string since = 5; // versión de HAProxy en que apareció ("2.3"); vacío si no se sabe
+  string since = 5; // HAProxy version in which it appeared ("2.3"); empty if unknown
 }
 
 message DirectiveInfo {
   repeated string sections = 1;
   string category = 2;
   string description = 3;
-  string since = 4; // versión de HAProxy en que apareció ("2.4"); vacío si no se sabe
+  string since = 4; // HAProxy version in which it appeared ("2.4"); empty if unknown
 }
 
 message SectionTemplate {
   string name = 1;
-  repeated string lines = 2; // {{backend}} se sustituye por el primer backend, o se omite la línea
+  repeated string lines = 2; // {{backend}} is replaced by the first backend, or the line is omitted
 }
 
 message Knowledge {
   map<string, string> categories = 1;
   map<string, SectionInfo> sections = 2;
   map<string, DirectiveInfo> directives = 3;
-  map<string, string> rules = 4; // id estable de la regla del detector -> descripción
+  map<string, string> rules = 4; // stable detector rule id -> description
   map<string, SectionTemplate> templates = 5;
 }
 
@@ -282,25 +283,25 @@ message GetCapabilitiesRequest {}
 
 message Capabilities {
   string version = 1;
-  repeated string paths = 2; // argumentos de --file (archivos o directorios)
+  repeated string paths = 2; // --file arguments (files or directories)
   bool can_read = 3;
   bool can_write = 4;
   bool can_check = 5;
   string haproxy_bin = 6;
-  bool can_assist = 7;         // el asistente está activado (--assistant)
-  string assistant_model = 8;  // modelo que usa el asistente
+  bool can_assist = 7;         // the assistant is enabled (--assistant)
+  string assistant_model = 8;  // model used by the assistant
 }
 
 message GetConfigRequest {}
 
-// Los archivos ya expandidos, en orden de carga.
+// The already expanded files, in load order.
 message ConfigFile {
   repeated SourceFile files = 1;
 }
 
-// Guarda un archivo (path, text) o varios a la vez (files). Con varios, la
-// configuración completa se valida con todos los cambios aplicados y se guarda
-// todo o nada.
+// Saves one file (path, text) or several at once (files). With several, the
+// full configuration is validated with all changes applied and saved all or
+// nothing.
 message PutConfigRequest {
   string path = 1;
   string text = 2;
@@ -314,33 +315,33 @@ message SavedFile {
 
 message PutConfigResponse {
   bool saved = 1;
-  string path = 2;   // si se guardó: el archivo (solo si fue uno); si no, el archivo del error del detector
-  string backup = 3; // solo si se guardó un único archivo
-  CheckResult check = 4; // salida de haproxy -c (también cuando lo rechaza)
+  string path = 2;   // if saved: the file (only if it was one); otherwise, the file of the detector error
+  string backup = 3; // only if a single file was saved
+  CheckResult check = 4; // output of haproxy -c (also when it rejects)
   repeated SavedFile files = 5;
-  // Un guardado rechazado por la validación no es un error de RPC: llega con
-  // saved=false, el motivo en error y, según el validador, check o issue.
+  // A save rejected by validation is not an RPC error: it arrives with
+  // saved=false, the reason in error and, depending on the validator, check or issue.
   string error = 6;
-  Issue issue = 7; // error del detector de haro cuando no hay haproxy
+  Issue issue = 7; // haro detector error when there is no haproxy
 }
 
 message ListTemplatesRequest {
-  // Idioma de los textos: "es" o "en". Vacío = español.
+  // Language of the texts: "es" | "en"; empty = English.
   string lang = 1;
 }
 
-// Parámetro de una plantilla por tecnología. Su valor viaja como
-// google.protobuf.Value (ver RenderTemplateRequest.params).
+// Parameter of a technology template. Its value travels as
+// google.protobuf.Value (see RenderTemplateRequest.params).
 message TemplateParam {
   string key = 1;
   string label = 2;
   string help = 3;
   string type = 4; // string | int | list | bool
-  // Valor por defecto con el tipo del parámetro (texto, número, lista de textos
-  // o bool); ausente si no hay.
+  // Default value with the parameter's type (text, number, list of texts or
+  // bool); absent if there is none.
   google.protobuf.Value default_value = 5;
   bool required = 6;
-  string depends_on = 7; // solo se usa si ese parámetro bool es verdadero
+  string depends_on = 7; // only used if that bool parameter is true
   string example = 8;
 }
 
@@ -356,12 +357,12 @@ message ListTemplatesResponse {
   repeated TechTemplate templates = 1;
 }
 
-// Un único texto (text) o varios archivos (files), como en Apply. Los
-// parámetros son un mapa clave -> google.protobuf.Value: es la forma de llevar
-// valores tipados (texto, número, bool y lista) sin inventar un mensaje con un
-// oneof por tipo, y se corresponde 1:1 con el JSON que ya usan la CLI y el MCP.
-// El núcleo también acepta texto para número, bool y lista (p. ej. "a:1,b:2").
-// Un parámetro inválido o ausente es INVALID_ARGUMENT con el mensaje en lang.
+// A single text (text) or several files (files), as in Apply. The parameters
+// are a key -> google.protobuf.Value map: it is the way to carry typed values
+// (text, number, bool and list) without inventing a message with a oneof per
+// type, and it maps 1:1 to the JSON the CLI and MCP already use.
+// The core also accepts text for number, bool and list (e.g. "a:1,b:2").
+// An invalid or missing parameter is INVALID_ARGUMENT with the message in lang.
 message RenderTemplateRequest {
   string id = 1;
   map<string, google.protobuf.Value> params = 2;
@@ -371,9 +372,9 @@ message RenderTemplateRequest {
 }
 
 message RenderTemplateResponse {
-  repeated Op ops = 1;              // para aplicar con Apply
-  repeated SourceFile files = 2;    // todos los archivos tras aplicarlas
-  repeated FileChange changes = 3;  // solo los que cambiaron
+  repeated Op ops = 1;              // to apply with Apply
+  repeated SourceFile files = 2;    // all files after applying them
+  repeated FileChange changes = 3;  // only those that changed
 }
 
 message AssistMessage {
@@ -381,30 +382,30 @@ message AssistMessage {
   string content = 2;
 }
 
-// La conversación (que debe terminar con un turno del usuario) y la
-// configuración actual: el servidor añade la configuración y sus problemas al
-// último turno, así el modelo siempre ve la versión vigente.
+// The conversation (which must end with a user turn) and the current
+// configuration: the server adds the configuration and its problems to the last
+// turn, so the model always sees the current version.
 message AssistRequest {
   repeated SourceFile files = 1;
   repeated AssistMessage messages = 2;
-  string lang = 3; // "es" | "en"; vacío = español
+  string lang = 3; // "es" | "en"; empty = English
 }
 
 message AssistEvent {
   oneof event {
-    string text = 1;       // trozo de la respuesta
-    Proposal proposal = 2; // configuración propuesta, si la respuesta la trae
-    AssistDone done = 3;   // último evento
+    string text = 1;       // chunk of the response
+    Proposal proposal = 2; // proposed configuration, if the response has one
+    AssistDone done = 3;   // last event
   }
 }
 
-// Archivos que propone el asistente (texto completo, solo los que cambian) y
-// los problemas que tendría la configuración resultante.
+// Files proposed by the assistant (full text, only those that change) and the
+// problems the resulting configuration would have.
 message Proposal {
   repeated FileChange changes = 1;
   repeated Issue issues_after = 2;
-  int32 unmatched = 3;  // bloques de configuración que no se pudieron asociar a un archivo
-  bool truncated = 4;   // la respuesta se cortó dentro de un bloque: ese bloque se descartó
+  int32 unmatched = 3;  // configuration blocks that could not be matched to a file
+  bool truncated = 4;   // the response was cut inside a block: that block was discarded
 }
 
 message AssistDone {

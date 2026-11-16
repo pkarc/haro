@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// DiffOp es una línea del diff: "=" sin cambios, "-" borrada, "+" añadida.
+// DiffOp is a diff line: "=" unchanged, "-" deleted, "+" added.
 type DiffOp struct {
 	Op   string `json:"op"`
 	Text string `json:"text"`
@@ -14,16 +14,16 @@ type DiffOp struct {
 
 var reTrailingWS = regexp.MustCompile(`(?m)[ \t]+$`)
 
-// Normalize unifica saltos de línea, quita espacios finales y deja un único
-// salto de línea al final. Se usa antes de comparar configuraciones.
+// Normalize unifies line breaks, strips trailing spaces and leaves a single
+// line break at the end. Used before comparing configurations.
 func Normalize(t string) string {
 	t = strings.ReplaceAll(strings.ReplaceAll(t, "\r\n", "\n"), "\r", "\n")
 	t = reTrailingWS.ReplaceAllString(t, "")
 	return strings.TrimRight(t, "\n") + "\n"
 }
 
-// DiffLines compara dos textos línea a línea (LCS) tras recortar el prefijo y
-// el sufijo comunes. Para entradas enormes cae a "todo borrado, todo añadido".
+// DiffLines compares two texts line by line (LCS) after trimming the common
+// prefix and suffix. For huge inputs it falls back to "all deleted, all added".
 func DiffLines(a, b string) []DiffOp {
 	A, B := strings.Split(a, "\n"), strings.Split(b, "\n")
 	s := 0
@@ -90,16 +90,16 @@ func DiffLines(a, b string) []DiffOp {
 	return ops
 }
 
-// UnifiedDiff devuelve un diff en formato unificado (con ctx líneas de
-// contexto) entre dos textos, o "" si son iguales tras Normalize. name se usa
-// en las cabeceras --- y +++.
+// UnifiedDiff returns a unified-format diff (with ctx lines of
+// context) between two texts, or "" if they are equal after Normalize. name is used
+// in the --- and +++ headers.
 func UnifiedDiff(name, before, after string, ctx int) string {
 	ops := DiffLines(Normalize(before), Normalize(after))
-	// Se descarta la línea vacía final que deja Split tras el último salto.
+	// The trailing empty line that Split leaves after the last newline is discarded.
 	if n := len(ops); n > 0 && ops[n-1].Op == "=" && ops[n-1].Text == "" {
 		ops = ops[:n-1]
 	}
-	// Un texto vacío no tiene líneas (Normalize le deja una en blanco).
+	// An empty text has no lines (Normalize leaves it one blank line).
 	if strings.TrimSpace(before) == "" {
 		for i, o := range ops {
 			if o.Op == "-" && o.Text == "" {
@@ -117,7 +117,7 @@ func UnifiedDiff(name, before, after string, ctx int) string {
 	if !changed {
 		return ""
 	}
-	// Posición (1-based) de cada op en el texto original y en el nuevo.
+	// Position (1-based) of each op in the original and the new text.
 	type pos struct{ a, b int }
 	at := make([]pos, len(ops)+1)
 	a, b := 1, 1
@@ -143,7 +143,7 @@ func UnifiedDiff(name, before, after string, ctx int) string {
 			break
 		}
 		start := max(0, i-ctx)
-		// El hunk se extiende mientras haya cambios a menos de 2*ctx líneas.
+		// The hunk extends while there are changes less than 2*ctx lines apart.
 		end, lastChange := i, i
 		for j := i; j < len(ops); j++ {
 			if ops[j].Op != "=" {

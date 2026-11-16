@@ -6,7 +6,7 @@
       "severity": "warn",
       "line": 6,
       "section": 0,
-      "message": "«ssl-default-bind-options» permite un protocolo TLS obsoleto (TLSv1.0). Usa TLSv1.2 o superior."
+      "message": "“ssl-default-bind-options” allows an obsolete TLS protocol (TLSv1.0). Use TLSv1.2 or later."
     },
     {
       "rule": "weak-userlist-password",
@@ -14,7 +14,7 @@
       "severity": "warn",
       "line": 15,
       "section": 2,
-      "message": "El usuario «ana» tiene una contraseña de ejemplo o débil. Cámbiala."
+      "message": "The user “ana” has a placeholder or weak password. Change it."
     },
     {
       "rule": "stats-exposed",
@@ -22,7 +22,7 @@
       "severity": "warn",
       "line": 21,
       "section": 3,
-      "message": "listen «stats_open» publica la página de estadísticas en una dirección pública sin autenticación ni restricción por IP."
+      "message": "listen “stats_open” publishes the statistics page on a public address with no authentication or IP restriction."
     },
     {
       "rule": "internal-port-public",
@@ -30,7 +30,7 @@
       "severity": "warn",
       "line": 41,
       "section": 6,
-      "message": "El puerto 5432 (PostgreSQL) está abierto a todas las interfaces sin ACL por IP de origen."
+      "message": "Port 5432 (PostgreSQL) is open on all interfaces with no source-IP ACL."
     },
     {
       "rule": "no-https-redirect",
@@ -38,7 +38,7 @@
       "severity": "info",
       "line": 54,
       "section": 8,
-      "message": "frontend «web» escucha en el puerto 80 y en TLS, pero no redirige a HTTPS."
+      "message": "frontend “web” listens on port 80 and on TLS, but does not redirect to HTTPS."
     },
     {
       "rule": "tls-legacy-protocol",
@@ -46,7 +46,7 @@
       "severity": "warn",
       "line": 55,
       "section": 8,
-      "message": "«bind» permite un protocolo TLS obsoleto (TLSv1.1). Usa TLSv1.2 o superior."
+      "message": "“bind” allows an obsolete TLS protocol (TLSv1.1). Use TLSv1.2 or later."
     },
     {
       "rule": "tls-no-alpn",
@@ -54,7 +54,7 @@
       "severity": "info",
       "line": 55,
       "section": 8,
-      "message": "Este bind TLS no declara «alpn h2,http/1.1»: los clientes no podrán usar HTTP/2."
+      "message": "This TLS bind does not declare “alpn h2,http/1.1”: clients will not be able to use HTTP/2."
     },
     {
       "rule": "no-forwardfor",
@@ -62,7 +62,7 @@
       "severity": "info",
       "line": 58,
       "section": 9,
-      "message": "backend «app» no añade X-Forwarded-For: los servidores verán la IP de HAProxy en vez de la del cliente."
+      "message": "backend “app” does not add X-Forwarded-For: servers will see HAProxy's IP instead of the client's."
     },
     {
       "rule": "no-health-check",
@@ -70,7 +70,7 @@
       "severity": "info",
       "line": 58,
       "section": 9,
-      "message": "backend «app» tiene 2 servidores y ninguno usa «check»: seguirá enviando tráfico a los que estén caídos."
+      "message": "backend “app” has 2 servers and none uses “check”: it will keep sending traffic to the ones that are down."
     }
   ],
   "explanations": [
@@ -78,280 +78,280 @@
       "line": 4,
       "keyword": "log",
       "args": "/dev/log local0",
-      "text": "Envía logs al syslog local (`/dev/log`) · facility `local0`",
+      "text": "Sends logs to the local syslog (`/dev/log`) · facility `local0`",
       "known": true
     },
     {
       "line": 5,
       "keyword": "maxconn",
       "args": "2000",
-      "text": "Máximo de conexiones simultáneas de todo el proceso: **2000**",
+      "text": "Maximum simultaneous connections for the whole process: **2000**",
       "known": true
     },
     {
       "line": 6,
       "keyword": "ssl-default-bind-options",
       "args": "ssl-min-ver TLSv1.0",
-      "text": "Opciones TLS por defecto en los bind: TLS mínimo `TLSv1.0`",
+      "text": "Default TLS options on binds: minimum TLS `TLSv1.0`",
       "known": true
     },
     {
       "line": 9,
       "keyword": "mode",
       "args": "http",
-      "text": "**Modo HTTP** (capa 7): HAProxy interpreta peticiones, cabeceras y rutas, y puede aplicar reglas sobre ellas.",
+      "text": "**HTTP mode** (layer 7): HAProxy parses requests, headers and paths, and can apply rules to them.",
       "known": true
     },
     {
       "line": 10,
       "keyword": "timeout",
       "args": "connect 5s",
-      "text": "Tiempo máximo para establecer la conexión TCP con un servidor: **5 s**",
+      "text": "Maximum time to establish the TCP connection to a server: **5 s**",
       "known": true
     },
     {
       "line": 11,
       "keyword": "timeout",
       "args": "client 30s",
-      "text": "Tiempo máximo de inactividad del cliente: **30 s**",
+      "text": "Maximum time of client inactivity: **30 s**",
       "known": true
     },
     {
       "line": 12,
       "keyword": "timeout",
       "args": "server 30s",
-      "text": "Tiempo máximo esperando datos del servidor: **30 s**",
+      "text": "Maximum time waiting for data from the server: **30 s**",
       "known": true
     },
     {
       "line": 15,
       "keyword": "user",
       "args": "ana insecure-password ••••••",
-      "text": "Usuario **ana** · ⚠ contraseña en texto plano",
+      "text": "User **ana** · ⚠ plaintext password",
       "known": true
     },
     {
       "line": 16,
       "keyword": "user",
       "args": "luis insecure-password ••••••",
-      "text": "Usuario **luis** · ⚠ contraseña en texto plano",
+      "text": "User **luis** · ⚠ plaintext password",
       "known": true
     },
     {
       "line": 17,
       "keyword": "user",
       "args": "root password ••••••",
-      "text": "Usuario **root** · contraseña cifrada",
+      "text": "User **root** · hashed password",
       "known": true
     },
     {
       "line": 21,
       "keyword": "bind",
       "args": "*:8404",
-      "text": "Escucha en todas las interfaces, puerto `8404`",
+      "text": "Listens on all interfaces, port `8404`",
       "known": true
     },
     {
       "line": 22,
       "keyword": "stats",
       "args": "enable",
-      "text": "Activa la **página web de estadísticas**",
+      "text": "Enables the **statistics web page**",
       "known": true
     },
     {
       "line": 23,
       "keyword": "stats",
       "args": "uri /stats",
-      "text": "Página de estadísticas en la ruta `/stats`",
+      "text": "Statistics page at the path `/stats`",
       "known": true
     },
     {
       "line": 27,
       "keyword": "bind",
       "args": ":8405",
-      "text": "Escucha en todas las interfaces, puerto `8405`",
+      "text": "Listens on all interfaces, port `8405`",
       "known": true
     },
     {
       "line": 28,
       "keyword": "stats",
       "args": "enable",
-      "text": "Activa la **página web de estadísticas**",
+      "text": "Enables the **statistics web page**",
       "known": true
     },
     {
       "line": 29,
       "keyword": "stats",
       "args": "uri /stats",
-      "text": "Página de estadísticas en la ruta `/stats`",
+      "text": "Statistics page at the path `/stats`",
       "known": true
     },
     {
       "line": 30,
       "keyword": "stats",
       "args": "auth admin:••••••",
-      "text": "Protegida con el usuario **admin** y contraseña",
+      "text": "Protected with the user **admin** and a password",
       "known": true
     },
     {
       "line": 34,
       "keyword": "bind",
       "args": "127.0.0.1:8406",
-      "text": "Escucha en `127.0.0.1`, puerto `8406`",
+      "text": "Listens on `127.0.0.1`, port `8406`",
       "known": true
     },
     {
       "line": 35,
       "keyword": "stats",
       "args": "enable",
-      "text": "Activa la **página web de estadísticas**",
+      "text": "Enables the **statistics web page**",
       "known": true
     },
     {
       "line": 36,
       "keyword": "stats",
       "args": "uri /stats",
-      "text": "Página de estadísticas en la ruta `/stats`",
+      "text": "Statistics page at the path `/stats`",
       "known": true
     },
     {
       "line": 40,
       "keyword": "mode",
       "args": "tcp",
-      "text": "**Modo TCP** (capa 4): reenvía los bytes tal cual, sin inspeccionar HTTP.",
+      "text": "**TCP mode** (layer 4): forwards the bytes as they are, without inspecting HTTP.",
       "known": true
     },
     {
       "line": 41,
       "keyword": "bind",
       "args": "0.0.0.0:5432",
-      "text": "Escucha en todas las interfaces, puerto `5432`",
+      "text": "Listens on all interfaces, port `5432`",
       "known": true
     },
     {
       "line": 42,
       "keyword": "server",
       "args": "pg1 10.0.0.5:5432 check",
-      "text": "Servidor **pg1** en `10.0.0.5:5432` · health checks activos",
+      "text": "Server **pg1** at `10.0.0.5:5432` · active health checks",
       "known": true
     },
     {
       "line": 46,
       "keyword": "mode",
       "args": "tcp",
-      "text": "**Modo TCP** (capa 4): reenvía los bytes tal cual, sin inspeccionar HTTP.",
+      "text": "**TCP mode** (layer 4): forwards the bytes as they are, without inspecting HTTP.",
       "known": true
     },
     {
       "line": 47,
       "keyword": "bind",
       "args": "*:6379",
-      "text": "Escucha en todas las interfaces, puerto `6379`",
+      "text": "Listens on all interfaces, port `6379`",
       "known": true
     },
     {
       "line": 48,
       "keyword": "acl",
       "args": "lan src 10.0.0.0/8",
-      "text": "Define la condición `lan`: la IP de origen está en `10.0.0.0/8`",
+      "text": "Defines the condition `lan`: the source IP is in `10.0.0.0/8`",
       "known": true
     },
     {
       "line": 49,
       "keyword": "tcp-request",
       "args": "connection reject unless lan",
-      "text": "Conexión TCP: **Corta** la conexión sin responder — salvo si `lan`",
+      "text": "TCP connection: **Closes** the connection without answering — unless `lan`",
       "known": true
     },
     {
       "line": 50,
       "keyword": "server",
       "args": "r1 10.0.0.6:6379 check",
-      "text": "Servidor **r1** en `10.0.0.6:6379` · health checks activos",
+      "text": "Server **r1** at `10.0.0.6:6379` · active health checks",
       "known": true
     },
     {
       "line": 54,
       "keyword": "bind",
       "args": ":80",
-      "text": "Escucha en todas las interfaces, puerto `80`",
+      "text": "Listens on all interfaces, port `80`",
       "known": true
     },
     {
       "line": 55,
       "keyword": "bind",
       "args": ":443 ssl crt /etc/haproxy/site.pem ssl-min-ver TLSv1.1",
-      "text": "Escucha en todas las interfaces, puerto `443` · **TLS / HTTPS** · certificado `/etc/haproxy/site.pem` · TLS mínimo `TLSv1.1`",
+      "text": "Listens on all interfaces, port `443` · **TLS / HTTPS** · certificate `/etc/haproxy/site.pem` · minimum TLS `TLSv1.1`",
       "known": true
     },
     {
       "line": 56,
       "keyword": "default_backend",
       "args": "app",
-      "text": "Backend por defecto: **app** — recibe todo lo que no coincide con ninguna regla `use_backend`",
+      "text": "Default backend: **app** — receives everything that matches no `use_backend` rule",
       "known": true
     },
     {
       "line": 59,
       "keyword": "server",
       "args": "a1 10.0.0.1:8080",
-      "text": "Servidor **a1** en `10.0.0.1:8080`",
+      "text": "Server **a1** at `10.0.0.1:8080`",
       "known": true
     },
     {
       "line": 60,
       "keyword": "server",
       "args": "a2 10.0.0.2:8080",
-      "text": "Servidor **a2** en `10.0.0.2:8080`",
+      "text": "Server **a2** at `10.0.0.2:8080`",
       "known": true
     },
     {
       "line": 64,
       "keyword": "bind",
       "args": ":80",
-      "text": "Escucha en todas las interfaces, puerto `80`",
+      "text": "Listens on all interfaces, port `80`",
       "known": true
     },
     {
       "line": 65,
       "keyword": "bind",
       "args": ":443 ssl crt /etc/haproxy/ok.pem alpn h2,http/1.1",
-      "text": "Escucha en todas las interfaces, puerto `443` · **TLS / HTTPS** · certificado `/etc/haproxy/ok.pem` · ALPN `h2,http/1.1` (habilita HTTP/2)",
+      "text": "Listens on all interfaces, port `443` · **TLS / HTTPS** · certificate `/etc/haproxy/ok.pem` · ALPN `h2,http/1.1` (enables HTTP/2)",
       "known": true
     },
     {
       "line": 66,
       "keyword": "http-request",
       "args": "redirect scheme https unless { ssl_fc }",
-      "text": "Petición: Redirige a **HTTPS** — salvo si «la conexión entrante es TLS»",
+      "text": "Request: Redirects to **HTTPS** — unless “the incoming connection is TLS”",
       "known": true
     },
     {
       "line": 67,
       "keyword": "option",
       "args": "forwardfor",
-      "text": "Añade la cabecera **X-Forwarded-For** con la IP real del cliente",
+      "text": "Adds the **X-Forwarded-For** header with the client's real IP",
       "known": true
     },
     {
       "line": 68,
       "keyword": "default_backend",
       "args": "app_ok",
-      "text": "Backend por defecto: **app_ok** — recibe todo lo que no coincide con ninguna regla `use_backend`",
+      "text": "Default backend: **app_ok** — receives everything that matches no `use_backend` rule",
       "known": true
     },
     {
       "line": 71,
       "keyword": "server",
       "args": "a1 10.0.0.1:8080 check",
-      "text": "Servidor **a1** en `10.0.0.1:8080` · health checks activos",
+      "text": "Server **a1** at `10.0.0.1:8080` · active health checks",
       "known": true
     },
     {
       "line": 72,
       "keyword": "server",
       "args": "a2 10.0.0.2:8080 check",
-      "text": "Servidor **a2** en `10.0.0.2:8080` · health checks activos",
+      "text": "Server **a2** at `10.0.0.2:8080` · active health checks",
       "known": true
     }
   ],

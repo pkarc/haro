@@ -2,20 +2,23 @@ package core
 
 import "os"
 
-// Lang es un idioma de los textos que produce el núcleo (explicaciones y
-// mensajes del detector). Los textos de interfaz no dependen de él.
+// Lang is a language of the texts the core produces (explanations and
+// detector messages). Interface texts do not depend on it.
 type Lang string
 
 const (
-	LangES Lang = "es"
 	LangEN Lang = "en"
+	LangES Lang = "es"
 )
 
-// Langs lista los idiomas disponibles; el primero es el valor por defecto.
-var Langs = []Lang{LangES, LangEN}
+// LangDefault is the language used when none is requested.
+const LangDefault = LangEN
 
-// ParseLang interpreta «es», «en» o un locale como «en_US.UTF-8» o «es-MX».
-// Devuelve ok=false si está vacío o no está soportado.
+// Langs lists the available languages; the first is the default.
+var Langs = []Lang{LangEN, LangES}
+
+// ParseLang understands "es", "en" or a locale such as "en_US.UTF-8" or
+// "es-MX". It returns ok=false if the value is empty or unsupported.
 func ParseLang(s string) (Lang, bool) {
 	if len(s) < 2 {
 		return "", false
@@ -47,26 +50,27 @@ func equalFold(a, b string) bool {
 	return true
 }
 
-// LangFromEnv elige el idioma según LC_ALL, LC_MESSAGES y LANG (en ese
-// orden): inglés si empieza por «en» y español en cualquier otro caso,
-// incluido si no hay nada definido, porque los textos de interfaz están en español.
+// LangFromEnv picks the language from LC_ALL, LC_MESSAGES and LANG (in that
+// order): Spanish if the first one set starts with "es", English otherwise,
+// including when nothing is set.
 func LangFromEnv() Lang {
 	for _, name := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
 		if v := os.Getenv(name); v != "" {
-			if l, ok := ParseLang(v); ok && l == LangEN {
-				return LangEN
+			if l, ok := ParseLang(v); ok && l == LangES {
+				return LangES
 			}
-			return LangES
+			return LangEN
 		}
 	}
-	return LangES
+	return LangEN
 }
 
-// t elige el texto según el idioma. Las frases con argumentos se escriben
-// completas en cada idioma, porque el orden de las palabras cambia.
+// t picks the text for the language: Spanish for LangES, English otherwise
+// (including the empty language). Phrases with arguments are written in full
+// in each language because word order changes.
 func (l Lang) t(es, en string) string {
-	if l == LangEN {
-		return en
+	if l == LangES {
+		return es
 	}
-	return es
+	return en
 }

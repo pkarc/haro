@@ -21,7 +21,7 @@ func TestTUISaveValidatesAndKeepsBackup(t *testing.T) {
 	// Una propuesta con un error de referencia se rechaza y no toca el archivo.
 	before, _ := os.ReadFile(path)
 	err := save([]core.FileChange{{Path: path, Text: assistCfgText}})
-	if err == nil || !strings.Contains(err.Error(), "no se guardó") {
+	if err == nil || !strings.Contains(err.Error(), "not saved") {
 		t.Fatalf("debía rechazarse: %v", err)
 	}
 	if after, _ := os.ReadFile(path); string(after) != string(before) {

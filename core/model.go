@@ -2,17 +2,17 @@ package core
 
 import "strings"
 
-// Effective es la configuración que realmente aplica a una sección tras
-// heredar de su `defaults`.
+// Effective is the configuration that actually applies to a section after
+// inheriting from its `defaults`.
 type Effective struct {
 	Mode     string          `json:"mode"`
 	ModeFrom string          `json:"modeFrom"` // own | defaults | implicit
 	Timeouts map[string]bool `json:"timeouts"`
-	Defaults int             `json:"defaults"` // índice de la sección defaults heredada, -1 si ninguna
+	Defaults int             `json:"defaults"` // index of the inherited defaults section, -1 if none
 }
 
-// ComputeEffective calcula la herencia para cada sección, en orden. Cada
-// sección defaults reinicia lo heredado, como hace HAProxy.
+// ComputeEffective computes inheritance for each section, in order. Each
+// defaults section resets what is inherited, as HAProxy does.
 func ComputeEffective(doc *Doc) []Effective {
 	defMode, defTmo, defIdx := "", map[string]bool{}, -1
 	out := make([]Effective, len(doc.Sections))
@@ -51,13 +51,13 @@ func ComputeEffective(doc *Doc) []Effective {
 	return out
 }
 
-// Bind resume una línea bind para el mapa.
+// Bind summarizes a bind line for the map.
 type Bind struct {
 	Address string `json:"address"`
 	TLS     bool   `json:"tls"`
 }
 
-// ServerNode es un servidor en el mapa.
+// ServerNode is a server in the map.
 type ServerNode struct {
 	Name     string `json:"name"`
 	Address  string `json:"address"`
@@ -67,16 +67,16 @@ type ServerNode struct {
 	Template bool   `json:"template,omitempty"`
 }
 
-// EntryNode es un frontend o listen.
+// EntryNode is a frontend or listen.
 type EntryNode struct {
 	Section int          `json:"section"`
 	Type    string       `json:"type"`
 	Name    string       `json:"name"`
 	Binds   []Bind       `json:"binds"`
-	Servers []ServerNode `json:"servers,omitempty"` // solo listen
+	Servers []ServerNode `json:"servers,omitempty"` // listen only
 }
 
-// BackendNode es un backend.
+// BackendNode is a backend.
 type BackendNode struct {
 	Section int          `json:"section"`
 	Name    string       `json:"name"`
@@ -84,18 +84,18 @@ type BackendNode struct {
 	Servers []ServerNode `json:"servers"`
 }
 
-// Edge une una entrada con un backend.
+// Edge joins an entry with a backend.
 type Edge struct {
-	File      int    `json:"file"`    // archivo de la regla
-	From      int    `json:"from"`    // índice de sección
-	To        int    `json:"to"`      // índice de sección, -1 si no existe
-	ToName    string `json:"toName"`  // nombre del backend
+	File      int    `json:"file"`    // file of the rule
+	From      int    `json:"from"`    // section index
+	To        int    `json:"to"`      // section index, -1 if it does not exist
+	ToName    string `json:"toName"`  // backend name
 	Default   bool   `json:"default"` // default_backend
 	Condition string `json:"condition,omitempty"`
 	Line      int    `json:"line"`
 }
 
-// Topology es el grafo de tráfico: entradas → backends → servidores.
+// Topology is the traffic graph: entries -> backends -> servers.
 type Topology struct {
 	Entries  []EntryNode   `json:"entries"`
 	Backends []BackendNode `json:"backends"`
@@ -117,8 +117,13 @@ func serversOf(s *Section) []ServerNode {
 	return out
 }
 
-// BuildTopology construye el mapa de tráfico.
-func BuildTopology(doc *Doc) Topology {
+// BuildTopology builds the traffic map, with English texts. Use
+// BuildTopologyLang for another language.
+func BuildTopology(doc *Doc) Topology { return BuildTopologyLang(doc, LangDefault) }
+
+// BuildTopologyLang is BuildTopology with the texts (the negated-condition
+// prefix of edges) in the requested language.
+func BuildTopologyLang(doc *Doc, lang Lang) Topology {
 	t := Topology{Entries: []EntryNode{}, Backends: []BackendNode{}, Edges: []Edge{}, Missing: []string{}}
 	byName := map[string]int{}
 	for i, s := range doc.Sections {
@@ -152,7 +157,7 @@ func BuildTopology(doc *Doc) Topology {
 					if cd != nil {
 						cond = strings.Join(cd.Tokens, " ")
 						if cd.Negated {
-							cond = "salvo " + cond
+							cond = lang.t("salvo ", "unless ") + cond
 						}
 					}
 				default:

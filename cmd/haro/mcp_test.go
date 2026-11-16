@@ -56,7 +56,7 @@ func TestMCPLintCitesFileAndLine(t *testing.T) {
 	if isErr {
 		t.Fatal(text)
 	}
-	if !strings.Contains(text, p+":9: error El backend «nope» no existe") {
+	if !strings.Contains(text, p+":9: error The backend “nope” does not exist") {
 		t.Errorf("el texto debe citar archivo y línea:\n%s", text)
 	}
 	issues := st["issues"].([]any)
@@ -179,7 +179,7 @@ func TestMCPApplyWriteGuards(t *testing.T) {
 	before, _ := os.ReadFile(p)
 	text, _, isErr = mcpCall(t, tools, "haro_apply", map[string]any{"paths": []string{p}, "write": true,
 		"ops": []map[string]any{{"op": "update_directive", "section": 1, "lineIndex": 1, "text": "default_backend nope"}}})
-	if !isErr || !strings.Contains(text, "no se guardó") {
+	if !isErr || !strings.Contains(text, "not saved") {
 		t.Errorf("una edición inválida no debe guardarse: %s", text)
 	}
 	if after, _ := os.ReadFile(p); string(after) != string(before) {
@@ -211,11 +211,11 @@ func TestMCPDiffAndCheckAndResources(t *testing.T) {
 		t.Errorf("diff: %s", text)
 	}
 	text, _, _ = mcpCall(t, &mcpTools{}, "haro_diff", map[string]any{"before": "a", "after": "a\n"})
-	if text != "Sin diferencias." {
+	if text != "No differences." {
 		t.Errorf("sin diferencias: %q", text)
 	}
 	text, st, isErr := mcpCall(t, &mcpTools{}, "haro_check", map[string]any{"text": mcpCfg})
-	if isErr || st["available"] != false || !strings.Contains(text, "no está instalado") {
+	if isErr || st["available"] != false || !strings.Contains(text, "not installed") {
 		t.Errorf("check sin haproxy: %s", text)
 	}
 
@@ -236,10 +236,14 @@ func TestMCPToolListHasAllTools(t *testing.T) {
 
 func TestMCPLang(t *testing.T) {
 	cfg := strings.Replace(mcpCfg, "default_backend api", "default_backend nope", 1)
-	// Sin lang: español. Con lang=en: inglés, también en explain y analyze.
+	// Sin lang: inglés. Con lang=es: español.
 	text, _, _ := mcpCall(t, &mcpTools{}, "haro_lint", map[string]any{"text": cfg})
-	if !strings.Contains(text, "no existe") {
-		t.Errorf("por defecto debe ser español: %s", text)
+	if !strings.Contains(text, "does not exist") {
+		t.Errorf("por defecto debe ser inglés: %s", text)
+	}
+	text, _, _ = mcpCall(t, &mcpTools{}, "haro_lint", map[string]any{"text": cfg, "lang": "es"})
+	if !strings.Contains(text, "no existe") || !strings.Contains(text, "errores") {
+		t.Errorf("lang=es: %s", text)
 	}
 	text, st, isErr := mcpCall(t, &mcpTools{}, "haro_lint", map[string]any{"text": cfg, "lang": "en"})
 	if isErr || !strings.Contains(text, "The backend “nope” does not exist.") {

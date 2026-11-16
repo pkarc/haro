@@ -1,47 +1,47 @@
-// Package coreapi reúne la lógica de las operaciones del núcleo que no
-// depende del transporte, para que la compartan el servidor Connect
-// (cmd/haro/rpc.go) y el módulo WASM (wasm/). Solo usa core y la biblioteca
-// estándar, así que compila a WebAssembly.
+// Package coreapi gathers the logic of the core operations that does not
+// depend on the transport, so the Connect server
+// (cmd/haro/rpc.go) and the WASM module (wasm/) share it. It uses only core and the
+// standard library, so it compiles to WebAssembly.
 package coreapi
 
 import "github.com/pkarc/haro/core"
 
-// Applied es el resultado de aplicar operaciones sin escribir en disco: todos
-// los archivos (los que no cambian, con su texto original byte a byte) y solo
-// los que cambiaron.
+// Applied is the result of applying operations without writing to disk: all
+// the files (those that do not change, with their original text byte for byte) and only
+// those that changed.
 type Applied struct {
 	Files   []core.Source     `json:"files"`
 	Changes []core.FileChange `json:"changes"`
 }
 
-// Apply aplica ops sobre srcs. El error es un *core.ApplyError si una
-// operación no es válida.
-func Apply(srcs []core.Source, ops []core.Op) (Applied, error) {
-	_, changes, err := core.Apply(core.NewConfig(srcs), ops...)
+// Apply applies ops to srcs, with error messages in lang. The error is a
+// *core.ApplyError if an operation is not valid.
+func Apply(srcs []core.Source, ops []core.Op, lang core.Lang) (Applied, error) {
+	_, changes, err := core.ApplyLang(core.NewConfig(srcs), lang, ops...)
 	if err != nil {
 		return Applied{}, err
 	}
 	return finish(srcs, changes), nil
 }
 
-// Rendered es el resultado de renderizar una plantilla de tecnología.
+// Rendered is the result of rendering a technology template.
 type Rendered struct {
 	Ops []core.Op `json:"ops"`
 	Applied
 }
 
-// RenderTemplate renderiza la plantilla id con params y devuelve las
-// operaciones y el resultado de aplicarlas. El error es un *core.TemplateError
-// si los parámetros no son válidos.
+// RenderTemplate renders template id with params and returns the
+// operations and the result of applying them. The error is a *core.TemplateError
+// if the parameters are not valid.
 func RenderTemplate(srcs []core.Source, id string, params map[string]any, lang core.Lang) (Rendered, error) {
 	cfg := core.NewConfig(srcs)
 	ops, err := core.RenderTechTemplate(id, params, cfg, lang)
 	if err != nil {
 		return Rendered{}, err
 	}
-	_, changes, err := core.Apply(cfg, ops...)
+	_, changes, err := core.ApplyLang(cfg, lang, ops...)
 	if err != nil {
-		return Rendered{}, err // las operaciones de una plantilla siempre deben aplicarse
+		return Rendered{}, err // a template's operations must always apply
 	}
 	return Rendered{Ops: ops, Applied: finish(srcs, changes)}, nil
 }

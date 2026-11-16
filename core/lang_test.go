@@ -87,7 +87,7 @@ func TestRulesSameKeys(t *testing.T) {
 		}
 	}
 	if len(Rules) != len(es) {
-		t.Error("Rules debe ser el español")
+		t.Error("Rules debe ser el inglés")
 	}
 }
 
@@ -114,12 +114,12 @@ func TestLangFromEnv(t *testing.T) {
 		t.Setenv("LANG", lang)
 	}
 	set("", "", "")
-	if LangFromEnv() != LangES {
-		t.Error("sin variables debe ser español")
-	}
-	set("", "", "en_US.UTF-8")
 	if LangFromEnv() != LangEN {
-		t.Error("LANG=en_US debe ser inglés")
+		t.Error("sin variables debe ser inglés")
+	}
+	set("", "", "es_MX.UTF-8")
+	if LangFromEnv() != LangES {
+		t.Error("LANG=es_MX debe ser español")
 	}
 	set("", "es_ES.UTF-8", "en_US.UTF-8")
 	if LangFromEnv() != LangES {
@@ -130,12 +130,12 @@ func TestLangFromEnv(t *testing.T) {
 		t.Error("LC_ALL tiene prioridad")
 	}
 	set("", "", "C")
-	if LangFromEnv() != LangES {
-		t.Error("un locale desconocido es español")
+	if LangFromEnv() != LangEN {
+		t.Error("un locale desconocido es inglés")
 	}
 	set("", "", "fr_FR.UTF-8")
-	if LangFromEnv() != LangES {
-		t.Error("otro idioma cae en español")
+	if LangFromEnv() != LangEN {
+		t.Error("otro idioma cae en inglés")
 	}
 }
 
@@ -255,8 +255,8 @@ func TestAnalyzeLangDiffers(t *testing.T) {
 	if es.Explanations[0].Explain.Text == en.Explanations[0].Explain.Text {
 		t.Error("los textos deberían diferir")
 	}
-	if got := Analyze(string(src)); got.Explanations[0].Explain.Text != es.Explanations[0].Explain.Text {
-		t.Error("Analyze debe seguir en español")
+	if got := Analyze(string(src)); got.Explanations[0].Explain.Text != en.Explanations[0].Explain.Text {
+		t.Error("Analyze debe usar inglés por defecto")
 	}
 }
 

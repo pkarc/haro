@@ -1,6 +1,6 @@
 package core
 
-// LineExplanation asocia una directiva con su explicación.
+// LineExplanation pairs a directive with its explanation.
 type LineExplanation struct {
 	File    int         `json:"file"`
 	Line    int         `json:"line"`
@@ -10,8 +10,8 @@ type LineExplanation struct {
 	Explain Explanation `json:"explanation"`
 }
 
-// Analysis es todo lo que la interfaz necesita en una sola llamada.
-// Con varios archivos, Doc es la vista unificada y Doc.Files lista las rutas.
+// Analysis is everything the interface needs in a single call.
+// With several files, Doc is the unified view and Doc.Files lists the paths.
 type Analysis struct {
 	Doc          *Doc              `json:"doc"`
 	Issues       []Issue           `json:"issues"`
@@ -20,12 +20,12 @@ type Analysis struct {
 	Topology     Topology          `json:"topology"`
 }
 
-// Analyze parsea un único texto y calcula problemas, explicaciones, herencia
-// y topología, con los textos en español. Para varios archivos, usa
-// AnalyzeConfig; para otro idioma, AnalyzeLang.
-func Analyze(text string) Analysis { return AnalyzeLang(text, LangES) }
+// Analyze parses a single text and computes problems, explanations, inheritance
+// and topology, with English texts. For several files use
+// AnalyzeConfig; for another language, AnalyzeLang.
+func Analyze(text string) Analysis { return AnalyzeLang(text, LangDefault) }
 
-// AnalyzeLang es Analyze con los textos en el idioma pedido.
+// AnalyzeLang is Analyze with the texts in the requested language.
 func AnalyzeLang(text string, lang Lang) Analysis {
 	return analyzeDoc(Parse(text), lang)
 }
@@ -40,5 +40,5 @@ func analyzeDocWith(doc *Doc, opts LintOptions) Analysis {
 			ex = append(ex, LineExplanation{File: s.File, Line: l.Line, Section: i, Keyword: l.Keyword, Args: DisplayArgs(l), Explain: DescribeLang(l, s.Type, lang)})
 		}
 	}
-	return Analysis{Doc: doc, Issues: LintWith(doc, opts), Explanations: ex, Effective: ComputeEffective(doc), Topology: BuildTopology(doc)}
+	return Analysis{Doc: doc, Issues: LintWith(doc, opts), Explanations: ex, Effective: ComputeEffective(doc), Topology: BuildTopologyLang(doc, lang)}
 }

@@ -1,12 +1,12 @@
-// Package core contiene todo lo que haro sabe de HAProxy: parser sin pérdidas,
-// serializador, base de conocimiento, explicaciones, detector de problemas,
-// modelo semántico (herencia de defaults, topología) y diff.
+// Package core holds everything haro knows about HAProxy: lossless parser,
+// serializer, knowledge base, explanations, problem detector,
+// semantic model (defaults inheritance, topology) and diff.
 //
-// No depende de ninguna interfaz: la usan por igual el CLI, `haro serve`
-// y, en el futuro, el módulo WASM de la web pública.
+// It depends on no interface: the CLI, `haro serve` and, in the future,
+// the public web's WASM module all use it equally.
 package core
 
-// LineKind distingue los tipos de línea dentro de una sección.
+// LineKind distinguishes the kinds of line within a section.
 type LineKind string
 
 const (
@@ -15,9 +15,9 @@ const (
 	KindDirective LineKind = "directive"
 )
 
-// Line es una línea dentro de una sección (o antes de la primera sección).
-// Text guarda el contenido exacto sin la indentación, para poder volver a
-// escribir el archivo sin cambios.
+// Line is a line within a section (or before the first section).
+// Text keeps the exact content without the indentation, so the file
+// can be written back unchanged.
 type Line struct {
 	Kind    LineKind `json:"kind"`
 	Line    int      `json:"line"`
@@ -26,16 +26,16 @@ type Line struct {
 	Keyword string   `json:"keyword,omitempty"`
 	Args    []string `json:"args,omitempty"`
 	Comment string   `json:"comment,omitempty"`
-	// File es el índice del archivo de origen dentro de un Config.
+	// File is the index of the source file within a Config.
 	File int `json:"file"`
-	// IndentSet indica si Indent viene del archivo original. Las líneas nuevas
-	// creadas por operaciones de edición usan la indentación por defecto.
+	// IndentSet indicates whether Indent comes from the original file. New lines
+	// created by edit operations use the default indentation.
 	IndentSet bool `json:"-"`
 }
 
-// Section es una sección de nivel superior: global, defaults, frontend…
+// Section is a top-level section: global, defaults, frontend...
 type Section struct {
-	File    int      `json:"file"` // índice del archivo de origen dentro de un Config
+	File    int      `json:"file"` // index of the source file within a Config
 	Type    string   `json:"type"`
 	Name    string   `json:"name,omitempty"`
 	Line    int      `json:"line"`
@@ -46,7 +46,7 @@ type Section struct {
 	Lines   []*Line  `json:"lines"`
 }
 
-// Directives devuelve solo las líneas que son directivas.
+// Directives returns only the lines that are directives.
 func (s *Section) Directives() []*Line {
 	out := make([]*Line, 0, len(s.Lines))
 	for _, l := range s.Lines {
@@ -57,11 +57,11 @@ func (s *Section) Directives() []*Line {
 	return out
 }
 
-// Doc es el árbol completo de un haproxy.cfg.
+// Doc is the complete tree of a haproxy.cfg.
 type Doc struct {
 	Pre      []*Line    `json:"pre"`
 	Sections []*Section `json:"sections"`
-	// Files lista las rutas de origen cuando el Doc une varios archivos
-	// (ver Config.Merge). Vacío para un único texto.
+	// Files lists the source paths when the Doc joins several files
+	// (see Config.Merge). Empty for a single text.
 	Files []string `json:"files,omitempty"`
 }

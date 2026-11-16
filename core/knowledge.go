@@ -9,8 +9,8 @@ import (
 //go:embed knowledge/knowledge.json
 var knowledgeJSON []byte
 
-// Los textos visibles viven aparte, uno por idioma y con la misma forma:
-// knowledge.json solo tiene estructura (colores, secciones válidas…).
+// The visible texts live apart, one per language and with the same shape:
+// knowledge.json only has structure (colors, valid sections...).
 //
 //go:embed knowledge/text.es.json
 var textESJSON []byte
@@ -18,27 +18,27 @@ var textESJSON []byte
 //go:embed knowledge/text.en.json
 var textENJSON []byte
 
-// SectionInfo describe un tipo de sección.
+// SectionInfo describes a section type.
 type SectionInfo struct {
 	Color       string `json:"color"`
 	Named       string `json:"named"` // required | optional | none
 	Title       string `json:"title"`
 	Description string `json:"description"`
-	// Since: versión de HAProxy en la que apareció el tipo de sección, si se conoce.
+	// Since: HAProxy version in which the section type appeared, if known.
 	Since string `json:"since,omitempty"`
 }
 
-// DirectiveInfo describe una directiva de la base de conocimiento.
+// DirectiveInfo describes a directive of the knowledge base.
 type DirectiveInfo struct {
 	Sections    []string `json:"sections"`
 	Category    string   `json:"category"`
 	Description string   `json:"description,omitempty"`
-	// Since es la versión de HAProxy en la que apareció («2.4»). Vacío si no
-	// se conoce con seguridad.
+	// Since is the HAProxy version in which it appeared ("2.4"). Empty if it
+	// is not known for sure.
 	Since string `json:"since,omitempty"`
 }
 
-// AllowedIn indica si la directiva es válida en el tipo de sección dado.
+// AllowedIn reports whether the directive is valid in the given section type.
 func (d DirectiveInfo) AllowedIn(section string) bool {
 	for _, s := range d.Sections {
 		if s == section {
@@ -48,15 +48,15 @@ func (d DirectiveInfo) AllowedIn(section string) bool {
 	return false
 }
 
-// SectionText es el texto visible de un tipo de sección.
+// SectionText is the visible text of a section type.
 type SectionText struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 }
 
-// KnowledgeText son todos los textos de la base de conocimiento en un idioma.
-// Los archivos core/knowledge/text.<idioma>.json tienen exactamente esta forma
-// y las mismas claves.
+// KnowledgeText is all the knowledge base texts in one language.
+// The core/knowledge/text.<language>.json files have exactly this shape
+// and the same keys.
 type KnowledgeText struct {
 	Categories    map[string]string      `json:"categories"`
 	Sections      map[string]SectionText `json:"sections"`
@@ -71,13 +71,13 @@ type KnowledgeText struct {
 	RedirectCodes map[string]string      `json:"redirectCodes"`
 }
 
-// Knowledge es la base de conocimiento completa. Vive en
-// core/knowledge/knowledge.json (estructura) y text.<idioma>.json (textos)
-// para poder corregir y ampliar explicaciones sin tocar código.
+// Knowledge is the complete knowledge base. It lives in
+// core/knowledge/knowledge.json (structure) and text.<language>.json (texts)
+// so explanations can be fixed and extended without touching code.
 //
-// Los campos de texto (Categories, Options, Balance… y Title/Description de
-// Sections y Directives) contienen el español, para que el código anterior
-// siga funcionando. Para otro idioma, usa Text(lang).
+// The text fields (Categories, Options, Balance... and Title/Description of
+// Sections and Directives) hold English, so earlier code
+// keeps working. For another language, use Text(lang).
 type Knowledge struct {
 	Categories     map[string]string        `json:"-"`
 	Sections       map[string]SectionInfo   `json:"sections"`
@@ -92,7 +92,7 @@ type Knowledge struct {
 	RedirectCodes  map[string]string        `json:"-"`
 	BooleanFetches []string                 `json:"booleanFetches"`
 	BuiltinACLs    []string                 `json:"builtinAcls"`
-	// OptionSince da la versión de HAProxy en la que apareció cada «option».
+	// OptionSince gives the HAProxy version in which each "option" appeared.
 	OptionSince map[string]string `json:"optionSince"`
 
 	booleanFetches map[string]bool
@@ -100,19 +100,19 @@ type Knowledge struct {
 	texts          map[Lang]*KnowledgeText
 }
 
-// KB es la base de conocimiento cargada al iniciar.
+// KB is the knowledge base loaded at startup.
 var KB = mustLoadKnowledge()
 
-// Sections es un atajo a KB.Sections.
+// Sections is a shortcut to KB.Sections.
 var Sections = KB.Sections
 
-// proxySections son las cabeceras que se reconocen aunque estén indentadas.
+// proxySections are the headers recognized even when indented.
 var proxySections = map[string]bool{"global": true, "defaults": true, "frontend": true, "backend": true, "listen": true}
 
 func mustLoadKnowledge() *Knowledge {
 	var k Knowledge
 	if err := json.Unmarshal(knowledgeJSON, &k); err != nil {
-		panic(fmt.Sprintf("haro: base de conocimiento inválida: %v", err))
+		panic(fmt.Sprintf("haro: invalid knowledge base: %v", err))
 	}
 	k.booleanFetches = toSet(k.BooleanFetches)
 	k.builtinACLs = toSet(k.BuiltinACLs)
@@ -120,25 +120,25 @@ func mustLoadKnowledge() *Knowledge {
 	for lang, raw := range map[Lang][]byte{LangES: textESJSON, LangEN: textENJSON} {
 		var t KnowledgeText
 		if err := json.Unmarshal(raw, &t); err != nil {
-			panic(fmt.Sprintf("haro: textos %s inválidos: %v", lang, err))
+			panic(fmt.Sprintf("haro: invalid %s texts: %v", lang, err))
 		}
 		k.texts[lang] = &t
 	}
-	// Compatibilidad: los accesos anteriores (KB.Options…) devuelven español.
-	es := k.texts[LangES]
+	// Compatibility: the earlier accessors (KB.Options...) return English.
+	es := k.texts[LangDefault]
 	k.Categories, k.Options, k.Timeouts, k.Balance, k.Fetches = es.Categories, es.Options, es.Timeouts, es.Balance, es.Fetches
 	k.Matchers, k.Operators, k.Store, k.RedirectCodes = es.Matchers, es.Operators, es.Store, es.RedirectCodes
-	k.Sections = k.sectionsFor(LangES)
-	k.Directives = k.directivesFor(LangES)
+	k.Sections = k.sectionsFor(LangDefault)
+	k.Directives = k.directivesFor(LangDefault)
 	return &k
 }
 
-// Text devuelve los textos del idioma pedido (español si no existe).
+// Text returns the texts of the requested language (English if it does not exist).
 func (k *Knowledge) Text(lang Lang) *KnowledgeText {
 	if t, ok := k.texts[lang]; ok {
 		return t
 	}
-	return k.texts[LangES]
+	return k.texts[LangDefault]
 }
 
 func (k *Knowledge) sectionsFor(lang Lang) map[string]SectionInfo {
@@ -169,9 +169,9 @@ func toSet(list []string) map[string]bool {
 	return m
 }
 
-// PublicKnowledge es lo que las interfaces necesitan de la base de
-// conocimiento: tipos de sección, categorías, directivas por sección (para el
-// autocompletado), reglas del detector y plantillas de sección.
+// PublicKnowledge is what the interfaces need from the knowledge
+// base: section types, categories, directives per section (for
+// autocompletion), detector rules and section templates.
 type PublicKnowledge struct {
 	Categories map[string]string          `json:"categories"`
 	Sections   map[string]SectionInfo     `json:"sections"`
@@ -180,11 +180,11 @@ type PublicKnowledge struct {
 	Templates  map[string]SectionTemplate `json:"templates"`
 }
 
-// Public devuelve la parte de la base de conocimiento que se publica por la
-// API, en español. Para otro idioma, usa PublicFor.
-func (k *Knowledge) Public() PublicKnowledge { return k.PublicFor(LangES) }
+// Public returns the part of the knowledge base published through the
+// API, in English. For another language, use PublicFor.
+func (k *Knowledge) Public() PublicKnowledge { return k.PublicFor(LangDefault) }
 
-// PublicFor devuelve la base de conocimiento pública con los textos del idioma pedido.
+// PublicFor returns the public knowledge base with the texts of the requested language.
 func (k *Knowledge) PublicFor(lang Lang) PublicKnowledge {
 	return PublicKnowledge{Categories: k.Text(lang).Categories, Sections: k.sectionsFor(lang), Directives: k.directivesFor(lang), Rules: RulesFor(lang), Templates: Templates}
 }

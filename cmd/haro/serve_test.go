@@ -351,13 +351,13 @@ func TestAnalyzeLang(t *testing.T) {
 	if !foundMsg {
 		t.Errorf("mensaje del detector en inglés: %+v", en.Issues)
 	}
-	for _, lang := range []string{"", "es"} {
-		es, err := analyze(lang)
+	for lang, want := range map[string]string{"": "client's real IP", "en": "client's real IP", "es": "IP real del cliente"} {
+		a, err := analyze(lang)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := find(es, "option"); !strings.Contains(got, "IP real del cliente") {
-			t.Errorf("lang=%q debe ser español: %q", lang, got)
+		if got := find(a, "option"); !strings.Contains(got, want) {
+			t.Errorf("lang=%q debe contener %q: %q", lang, want, got)
 		}
 	}
 	for _, bad := range []string{"fr", "klingon", "e"} {
@@ -376,8 +376,11 @@ func TestAnalyzeLang(t *testing.T) {
 	if k := kn("en"); k.Categories["net"] != "Network" || k.Sections["frontend"].Title != "Traffic entry point" || k.Rules["no-bind"] == "" || k.Directives["daemon"].Description == "" {
 		t.Errorf("conocimiento en inglés: %v / %v", k.Categories, k.Sections["frontend"])
 	}
-	if k := kn(""); k.Categories["net"] != "Red" || k.Sections["frontend"].Title != "Entrada de tráfico" {
-		t.Errorf("el conocimiento por defecto debe ser español: %v", k.Categories)
+	if k := kn(""); k.Categories["net"] != "Network" || k.Sections["frontend"].Title != "Traffic entry point" {
+		t.Errorf("el conocimiento por defecto debe ser inglés: %v", k.Categories)
+	}
+	if k := kn("es"); k.Categories["net"] != "Red" || k.Sections["frontend"].Title != "Entrada de tráfico" {
+		t.Errorf("el conocimiento en español: %v", k.Categories)
 	}
 	if _, err := c.core.GetKnowledge(context.Background(), connect.NewRequest(&harov1.GetKnowledgeRequest{Lang: "xx"})); connect.CodeOf(err) != connect.CodeInvalidArgument {
 		t.Errorf("idioma desconocido en GetKnowledge: %v", err)

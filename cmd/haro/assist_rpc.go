@@ -12,15 +12,15 @@ import (
 	"github.com/pkarc/haro/gen/haro/v1/harov1connect"
 )
 
-// assistService implementa AssistService. Sin --assistant (server.assist == nil)
-// responde UNIMPLEMENTED y la configuración nunca sale de la máquina.
+// assistService implements AssistService. Without --assistant (server.assist == nil)
+// it answers UNIMPLEMENTED and the configuration never leaves the machine.
 type assistService struct{ s *server }
 
 var _ harov1connect.AssistServiceHandler = assistService{}
 
 func (a assistService) Assist(ctx context.Context, req *connect.Request[harov1.AssistRequest], stream *connect.ServerStream[harov1.AssistEvent]) error {
 	if a.s.assist == nil {
-		return connect.NewError(connect.CodeUnimplemented, errors.New("el asistente está desactivado: inicia haro serve con --assistant"))
+		return connect.NewError(connect.CodeUnimplemented, errors.New("the assistant is disabled: start haro serve with --assistant"))
 	}
 	lang, err := requestLang(req.Msg.Lang)
 	if err != nil {
@@ -41,7 +41,7 @@ func (a assistService) Assist(ctx context.Context, req *connect.Request[harov1.A
 		return stream.Send(&harov1.AssistEvent{Event: &harov1.AssistEvent_Text{Text: t}})
 	})
 	if err != nil {
-		// El texto ya enviado queda en el cliente; el error cierra el stream.
+		// The text already sent stays on the client; the error closes the stream.
 		code := connect.CodeUnavailable
 		if ctx.Err() != nil {
 			code = connect.CodeCanceled

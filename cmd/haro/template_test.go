@@ -49,7 +49,7 @@ func TestCLITemplateListAndShow(t *testing.T) {
 	if !strings.Contains(out, `"label": "Public domain"`) {
 		t.Errorf("--format json --lang en:\n%s", out)
 	}
-	if _, _, err := runTpl(t, "show", "nope"); err == nil || !strings.Contains(err.Error(), "plantilla desconocida") {
+	if _, _, err := runTpl(t, "show", "nope"); err == nil || !strings.Contains(err.Error(), "unknown template") {
 		t.Errorf("plantilla desconocida: %v", err)
 	}
 	if _, _, err := runTpl(t); err == nil {
@@ -140,7 +140,7 @@ func TestCLITemplateAddWriteRejectedKeepsFile(t *testing.T) {
 	broken := "frontend f\n    bind 127.0.0.1:80\n    default_backend nope\n"
 	p := writeCfg(t, t.TempDir(), "haproxy.cfg", broken)
 	_, _, err := runTpl(t, append([]string{"add", "nextcloud", "--write", "--haproxy", "/no/existe/haproxy"}, append(ncArgs, p)...)...)
-	if err == nil || !strings.Contains(err.Error(), "no se guardó") {
+	if err == nil || !strings.Contains(err.Error(), "not saved") {
 		t.Errorf("debe rechazar el guardado: %v", err)
 	}
 	if b, _ := os.ReadFile(p); string(b) != broken {
@@ -192,7 +192,7 @@ func TestRPCListTemplates(t *testing.T) {
 		if nc == nil || nc.Kind != "web" || len(nc.Params) != 5 {
 			t.Fatalf("nextcloud: %+v", nc)
 		}
-		wantName := map[string]string{"": "Dominio público", "es": "Dominio público", "en": "Public domain"}[lang]
+		wantName := map[string]string{"": "Public domain", "es": "Dominio público", "en": "Public domain"}[lang]
 		if nc.Params[0].Key != "domain" || nc.Params[0].Label != wantName || !nc.Params[0].Required {
 			t.Errorf("lang=%q: domain: %+v", lang, nc.Params[0])
 		}
@@ -308,7 +308,7 @@ func TestRPCTemplateContract(t *testing.T) {
 
 func TestMCPTemplateListAndRender(t *testing.T) {
 	text, st, isErr := mcpCall(t, &mcpTools{}, "haro_template_list", map[string]any{"lang": "en"})
-	if isErr || !strings.Contains(text, "nextcloud (web)") || !strings.Contains(text, "- domain (string, obligatorio): Public domain") {
+	if isErr || !strings.Contains(text, "nextcloud (web)") || !strings.Contains(text, "- domain (string, required): Public domain") {
 		t.Fatalf("list:\n%s", text)
 	}
 	if list, _ := st["templates"].([]any); len(list) != len(core.TechTemplates(core.LangEN)) {
@@ -323,7 +323,7 @@ func TestMCPTemplateListAndRender(t *testing.T) {
 	if isErr {
 		t.Fatal(text)
 	}
-	if !strings.Contains(text, "+backend nextcloud") || !strings.Contains(text, "@@") || !strings.Contains(text, "no se ha escrito nada") {
+	if !strings.Contains(text, "+backend nextcloud") || !strings.Contains(text, "@@") || !strings.Contains(text, "nothing was written") {
 		t.Errorf("debe devolver el diff y avisar de que es una simulación:\n%s", text)
 	}
 	if st["written"] != false {
@@ -360,7 +360,7 @@ func TestMCPTemplateRenderErrorsAndLang(t *testing.T) {
 	if !isErr || !strings.Contains(text, "missing parameter “domain”") {
 		t.Errorf("error en inglés: %v %s", isErr, text)
 	}
-	text, _, isErr = mcpCall(t, &mcpTools{}, "haro_template_render", map[string]any{"text": tplBase, "id": "nextcloud", "params": map[string]any{"servers": "10.0.0.1"}})
+	text, _, isErr = mcpCall(t, &mcpTools{}, "haro_template_render", map[string]any{"text": tplBase, "id": "nextcloud", "params": map[string]any{"servers": "10.0.0.1"}, "lang": "es"})
 	if !isErr || !strings.Contains(text, "falta el parámetro «domain»") {
 		t.Errorf("error en español: %v %s", isErr, text)
 	}
