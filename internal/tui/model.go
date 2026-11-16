@@ -17,33 +17,34 @@ import (
 	"github.com/pkarc/haro/core"
 )
 
-// Options configura la interfaz.
+// Options configures the interface.
 type Options struct {
-	// Load lee la configuración (en orden de carga). Se vuelve a llamar al
-	// recargar. Source.Path debe ser la ruta real del archivo.
+	// Load reads the configuration (in load order). It is called again on
+	// reload. Source.Path must be the real path of the file.
 	Load func() ([]core.Source, error)
-	// Dirs son los directorios pasados como argumento: se vigilan para detectar
-	// archivos nuevos o borrados.
+	// Dirs are the directories passed as arguments: they are watched to detect
+	// new or deleted files.
 	Dirs []string
-	// Editor sobrescribe $VISUAL/$EDITOR (vacío = del entorno).
+	// Editor overrides $VISUAL/$EDITOR (empty = from the environment).
 	Editor string
-	// Lang es el idioma de las explicaciones y mensajes del detector (vacío = español).
+	// Lang is the language of the interface, explanations and detector
+	// messages (empty = English).
 	Lang core.Lang
-	// HAProxyVersion es la versión de HAProxy objetivo (vacío = ninguna).
+	// HAProxyVersion is the target HAProxy version (empty = none).
 	HAProxyVersion string
-	// NoColor desactiva los colores.
+	// NoColor disables colors.
 	NoColor bool
-	// NoWatch desactiva la recarga automática.
+	// NoWatch disables automatic reloading.
 	NoWatch bool
-	// Assist es el asistente con IA; nil si la TUI se abrió sin --assistant. Se
-	// llama en segundo plano, entrega la respuesta por trozos con onText y debe
-	// terminar cuando ctx se cancele. Enviar la configuración a la API de
-	// Anthropic es cosa de quien lo implementa (cmd/haro), no de este paquete.
+	// Assist is the AI assistant; nil if the TUI was opened without --assistant.
+	// It is called in the background, delivers the reply in chunks through
+	// onText and must return when ctx is cancelled. Sending the configuration
+	// to the Anthropic API is the implementer's job (cmd/haro), not this package's.
 	Assist func(ctx context.Context, msgs []core.AssistMessage, lang core.Lang, onText func(string)) (AssistOutcome, error)
-	// AssistModel es el modelo del asistente, solo para mostrarlo.
+	// AssistModel is the assistant's model, for display only.
 	AssistModel string
-	// Save guarda los archivos propuestos (valida la configuración completa,
-	// escritura atómica y copia .bak); devuelve el motivo si se rechaza.
+	// Save writes the proposed files (validates the full configuration, atomic
+	// write and .bak copy); it returns the reason if rejected.
 	Save func([]core.FileChange) error
 }
 
@@ -56,7 +57,7 @@ const (
 	viewAssist
 )
 
-// focus indica qué panel recibe las teclas de desplazamiento en la vista de secciones.
+// focus says which pane receives the scroll keys in the sections view.
 type focus int
 
 const (
@@ -68,23 +69,24 @@ type keyMap struct {
 	Up, Down, Top, Bottom, Tab, Problems, Map, Edit, Filter, Enter, Back, Help, Quit, Reload, Assist key.Binding
 }
 
-func newKeys() keyMap {
+func newKeys(lang core.Lang) keyMap {
+	t := func(en, es string) string { return pick(lang, en, es) }
 	return keyMap{
-		Up:       key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "arriba")),
-		Down:     key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "abajo")),
-		Top:      key.NewBinding(key.WithKeys("g", "home"), key.WithHelp("g", "inicio")),
-		Bottom:   key.NewBinding(key.WithKeys("G", "end"), key.WithHelp("G", "final")),
-		Tab:      key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "panel")),
-		Problems: key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "problemas")),
-		Map:      key.NewBinding(key.WithKeys("m"), key.WithHelp("m", "mapa")),
-		Edit:     key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "editar")),
-		Filter:   key.NewBinding(key.WithKeys("f"), key.WithHelp("f", "filtrar gravedad")),
-		Enter:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "ir a la sección")),
-		Back:     key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "volver")),
-		Help:     key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "ayuda")),
-		Quit:     key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "salir")),
-		Reload:   key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "recargar")),
-		Assist:   key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "asistente")),
+		Up:       key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", t("up", "arriba"))),
+		Down:     key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", t("down", "abajo"))),
+		Top:      key.NewBinding(key.WithKeys("g", "home"), key.WithHelp("g", t("top", "inicio"))),
+		Bottom:   key.NewBinding(key.WithKeys("G", "end"), key.WithHelp("G", t("bottom", "final"))),
+		Tab:      key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", t("pane", "panel"))),
+		Problems: key.NewBinding(key.WithKeys("p"), key.WithHelp("p", t("problems", "problemas"))),
+		Map:      key.NewBinding(key.WithKeys("m"), key.WithHelp("m", t("map", "mapa"))),
+		Edit:     key.NewBinding(key.WithKeys("e"), key.WithHelp("e", t("edit", "editar"))),
+		Filter:   key.NewBinding(key.WithKeys("f"), key.WithHelp("f", t("filter severity", "filtrar gravedad"))),
+		Enter:    key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", t("go to section", "ir a la sección"))),
+		Back:     key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", t("back", "volver"))),
+		Help:     key.NewBinding(key.WithKeys("?"), key.WithHelp("?", t("help", "ayuda"))),
+		Quit:     key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", t("quit", "salir"))),
+		Reload:   key.NewBinding(key.WithKeys("r"), key.WithHelp("r", t("reload", "recargar"))),
+		Assist:   key.NewBinding(key.WithKeys("a"), key.WithHelp("a", t("assistant", "asistente"))),
 	}
 }
 
@@ -100,15 +102,15 @@ func (k keyMap) FullHelp() [][]key.Binding {
 	}
 }
 
-// item es una fila de la lista de secciones: una cabecera de archivo
-// (section = -1) o una sección.
+// item is a row of the sections list: a file header (section = -1) or a
+// section.
 type item struct {
 	section int
 	file    int
 	label   string
 }
 
-// Model es el modelo de Bubble Tea.
+// Model is the Bubble Tea model.
 type Model struct {
 	opts   Options
 	st     styles
@@ -126,15 +128,15 @@ type Model struct {
 	showHelp bool
 
 	items  []item
-	cursor int // posición en items
-	offset int // primera fila visible de la lista
+	cursor int // position in items
+	offset int // first visible row of the list
 
 	detail viewport.Model
 	hl     *lineRef
 
 	issueCursor int
 	issueOffset int
-	sevFilter   int // 0 todos, 1 errores, 2 avisos, 3 sugerencias
+	sevFilter   int // 0 all, 1 errors, 2 warnings, 3 suggestions
 
 	mapView viewport.Model
 
@@ -144,14 +146,14 @@ type Model struct {
 	w      *watcher
 }
 
-// New crea el modelo; la configuración se carga en Init.
+// New creates the model; the configuration is loaded in Init.
 func New(opts Options) Model {
 	applyColorProfile(opts.NoColor)
 	if opts.Editor == "" {
 		opts.Editor = defaultEditor()
 	}
 	h := help.New()
-	return Model{opts: opts, st: newStyles(), keys: newKeys(), help: h, detail: viewport.New(0, 0), mapView: viewport.New(0, 0), assist: newAssistState()}
+	return Model{opts: opts, st: newStyles(opts.Lang), keys: newKeys(opts.Lang), help: h, detail: viewport.New(0, 0), mapView: viewport.New(0, 0), assist: newAssistState(opts.Lang)}
 }
 
 type loadedMsg struct {
@@ -213,7 +215,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case editorDoneMsg:
 		if msg.err != nil {
-			m.status = "El editor terminó con error: " + msg.err.Error()
+			m.status = m.t("The editor exited with an error: ", "El editor terminó con error: ") + msg.err.Error()
 		}
 		return m, m.load
 
@@ -230,8 +232,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// setSources analiza la configuración y conserva, si puede, la sección
-// seleccionada (por tipo y nombre).
+// setSources analyzes the configuration and keeps, if it can, the selected
+// section (by type and name).
 func (m *Model) setSources(srcs []core.Source) {
 	prevKey := ""
 	if s := m.currentSection(); s != nil {
@@ -255,7 +257,7 @@ func (m *Model) setSources(srcs []core.Source) {
 	m.layout()
 }
 
-// buildItems arma las filas de la lista; con varios archivos agrupa por archivo.
+// buildItems builds the list rows; with several files it groups by file.
 func buildItems(a core.Analysis) []item {
 	var items []item
 	multi := len(a.Doc.Files) > 1
@@ -277,7 +279,7 @@ func (m Model) currentSection() *core.Section {
 	return m.analysis.Doc.Sections[m.items[m.cursor].section]
 }
 
-// skipHeader mueve el cursor fuera de las cabeceras de archivo, en la dirección dada.
+// skipHeader moves the cursor off the file headers, in the given direction.
 func (m *Model) skipHeader(dir int) {
 	for m.cursor >= 0 && m.cursor < len(m.items) && m.items[m.cursor].section < 0 {
 		m.cursor += dir
@@ -303,7 +305,7 @@ func (m *Model) moveCursor(delta int) {
 	prev := m.cursor
 	m.cursor = clamp(m.cursor+delta, 0, len(m.items)-1)
 	m.skipHeader(dir)
-	if m.items[m.cursor].section < 0 { // no hay más secciones en esa dirección
+	if m.items[m.cursor].section < 0 { // no more sections in that direction
 		m.cursor = prev
 	}
 	m.hl = nil
@@ -313,8 +315,8 @@ func (m *Model) moveCursor(delta int) {
 
 func clamp(v, lo, hi int) int { return max(lo, min(v, hi)) }
 
-// follow devuelve el primer elemento visible de una lista con scroll para que
-// el cursor quede dentro de la ventana, moviéndola lo mínimo.
+// follow returns the first visible element of a scrolling list so that the
+// cursor stays inside the window, moving it as little as possible.
 func follow(cursor, offset, visible int) int {
 	if cursor < offset {
 		return cursor
@@ -325,16 +327,19 @@ func follow(cursor, offset, visible int) int {
 	return offset
 }
 
-// syncScroll recuerda la posición de scroll de las listas tras mover un cursor.
+// syncScroll remembers the lists' scroll position after a cursor move.
 func (m *Model) syncScroll() {
 	visible := m.contentHeight()
 	m.offset = follow(m.cursor, m.offset, visible)
 	m.issueOffset = follow(m.issueCursor, m.issueOffset, visible)
 }
 
-// sevFilterName es el nombre del filtro de gravedad actual.
+// sevFilterName is the name of the current severity filter.
 func (m Model) sevFilterName() string {
-	return [...]string{"todos", "errores", "avisos", "sugerencias"}[m.sevFilter]
+	if m.opts.Lang == core.LangES {
+		return [...]string{"todos", "errores", "avisos", "sugerencias"}[m.sevFilter]
+	}
+	return [...]string{"all", "errors", "warnings", "suggestions"}[m.sevFilter]
 }
 
 func (m Model) filteredIssues() []core.Issue {
@@ -468,10 +473,10 @@ func (m Model) keyProblems(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// jumpToIssue abre la sección del problema y resalta su línea.
+// jumpToIssue opens the issue's section and highlights its line.
 func (m *Model) jumpToIssue(i core.Issue) {
 	if i.Section < 0 {
-		m.status = fmt.Sprintf("El problema está fuera de cualquier sección (%s:%d)", fileLabel(m.analysis, i.File), i.Line)
+		m.status = fmt.Sprintf(m.t("The issue is outside any section (%s:%d)", "El problema está fuera de cualquier sección (%s:%d)"), fileLabel(m.analysis, i.File), i.Line)
 		return
 	}
 	for n, it := range m.items {
@@ -485,7 +490,7 @@ func (m *Model) jumpToIssue(i core.Issue) {
 	m.refreshDetail()
 }
 
-// edit abre el editor en el archivo y la línea seleccionados.
+// edit opens the editor at the selected file and line.
 func (m Model) edit() (tea.Model, tea.Cmd) {
 	file, line := -1, 1
 	switch m.view {
@@ -502,7 +507,7 @@ func (m Model) edit() (tea.Model, tea.Cmd) {
 		}
 	}
 	if file < 0 || file >= len(m.srcs) {
-		m.status = "No hay nada que editar"
+		m.status = m.t("Nothing to edit", "No hay nada que editar")
 		return m, nil
 	}
 	args := editorCommand(m.opts.Editor, m.srcs[file].Path, line)
@@ -511,12 +516,12 @@ func (m Model) edit() (tea.Model, tea.Cmd) {
 	return m, tea.ExecProcess(cmd, func(err error) tea.Msg { return editorDoneMsg{err} })
 }
 
-// ---------- disposición y vistas ----------
+// ---------- layout and views ----------
 
 func (m Model) leftWidth() int { return clamp(m.width/3, 22, 42) }
 
-// contentHeight es el alto del contenido de un panel: la pantalla menos los
-// bordes (2), el título (1) y la barra de estado (1).
+// contentHeight is the height of a pane's content: the screen minus the
+// borders (2), the title (1) and the status bar (1).
 func (m Model) contentHeight() int { return max(3, m.height-4) }
 
 func (m *Model) layout() {
@@ -559,13 +564,13 @@ func (m *Model) refreshMap() {
 
 func (m Model) View() string {
 	if m.width == 0 {
-		return "Cargando…"
+		return m.t("Loading…", "Cargando…")
 	}
 	if m.loadErr != nil {
-		return m.st.err.Render("No se pudo leer la configuración: ") + m.loadErr.Error() + "\n\n" + m.st.dim.Render("r reintentar · q salir") + "\n"
+		return m.st.err.Render(m.t("Could not read the configuration: ", "No se pudo leer la configuración: ")) + m.loadErr.Error() + "\n\n" + m.st.dim.Render(m.t("r retry · q quit", "r reintentar · q salir")) + "\n"
 	}
 	if m.showHelp {
-		return lipgloss.JoinVertical(lipgloss.Left, m.st.title.Render("haro · ayuda"), "", m.help.FullHelpView(m.keys.FullHelp()), "", m.st.dim.Render("Cualquier tecla para volver."))
+		return lipgloss.JoinVertical(lipgloss.Left, m.st.title.Render(m.t("haro · help", "haro · ayuda")), "", m.help.FullHelpView(m.keys.FullHelp()), "", m.st.dim.Render(m.t("Press any key to go back.", "Cualquier tecla para volver.")))
 	}
 	var body string
 	h := m.contentHeight()
@@ -575,7 +580,7 @@ func (m Model) View() string {
 	case viewAssist:
 		body = m.viewAssist(h)
 	case viewMap:
-		body = m.st.pane.Width(m.width - 2).Height(h + 1).Render(m.titled("Mapa del tráfico", m.mapView.View()))
+		body = m.st.pane.Width(m.width - 2).Height(h + 1).Render(m.titled(m.t("Traffic map", "Mapa del tráfico"), m.mapView.View()))
 	default:
 		left := m.listPane(h)
 		right := m.detail.View()
@@ -587,20 +592,20 @@ func (m Model) View() string {
 			ls = m.st.paneFocus
 		}
 		body = lipgloss.JoinHorizontal(lipgloss.Top,
-			ls.Width(m.leftWidth()).Height(h+1).Render(m.titled("Secciones", left)),
-			rs.Width(m.width-m.leftWidth()-4).Height(h+1).Render(m.titled("Detalle", right)))
+			ls.Width(m.leftWidth()).Height(h+1).Render(m.titled(m.t("Sections", "Secciones"), left)),
+			rs.Width(m.width-m.leftWidth()-4).Height(h+1).Render(m.titled(m.t("Detail", "Detalle"), right)))
 	}
 	return body + "\n" + m.statusBar()
 }
 
-// titled antepone un título al contenido de un panel.
+// titled prepends a title to a pane's content.
 func (m Model) titled(title, content string) string {
 	return m.st.title.Render(title) + "\n" + content
 }
 
 func (m Model) listPane(h int) string {
 	rows := make([]string, 0, len(m.items))
-	counts := map[int][2]int{} // sección → errores, avisos
+	counts := map[int][2]int{} // section → errors, warnings
 	for _, i := range m.analysis.Issues {
 		c := counts[i.Section]
 		switch i.Severity {
@@ -639,16 +644,16 @@ func (m Model) listPane(h int) string {
 		rows = append(rows, row)
 	}
 	if len(m.items) == 0 {
-		return m.st.dim.Render("(sin secciones)")
+		return m.st.dim.Render(m.t("(no sections)", "(sin secciones)"))
 	}
 	return strings.Join(rows, "\n")
 }
 
 func (m Model) viewProblems(h int) string {
 	issues := m.filteredIssues()
-	title := fmt.Sprintf("Problemas · %s (%d)", m.sevFilterName(), len(issues))
+	title := fmt.Sprintf(m.t("Issues · %s (%d)", "Problemas · %s (%d)"), m.sevFilterName(), len(issues))
 	if len(issues) == 0 {
-		msg := m.st.ok.Render("✓ Sin problemas detectados.") + " " + m.st.dim.Render("Valida siempre con haproxy -c.")
+		msg := m.st.ok.Render(m.t("✓ No issues detected.", "✓ Sin problemas detectados.")) + " " + m.st.dim.Render(m.t("Always validate with haproxy -c.", "Valida siempre con haproxy -c."))
 		return m.st.pane.Width(m.width - 2).Height(h + 1).Render(m.titled(title, msg))
 	}
 	visible := max(1, h)
@@ -657,12 +662,12 @@ func (m Model) viewProblems(h int) string {
 	for n := offset; n < len(issues) && n < offset+visible; n++ {
 		i := issues[n]
 		where := fmt.Sprintf("%s:%d", fileLabel(m.analysis, i.File), i.Line)
-		line := fmt.Sprintf("%-10s %-22s %s %s", sevLabel(i.Severity), where, i.Message, m.st.dim.Render("["+i.Rule+"]"))
+		line := fmt.Sprintf("%-10s %-22s %s %s", m.st.sevLabel(i.Severity), where, i.Message, m.st.dim.Render("["+i.Rule+"]"))
 		line = ansi.Truncate(line, m.width-4, "…")
 		if n == m.issueCursor {
 			line = m.st.cursor.Render(ansiStrip(line))
 		} else {
-			line = m.st.sev(i.Severity).Render(fmt.Sprintf("%-10s", sevLabel(i.Severity))) + strings.TrimPrefix(line, fmt.Sprintf("%-10s", sevLabel(i.Severity)))
+			line = m.st.sev(i.Severity).Render(fmt.Sprintf("%-10s", m.st.sevLabel(i.Severity))) + strings.TrimPrefix(line, fmt.Sprintf("%-10s", m.st.sevLabel(i.Severity)))
 		}
 		rows = append(rows, line)
 	}
@@ -679,7 +684,7 @@ func (m Model) statusBar() string {
 			warns++
 		}
 	}
-	summary := fmt.Sprintf("%d %s · %d %s", errs, plural(errs, "error", "errores"), warns, plural(warns, "aviso", "avisos"))
+	summary := fmt.Sprintf("%d %s · %d %s", errs, plural(errs, m.t("error", "error"), m.t("errors", "errores")), warns, plural(warns, m.t("warning", "aviso"), m.t("warnings", "avisos")))
 	switch {
 	case errs > 0:
 		summary = m.st.err.Render(summary)
@@ -705,6 +710,6 @@ func plural(n int, one, many string) string {
 	return many
 }
 
-// ansiStrip quita las secuencias de estilo, para poder pintar una fila entera
-// con el estilo del cursor.
+// ansiStrip removes style sequences, so a whole row can be painted with the
+// cursor style.
 func ansiStrip(s string) string { return ansiRe.ReplaceAllString(s, "") }

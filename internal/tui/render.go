@@ -16,7 +16,7 @@ var (
 	reCode = regexp.MustCompile("`([^`]+)`")
 )
 
-// rich convierte el markdown mínimo de las explicaciones (**negrita**, `código`).
+// rich converts the minimal markdown of the explanations (**bold**, `code`).
 func (s styles) rich(t string) string {
 	t = reBold.ReplaceAllStringFunc(t, func(m string) string { return s.bold.Render(m[2 : len(m)-2]) })
 	return reCode.ReplaceAllStringFunc(t, func(m string) string { return s.code.Render(m[1 : len(m)-1]) })
@@ -24,10 +24,10 @@ func (s styles) rich(t string) string {
 
 type lineKey struct{ file, line int }
 
-// lineRef identifica una línea de un archivo para resaltarla.
+// lineRef identifies a file line so it can be highlighted.
 type lineRef struct{ file, line int }
 
-// fileLabel es el nombre corto de un archivo.
+// fileLabel is the short name of a file.
 func fileLabel(a core.Analysis, i int) string {
 	if i >= 0 && i < len(a.Doc.Files) {
 		return filepath.Base(a.Doc.Files[i])
@@ -35,7 +35,7 @@ func fileLabel(a core.Analysis, i int) string {
 	return ""
 }
 
-// wrap ajusta un texto con estilos al ancho dado, respetando las secuencias ANSI.
+// wrap fits styled text to the given width, respecting ANSI sequences.
 func wrap(t string, width int) []string {
 	if width < 10 {
 		width = 10
@@ -43,8 +43,8 @@ func wrap(t string, width int) []string {
 	return strings.Split(ansi.Wrap(t, width, ""), "\n")
 }
 
-// wrapIndent ajusta prefix+text al ancho; las líneas de continuación se sangran
-// con el ancho visible de prefix.
+// wrapIndent fits prefix+text to the width; continuation lines are indented
+// by the visible width of prefix.
 func wrapIndent(prefix, text string, width int) []string {
 	pad := strings.Repeat(" ", ansi.StringWidth(prefix))
 	lines := wrap(text, max(10, width-len(pad)))
@@ -58,9 +58,9 @@ func wrapIndent(prefix, text string, width int) []string {
 	return lines
 }
 
-// renderDetail devuelve las líneas del panel de detalle de la sección si y la
-// fila de la línea resaltada (-1 si no hay): cabecera, modo efectivo, y cada
-// directiva con su explicación y los problemas de esa línea.
+// renderDetail returns the lines of the detail pane for section si and the
+// row of the highlighted line (-1 if none): header, effective mode, and each
+// directive with its explanation and the issues on that line.
 func renderDetail(a core.Analysis, lang core.Lang, si int, hl *lineRef, st styles, width int) (rows []string, hlRow int) {
 	hlRow = -1
 	if si < 0 || si >= len(a.Doc.Sections) {
@@ -79,8 +79,8 @@ func renderDetail(a core.Analysis, lang core.Lang, si int, hl *lineRef, st style
 	}
 	if si < len(a.Effective) && (s.Type == "frontend" || s.Type == "backend" || s.Type == "listen" || s.Type == "defaults") {
 		e := a.Effective[si]
-		from := map[string]string{"own": "propio", "defaults": "heredado de defaults", "implicit": "por defecto (tcp)"}[e.ModeFrom]
-		rows = append(rows, st.dim.Render(fmt.Sprintf("modo %s (%s)", e.Mode, from)))
+		from := map[string]string{"own": st.t("own", "propio"), "defaults": st.t("inherited from defaults", "heredado de defaults"), "implicit": st.t("default (tcp)", "por defecto (tcp)")}[e.ModeFrom]
+		rows = append(rows, st.dim.Render(fmt.Sprintf(st.t("mode %s (%s)", "modo %s (%s)"), e.Mode, from)))
 	}
 	rows = append(rows, "")
 
@@ -92,9 +92,9 @@ func renderDetail(a core.Analysis, lang core.Lang, si int, hl *lineRef, st style
 	for _, i := range a.Issues {
 		iss[lineKey{i.File, i.Line}] = append(iss[lineKey{i.File, i.Line}], i)
 	}
-	// Problemas de la cabecera de la sección.
+	// Issues on the section header.
 	for _, i := range iss[lineKey{s.File, s.Line}] {
-		rows = append(rows, wrapIndent("     "+st.sev(i.Severity).Render(sevLabel(i.Severity))+" ", i.Message, width)...)
+		rows = append(rows, wrapIndent("     "+st.sev(i.Severity).Render(st.sevLabel(i.Severity))+" ", i.Message, width)...)
 	}
 	for _, l := range s.Lines {
 		if l.Kind == core.KindBlank {
@@ -125,20 +125,20 @@ func renderDetail(a core.Analysis, lang core.Lang, si int, hl *lineRef, st style
 			rows = append(rows, wrapIndent(prefix, st.rich(e.Explain.Text), width)...)
 		}
 		for _, i := range iss[k] {
-			rows = append(rows, wrapIndent("       "+st.sev(i.Severity).Render(sevLabel(i.Severity))+" ", i.Message, width)...)
+			rows = append(rows, wrapIndent("       "+st.sev(i.Severity).Render(st.sevLabel(i.Severity))+" ", i.Message, width)...)
 		}
 	}
 	return rows, hlRow
 }
 
-// renderMap dibuja el mapa de tráfico como árbol de texto:
-// entrada ──si cond──▶ backend ──▶ servidores.
+// renderMap draws the traffic map as a text tree:
+// entry ──if cond──▶ backend ──▶ servers.
 func renderMap(a core.Analysis, st styles, width int) []string {
 	t := a.Topology
 	var rows []string
 	add := func(s string) { rows = append(rows, wrap(s, width)...) }
 	if len(t.Entries) == 0 {
-		return []string{st.dim.Render("No hay frontends ni listen en la configuración.")}
+		return []string{st.dim.Render(st.t("There are no frontends or listens in the configuration.", "No hay frontends ni listen en la configuración."))}
 	}
 	backend := map[int]core.BackendNode{}
 	for _, b := range t.Backends {
@@ -159,7 +159,7 @@ func renderMap(a core.Analysis, st styles, width int) []string {
 				flags += " backup"
 			}
 			if v.Disabled {
-				flags += " deshabilitado"
+				flags += st.t(" disabled", " deshabilitado")
 			}
 			if v.Check {
 				flags += " check"
@@ -198,16 +198,16 @@ func renderMap(a core.Analysis, st styles, width int) []string {
 				branch, cont = "└─", "   "
 			}
 			arrow := "──▶"
-			label := "por defecto"
+			label := st.t("default", "por defecto")
 			if !ed.Default {
-				label = "si " + ed.Condition
-				if strings.HasPrefix(ed.Condition, "salvo ") {
+				label = st.t("if ", "si ") + ed.Condition
+				if strings.HasPrefix(ed.Condition, "salvo ") || strings.HasPrefix(ed.Condition, "unless ") {
 					label = ed.Condition
 				}
 			}
 			target := sectionColor("backend").Render("backend " + ed.ToName)
 			if ed.To < 0 {
-				target = st.err.Render("✗ " + ed.ToName + " (no existe)")
+				target = st.err.Render("✗ " + ed.ToName + st.t(" (does not exist)", " (no existe)"))
 			}
 			add("  " + st.dim.Render(branch+" "+label+" "+arrow) + " " + target)
 			if b, ok := backend[ed.To]; ok {

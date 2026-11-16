@@ -13,39 +13,41 @@ import (
 	"github.com/pkarc/haro/core"
 )
 
-// Asistente con IA en la TUI. Esta capa solo presenta: la llamada a la API de
-// Anthropic y el guardado seguro llegan por Options (Assist y Save), conectados
-// en cmd/haro/tui.go; aquí no se importa el SDK.
+// AI assistant in the TUI. This layer only presents: the Anthropic API call
+// and the safe save arrive through Options (Assist and Save), wired up in
+// cmd/haro/tui.go; the SDK is not imported here.
 
-// AssistOutcome es el resultado de un turno del asistente.
+// AssistOutcome is the result of an assistant turn.
 type AssistOutcome struct {
-	// Text es la respuesta completa (incluidos los bloques de configuración).
+	// Text is the full reply (including configuration blocks).
 	Text string
-	// Proposal son los archivos propuestos, con el texto completo.
+	// Proposal are the proposed files, with their full text.
 	Proposal core.Proposal
-	// IssuesAfter son los problemas de la configuración con la propuesta aplicada.
+	// IssuesAfter are the configuration's issues with the proposal applied.
 	IssuesAfter []core.Issue
-	// StopReason y RefusalCategory dicen cómo terminó (end_turn, max_tokens, refusal…).
+	// StopReason and RefusalCategory say how it ended (end_turn, max_tokens, refusal…).
 	StopReason      string
 	RefusalCategory string
 }
 
-// MsgDisabled es lo que dice la tecla `a` cuando la TUI se abrió sin --assistant.
-const MsgDisabled = "Asistente desactivado: inicia con --assistant (envía la configuración a la API de Anthropic)"
+// msgDisabled is what the `a` key says when the TUI was opened without --assistant.
+func (m Model) msgDisabled() string {
+	return m.t("Assistant disabled: start with --assistant (sends the configuration to the Anthropic API)", "Asistente desactivado: inicia con --assistant (envía la configuración a la API de Anthropic)")
+}
 
 type assistMode int
 
 const (
-	assistInput     assistMode = iota // escribiendo la petición
-	assistStreaming                   // llega la respuesta
-	assistConfirm                     // ¿Aplicar y guardar? [y/N]
+	assistInput     assistMode = iota // typing the request
+	assistStreaming                   // the reply is arriving
+	assistConfirm                     // Apply and save? [y/N]
 )
 
-// assistRun es una petición en vuelo; el canal lleva sus mensajes al bucle de Bubble Tea.
+// assistRun is an in-flight request; the channel carries its messages to the Bubble Tea loop.
 type assistRun struct {
 	ch        chan tea.Msg
 	cancel    context.CancelFunc
-	cancelled bool // el usuario pidió cancelar (Esc)
+	cancelled bool // the user asked to cancel (Esc)
 }
 
 type assistTextMsg struct {
@@ -64,33 +66,33 @@ type assistState struct {
 	vp    viewport.Model
 	mode  assistMode
 
-	// msgs es la conversación completa de los turnos terminados (alterna roles y
-	// termina en un turno del asistente); se conserva mientras dure la sesión.
+	// msgs is the full conversation of finished turns (alternates roles and
+	// ends on an assistant turn); it is kept for the whole session.
 	msgs []core.AssistMessage
-	// request es la petición en curso (ya enviada), para devolverla al campo si falla o se cancela.
+	// request is the current request (already sent), to put it back in the field if it fails or is cancelled.
 	request string
-	partial string // respuesta que va llegando
+	partial string // reply arriving so far
 	run     *assistRun
 
-	out   *AssistOutcome // propuesta pendiente de confirmar
-	base  []core.Source  // archivos con los que se hizo la petición
+	out   *AssistOutcome // proposal pending confirmation
+	base  []core.Source  // files the request was made with
 	diff  string
-	notes []string // avisos al final del registro (errores, cancelaciones, resultado del guardado)
+	notes []string // notices at the end of the log (errors, cancellations, save result)
 }
 
-func newAssistState() assistState {
+func newAssistState(lang core.Lang) assistState {
 	in := textinput.New()
 	in.Prompt = "› "
-	in.Placeholder = "Pide un cambio o haz una pregunta…"
+	in.Placeholder = pick(lang, "Ask for a change or ask a question…", "Pide un cambio o haz una pregunta…")
 	in.CharLimit = 4000
-	in.Cursor.SetMode(cursor.CursorStatic) // sin parpadeo: no necesita reloj ni interfiere con el flujo de mensajes
+	in.Cursor.SetMode(cursor.CursorStatic) // no blinking: needs no clock and does not interfere with the message flow
 	return assistState{input: in, vp: viewport.New(0, 0)}
 }
 
-// openAssist abre la vista del asistente (o avisa de que está desactivado).
+// openAssist opens the assistant view (or says it is disabled).
 func (m Model) openAssist() (tea.Model, tea.Cmd) {
 	if m.opts.Assist == nil {
-		m.status = MsgDisabled
+		m.status = m.msgDisabled()
 		return m, nil
 	}
 	m.view = viewAssist
@@ -111,8 +113,8 @@ func (m *Model) layoutAssist() {
 	m.assist.input.Width = max(10, m.width-8)
 }
 
-// keyAssist gestiona las teclas de la vista del asistente. Va antes de los
-// atajos globales: mientras se escribe, q, p, m… son texto.
+// keyAssist handles the keys of the assistant view. It runs before the global
+// shortcuts: while typing, q, p, m… are text.
 func (m Model) keyAssist(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	a := &m.assist
 	switch msg.String() {
@@ -140,7 +142,7 @@ func (m Model) keyAssist(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case assistStreaming:
 		if msg.String() == "esc" {
 			a.run.cancelled = true
-			a.run.cancel() // el aviso y la vuelta al campo llegan con assistDoneMsg
+			a.run.cancel() // the notice and the return to the field arrive with assistDoneMsg
 		}
 		return m, nil
 
@@ -148,8 +150,8 @@ func (m Model) keyAssist(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if msg.String() == "y" || msg.String() == "Y" {
 			return m.saveProposal()
 		}
-		// Cualquier otra tecla rechaza la propuesta, pero conserva la conversación.
-		a.notes = append(a.notes, m.st.dim.Render("Propuesta descartada: no se guardó nada."))
+		// Any other key rejects the proposal but keeps the conversation.
+		a.notes = append(a.notes, m.st.dim.Render(m.t("Proposal discarded: nothing was saved.", "Propuesta descartada: no se guardó nada.")))
 		a.out, a.diff, a.mode = nil, "", assistInput
 		m.refreshAssist(true)
 		return m, a.input.Focus()
@@ -172,7 +174,7 @@ func (m Model) keyAssist(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// sendAssist envía la petición y arranca el turno en segundo plano.
+// sendAssist sends the request and starts the turn in the background.
 func (m Model) sendAssist(text string) (tea.Model, tea.Cmd) {
 	a := &m.assist
 	msgs := append(append([]core.AssistMessage{}, a.msgs...), core.AssistMessage{Role: "user", Content: text})
@@ -193,7 +195,7 @@ func (m Model) sendAssist(text string) (tea.Model, tea.Cmd) {
 			}
 		})
 		if ctx.Err() != nil && err == nil {
-			err = ctx.Err() // cancelado: se descarta lo recibido
+			err = ctx.Err() // cancelled: what was received is discarded
 		}
 		run.ch <- assistDoneMsg{run, out, err}
 	}()
@@ -215,7 +217,7 @@ func (m Model) updateAssistText(msg assistTextMsg) (tea.Model, tea.Cmd) {
 	return m, waitAssist(msg.run)
 }
 
-// updateAssistDone cierra el turno: error, cancelación, respuesta sin cambios o propuesta.
+// updateAssistDone closes the turn: error, cancellation, reply without changes or proposal.
 func (m Model) updateAssistDone(msg assistDoneMsg) (tea.Model, tea.Cmd) {
 	a := &m.assist
 	if msg.run != a.run {
@@ -223,7 +225,7 @@ func (m Model) updateAssistDone(msg assistDoneMsg) (tea.Model, tea.Cmd) {
 	}
 	msg.run.cancel()
 	a.run = nil
-	back := func() (tea.Model, tea.Cmd) { // el turno no cuenta: la petición vuelve al campo para reintentar
+	back := func() (tea.Model, tea.Cmd) { // the turn does not count: the request goes back to the field to retry
 		a.msgs = a.msgs[:len(a.msgs)-1]
 		a.input.SetValue(a.request)
 		a.input.CursorEnd()
@@ -234,9 +236,9 @@ func (m Model) updateAssistDone(msg assistDoneMsg) (tea.Model, tea.Cmd) {
 	}
 	if msg.err != nil {
 		if msg.run.cancelled {
-			a.notes = append(a.notes, m.st.dim.Render("Cancelado. Tu petición sigue en el campo."))
+			a.notes = append(a.notes, m.st.dim.Render(m.t("Cancelled. Your request is still in the field.", "Cancelado. Tu petición sigue en el campo.")))
 		} else {
-			a.notes = append(a.notes, m.st.err.Render("Error: ")+msg.err.Error()+"\n"+m.st.dim.Render("Tu petición sigue en el campo: Enter para reintentar."))
+			a.notes = append(a.notes, m.st.err.Render(m.t("Error: ", "Error: "))+msg.err.Error()+"\n"+m.st.dim.Render(m.t("Your request is still in the field: Enter to retry.", "Tu petición sigue en el campo: Enter para reintentar.")))
 		}
 		return back()
 	}
@@ -246,26 +248,26 @@ func (m Model) updateAssistDone(msg assistDoneMsg) (tea.Model, tea.Cmd) {
 	}
 	if strings.TrimSpace(out.Text) == "" {
 		if out.StopReason == "refusal" {
-			a.notes = append(a.notes, m.st.warn.Render("El modelo declinó la petición"+refusalSuffix(out.RefusalCategory)+"."))
+			a.notes = append(a.notes, m.st.warn.Render(m.t("The model declined the request", "El modelo declinó la petición")+m.refusalSuffix(out.RefusalCategory)+"."))
 			return back()
 		}
-		a.notes = append(a.notes, m.st.warn.Render("El asistente no respondió nada."))
+		a.notes = append(a.notes, m.st.warn.Render(m.t("The assistant did not reply with anything.", "El asistente no respondió nada.")))
 		return back()
 	}
 	a.msgs = append(a.msgs, core.AssistMessage{Role: "assistant", Content: out.Text})
 	a.partial = ""
 	switch out.StopReason {
 	case "refusal":
-		a.notes = append(a.notes, m.st.warn.Render("El modelo declinó la petición"+refusalSuffix(out.RefusalCategory)+"."))
+		a.notes = append(a.notes, m.st.warn.Render(m.t("The model declined the request", "El modelo declinó la petición")+m.refusalSuffix(out.RefusalCategory)+"."))
 	case "max_tokens":
-		a.notes = append(a.notes, m.st.warn.Render("La respuesta se cortó por el límite de longitud: pide que continúe o que lo haga por partes."))
+		a.notes = append(a.notes, m.st.warn.Render(m.t("The reply was cut off by the length limit: ask it to continue or to do it in parts.", "La respuesta se cortó por el límite de longitud: pide que continúe o que lo haga por partes.")))
 	}
 	p := out.Proposal
 	if p.Truncated {
-		a.notes = append(a.notes, m.st.warn.Render("Un bloque de configuración quedó cortado y se descartó."))
+		a.notes = append(a.notes, m.st.warn.Render(m.t("A configuration block was cut off and discarded.", "Un bloque de configuración quedó cortado y se descartó.")))
 	}
 	if p.Unmatched > 0 {
-		a.notes = append(a.notes, m.st.warn.Render(fmt.Sprintf("%s no se pudo asociar a un archivo y se descartó.", count(p.Unmatched, "bloque de configuración", "bloques de configuración"))))
+		a.notes = append(a.notes, m.st.warn.Render(fmt.Sprintf(m.t("%s could not be matched to a file and was discarded.", "%s no se pudo asociar a un archivo y se descartó."), count(p.Unmatched, m.t("configuration block", "bloque de configuración"), m.t("configuration blocks", "bloques de configuración")))))
 	}
 	a.mode = assistInput
 	if len(p.Changes) > 0 {
@@ -280,17 +282,17 @@ func (m Model) updateAssistDone(msg assistDoneMsg) (tea.Model, tea.Cmd) {
 	return m, a.input.Focus()
 }
 
-// count formatea «n palabra» con el plural correcto.
+// count formats "n word" with the right plural.
 func count(n int, one, many string) string { return fmt.Sprintf("%d %s", n, plural(n, one, many)) }
 
-func refusalSuffix(cat string) string {
+func (m Model) refusalSuffix(cat string) string {
 	if cat == "" {
 		return ""
 	}
-	return " (categoría: " + cat + ")"
+	return m.t(" (category: ", " (categoría: ") + cat + ")"
 }
 
-// proposalDiff es el diff unificado de cada archivo propuesto y cuántos errores quedarían.
+// proposalDiff is the unified diff of each proposed file.
 func (m Model) proposalDiff(base []core.Source, changes []core.FileChange) string {
 	var b strings.Builder
 	for _, ch := range changes {
@@ -317,16 +319,16 @@ func (m Model) errorsAfter() int {
 	return n
 }
 
-// saveProposal guarda la propuesta con Options.Save (valida, atómico, .bak).
+// saveProposal saves the proposal with Options.Save (validates, atomic, .bak).
 func (m Model) saveProposal() (tea.Model, tea.Cmd) {
 	a := &m.assist
 	if m.opts.Save == nil {
-		a.notes = append(a.notes, m.st.err.Render("No se puede guardar: esta interfaz no tiene permiso de escritura."))
+		a.notes = append(a.notes, m.st.err.Render(m.t("Cannot save: this interface has no write permission.", "No se puede guardar: esta interfaz no tiene permiso de escritura.")))
 		a.out, a.diff, a.mode = nil, "", assistInput
 		m.refreshAssist(true)
 		return m, a.input.Focus()
 	}
-	// Si los archivos cambiaron desde la petición, la propuesta pisaría esos cambios.
+	// If the files changed since the request, the proposal would overwrite those changes.
 	for _, ch := range a.out.Proposal.Changes {
 		for _, base := range a.base {
 			if base.Path != ch.Path {
@@ -334,7 +336,7 @@ func (m Model) saveProposal() (tea.Model, tea.Cmd) {
 			}
 			for _, cur := range m.srcs {
 				if cur.Path == ch.Path && cur.Text != base.Text {
-					a.notes = append(a.notes, m.st.err.Render(fmt.Sprintf("%s cambió desde que se hizo la propuesta: no se guardó nada. Repite la petición.", cur.Path)))
+					a.notes = append(a.notes, m.st.err.Render(fmt.Sprintf(m.t("%s changed since the proposal was made: nothing was saved. Repeat the request.", "%s cambió desde que se hizo la propuesta: no se guardó nada. Repite la petición."), cur.Path)))
 					a.out, a.diff, a.mode = nil, "", assistInput
 					m.refreshAssist(true)
 					return m, a.input.Focus()
@@ -344,43 +346,43 @@ func (m Model) saveProposal() (tea.Model, tea.Cmd) {
 	}
 	changes := append([]core.FileChange{}, a.out.Proposal.Changes...)
 	save := m.opts.Save
-	a.notes = append(a.notes, m.st.dim.Render("Guardando…"))
+	a.notes = append(a.notes, m.st.dim.Render(m.t("Saving…", "Guardando…")))
 	m.refreshAssist(true)
 	return m, func() tea.Msg { return assistSavedMsg{save(changes)} }
 }
 
 func (m Model) updateAssistSaved(msg assistSavedMsg) (tea.Model, tea.Cmd) {
 	a := &m.assist
-	a.notes = a.notes[:len(a.notes)-1] // quita «Guardando…»
+	a.notes = a.notes[:len(a.notes)-1] // remove "Saving…"
 	cmds := []tea.Cmd{}
 	if msg.err != nil {
-		// La validación rechazó la configuración: el motivo se muestra y la propuesta sigue pendiente de otra petición.
-		a.notes = append(a.notes, m.st.err.Render("No se guardó: ")+msg.err.Error())
+		// Validation rejected the configuration: the reason is shown and the proposal is dropped.
+		a.notes = append(a.notes, m.st.err.Render(m.t("Not saved: ", "No se guardó: "))+msg.err.Error())
 		a.out, a.diff, a.mode = nil, "", assistInput
 	} else {
 		n := len(a.out.Proposal.Changes)
-		a.notes = append(a.notes, m.st.ok.Render(fmt.Sprintf("✓ Guardado (%s). Se conserva una copia .bak.", count(n, "archivo", "archivos"))))
+		a.notes = append(a.notes, m.st.ok.Render(fmt.Sprintf(m.t("✓ Saved (%s). A .bak copy is kept.", "✓ Guardado (%s). Se conserva una copia .bak."), count(n, m.t("file", "archivo"), m.t("files", "archivos")))))
 		a.out, a.diff, a.mode = nil, "", assistInput
-		cmds = append(cmds, m.load) // recarga la configuración guardada
+		cmds = append(cmds, m.load) // reload the saved configuration
 	}
 	m.refreshAssist(true)
 	cmds = append(cmds, a.input.Focus())
 	return m, tea.Batch(cmds...)
 }
 
-// ---------- vista ----------
+// ---------- view ----------
 
-// assistTitle es el título del panel.
+// assistTitle is the pane title.
 func (m Model) assistTitle() string {
-	t := "Asistente"
+	t := m.t("Assistant", "Asistente")
 	if m.opts.AssistModel != "" {
 		t += " · " + m.opts.AssistModel
 	}
 	return t
 }
 
-// refreshAssist reconstruye el contenido del registro; con `bottom` o si ya
-// estaba al final, baja hasta el último mensaje.
+// refreshAssist rebuilds the log content; with `bottom`, or if it was already
+// at the end, it scrolls down to the last message.
 func (m *Model) refreshAssist(bottom bool) {
 	a := &m.assist
 	if m.width == 0 {
@@ -398,34 +400,34 @@ func (m Model) assistLines() []string {
 	var rows []string
 	if len(a.msgs) == 0 {
 		rows = append(rows,
-			st.dim.Render("Describe lo que necesitas; el asistente conoce tu configuración y propone cambios que verás como diff antes de guardar."),
-			st.dim.Render("Ejemplos: «Revisa mi configuración y dime qué mejorarías» · «Limita a 20 peticiones por segundo por IP»"), "")
+			st.dim.Render(m.t("Describe what you need; the assistant knows your configuration and proposes changes you will see as a diff before saving.", "Describe lo que necesitas; el asistente conoce tu configuración y propone cambios que verás como diff antes de guardar.")),
+			st.dim.Render(m.t("Examples: \"Review my configuration and tell me what you would improve\" · \"Limit to 20 requests per second per IP\"", "Ejemplos: «Revisa mi configuración y dime qué mejorarías» · «Limita a 20 peticiones por segundo por IP»")), "")
 		rows = wrapAll(rows, w)
 	}
 	for _, msg := range a.msgs {
 		if msg.Role == "user" {
-			rows = append(rows, wrapIndent(st.title.Render("Tú ")+"", msg.Content, w)...)
+			rows = append(rows, wrapIndent(st.title.Render(m.t("You ", "Tú "))+"", msg.Content, w)...)
 		} else {
-			rows = append(rows, st.tag.Render("Asistente"))
+			rows = append(rows, st.tag.Render(m.t("Assistant", "Asistente")))
 			rows = append(rows, renderAssistText(msg.Content, st, w, false)...)
 		}
 		rows = append(rows, "")
 	}
 	if a.mode == assistStreaming {
-		rows = append(rows, st.tag.Render("Asistente"))
+		rows = append(rows, st.tag.Render(m.t("Assistant", "Asistente")))
 		if a.partial == "" {
-			rows = append(rows, st.dim.Render("…esperando respuesta (Esc cancela)"))
+			rows = append(rows, st.dim.Render(m.t("…waiting for the reply (Esc cancels)", "…esperando respuesta (Esc cancela)")))
 		} else {
 			rows = append(rows, renderAssistText(a.partial, st, w, true)...)
 		}
 	}
 	if a.diff != "" {
-		rows = append(rows, st.title.Render("── propuesta ──"))
+		rows = append(rows, st.title.Render(m.t("── proposal ──", "── propuesta ──")))
 		for _, l := range strings.Split(strings.TrimRight(a.diff, "\n"), "\n") {
 			rows = append(rows, wrap(colorDiff(l, st), w)...)
 		}
 		e := m.errorsAfter()
-		line := fmt.Sprintf("Tras aplicarla: %s.", count(e, "error", "errores"))
+		line := fmt.Sprintf(m.t("After applying it: %s.", "Tras aplicarla: %s."), count(e, m.t("error", "error"), m.t("errors", "errores")))
 		if e > 0 {
 			line = st.err.Render(line)
 		} else {
@@ -461,12 +463,12 @@ func colorDiff(l string, st styles) string {
 	return l
 }
 
-// configFence son los lenguajes de bloque que el núcleo toma por configuración (core/assist.go).
+// configFence are the fence languages the core takes as configuration (core/assist.go).
 var configFence = map[string]bool{"": true, "haproxy": true, "cfg": true, "conf": true, "haproxy.cfg": true}
 
-// renderAssistText pinta una respuesta: el markdown mínimo con estilos, los
-// bloques de código tal cual y, en lugar de los bloques de configuración
-// completa, una línea que remite al diff de la propuesta.
+// renderAssistText paints a reply: the minimal markdown styled, code blocks
+// as they are and, in place of full configuration blocks, a line pointing to
+// the proposal diff.
 func renderAssistText(text string, st styles, width int, streaming bool) []string {
 	var rows []string
 	lines := strings.Split(strings.ReplaceAll(text, "\r\n", "\n"), "\n")
@@ -490,11 +492,11 @@ func renderAssistText(text string, st styles, width int, streaming bool) []strin
 		if configFence[lang] {
 			switch {
 			case open && streaming:
-				rows = append(rows, st.dim.Render("[escribiendo la configuración propuesta…]"))
+				rows = append(rows, st.dim.Render(st.t("[writing the proposed configuration…]", "[escribiendo la configuración propuesta…]")))
 			case open:
-				rows = append(rows, st.dim.Render("[configuración cortada: se descarta]"))
+				rows = append(rows, st.dim.Render(st.t("[configuration cut off: discarded]", "[configuración cortada: se descarta]")))
 			default:
-				rows = append(rows, st.dim.Render(fmt.Sprintf("[configuración propuesta: %d líneas; se muestra como diff]", len(body))))
+				rows = append(rows, st.dim.Render(fmt.Sprintf(st.t("[proposed configuration: %d lines; shown as a diff]", "[configuración propuesta: %d líneas; se muestra como diff]"), len(body))))
 			}
 		} else {
 			for _, b := range body {
@@ -506,37 +508,37 @@ func renderAssistText(text string, st styles, width int, streaming bool) []strin
 	return rows
 }
 
-// viewAssist es el panel completo: registro con scroll y, debajo, la línea de entrada o la pregunta de confirmación.
+// viewAssist is the whole pane: a scrolling log and, below, the input line or the confirmation question.
 func (m Model) viewAssist(h int) string {
 	a := m.assist
 	var foot string
 	switch a.mode {
 	case assistConfirm:
-		foot = m.st.warn.Render("¿Aplicar y guardar? [y/N]")
+		foot = m.st.warn.Render(m.t("Apply and save? [y/N]", "¿Aplicar y guardar? [y/N]"))
 	case assistStreaming:
-		foot = m.st.dim.Render("Recibiendo la respuesta… Esc cancela")
+		foot = m.st.dim.Render(m.t("Receiving the reply… Esc cancels", "Recibiendo la respuesta… Esc cancela"))
 	default:
 		foot = a.input.View()
 	}
-	notice := m.st.dim.Render("Se envía la configuración a la API de Anthropic" + modelSuffix(m.opts.AssistModel) + ".")
+	notice := m.st.dim.Render(m.t("The configuration is sent to the Anthropic API", "Se envía la configuración a la API de Anthropic") + m.modelSuffix(m.opts.AssistModel) + ".")
 	body := a.vp.View() + "\n" + notice + "\n" + foot
 	return m.st.paneFocus.Width(m.width - 2).Height(h + 1).Render(m.titled(m.assistTitle(), body))
 }
 
-func modelSuffix(model string) string {
+func (m Model) modelSuffix(model string) string {
 	if model == "" {
 		return ""
 	}
-	return " (modelo " + model + ")"
+	return m.t(" (model ", " (modelo ") + model + ")"
 }
 
-// assistStatus es la ayuda del pie en la vista del asistente.
+// assistStatus is the footer help in the assistant view.
 func (m Model) assistStatus() string {
 	switch m.assist.mode {
 	case assistConfirm:
-		return m.st.dim.Render("y aplicar y guardar · otra tecla: descartar · ↑/↓ desplazar")
+		return m.st.dim.Render(m.t("y apply and save · any other key: discard · ↑/↓ scroll", "y aplicar y guardar · otra tecla: descartar · ↑/↓ desplazar"))
 	case assistStreaming:
-		return m.st.dim.Render("esc cancelar · ↑/↓ desplazar")
+		return m.st.dim.Render(m.t("esc cancel · ↑/↓ scroll", "esc cancelar · ↑/↓ desplazar"))
 	}
-	return m.st.dim.Render("enter enviar · esc volver · ↑/↓ PgUp/PgDn desplazar · ctrl+c salir")
+	return m.st.dim.Render(m.t("enter send · esc back · ↑/↓ PgUp/PgDn scroll · ctrl+c quit", "enter enviar · esc volver · ↑/↓ PgUp/PgDn desplazar · ctrl+c salir"))
 }

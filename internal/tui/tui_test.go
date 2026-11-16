@@ -39,7 +39,7 @@ func loader(text string) func() ([]core.Source, error) {
 	return func() ([]core.Source, error) { return []core.Source{{Path: "/tmp/x.cfg", Text: text}}, nil }
 }
 
-// model carga la configuración y devuelve el modelo listo, con tamaño de pantalla.
+// model loads the configuration and returns the ready model, with a screen size.
 func model(t *testing.T, text string) Model {
 	t.Helper()
 	m := New(Options{Load: loader(text), NoWatch: true, Editor: "vi"})
@@ -82,10 +82,10 @@ func TestNavigationSkipsFileHeaders(t *testing.T) {
 	tm, _ = tm.Update(m.load())
 	m = tm.(Model)
 	if len(m.items) != 4 || m.items[0].section != -1 {
-		t.Fatalf("la lista debería agrupar por archivo: %+v", m.items)
+		t.Fatalf("the list should group by file: %+v", m.items)
 	}
 	if s := m.currentSection(); s == nil || s.Name != "a" {
-		t.Fatalf("el cursor debe empezar en la primera sección, no en la cabecera: %+v", s)
+		t.Fatalf("the cursor must start on the first section, not on the header: %+v", s)
 	}
 	m = press(t, m, "j")
 	if s := m.currentSection(); s == nil || s.Name != "b" {
@@ -97,7 +97,7 @@ func TestNavigationSkipsFileHeaders(t *testing.T) {
 	}
 	m = press(t, m, "k", "k", "k")
 	if s := m.currentSection(); s == nil || s.Name != "a" {
-		t.Errorf("al inicio debe quedarse en la primera sección: %+v", s)
+		t.Errorf("at the top it must stay on the first section: %+v", s)
 	}
 }
 
@@ -106,13 +106,13 @@ func TestDetailShowsExplanationAndIssues(t *testing.T) {
 	// frontend web
 	m = press(t, m, "j")
 	out := m.View()
-	for _, want := range []string{"frontend web", "bind *:80", "default_backend nope", "El backend «nope» no existe"} {
+	for _, want := range []string{"frontend web", "bind *:80", "default_backend nope", "The backend “nope” does not exist."} {
 		if !strings.Contains(out, want) {
-			t.Errorf("falta %q en el detalle:\n%s", want, out)
+			t.Errorf("missing %q in the detail:\n%s", want, out)
 		}
 	}
 	if !strings.Contains(out, "error") {
-		t.Errorf("el resumen debe mostrar errores:\n%s", out)
+		t.Errorf("the summary must show errors:\n%s", out)
 	}
 }
 
@@ -120,17 +120,17 @@ func TestProblemsJumpHighlightsLine(t *testing.T) {
 	m := model(t, problems)
 	m = press(t, m, "p")
 	out := m.View()
-	if !strings.Contains(out, "Problemas · todos") || !strings.Contains(out, "[backend-missing]") {
-		t.Fatalf("la vista de problemas no se muestra:\n%s", out)
+	if !strings.Contains(out, "Issues · all") || !strings.Contains(out, "[backend-missing]") {
+		t.Fatalf("the issues view is not shown:\n%s", out)
 	}
-	// Filtrar por errores deja solo errores.
+	// Filtering by errors leaves only errors.
 	m = press(t, m, "f")
 	if n := len(m.filteredIssues()); n == 0 {
-		t.Fatal("el filtro de errores no debería estar vacío")
+		t.Fatal("the error filter should not be empty")
 	}
 	for _, i := range m.filteredIssues() {
 		if i.Severity != core.SevError {
-			t.Errorf("el filtro de errores dejó %v", i)
+			t.Errorf("the error filter left %v", i)
 		}
 	}
 	// Ir al problema backend-missing.
@@ -141,15 +141,15 @@ func TestProblemsJumpHighlightsLine(t *testing.T) {
 	}
 	m = press(t, m, "enter")
 	if m.view != viewSections || m.hl == nil {
-		t.Fatalf("Enter debe abrir la sección y resaltar: view=%v hl=%v", m.view, m.hl)
+		t.Fatalf("Enter must open the section and highlight: view=%v hl=%v", m.view, m.hl)
 	}
 	if s := m.currentSection(); s == nil || s.Name != "web" {
 		t.Errorf("debe seleccionar frontend web: %+v", s)
 	}
 	if !strings.Contains(m.View(), "▶") {
-		t.Errorf("la línea resaltada debe marcarse con ▶:\n%s", m.View())
+		t.Errorf("the highlighted line must be marked with ▶:\n%s", m.View())
 	}
-	// Esc o p vuelven; p dos veces cierra la vista.
+	// Esc or p go back; p twice closes the view.
 	m = press(t, m, "p", "p")
 	if m.view != viewSections {
 		t.Error("p debe alternar la vista de problemas")
@@ -160,19 +160,19 @@ func TestMapView(t *testing.T) {
 	m := model(t, problems)
 	m = press(t, m, "m")
 	out := m.View()
-	for _, want := range []string{"Mapa del tráfico", "frontend web", "si is_api", "✗ nope (no existe)", "por defecto"} {
+	for _, want := range []string{"Traffic map", "frontend web", "if is_api", "✗ nope (does not exist)", "default"} {
 		if !strings.Contains(out, want) {
-			t.Errorf("falta %q en el mapa:\n%s", want, out)
+			t.Errorf("missing %q in the map:\n%s", want, out)
 		}
 	}
 }
 
 func TestRenderMapTree(t *testing.T) {
 	a := core.Analyze("frontend f\n    bind *:80\n    use_backend b if x\n    default_backend b\n\nbackend b\n    server s1 1.1.1.1:80 check\n    server s2 1.1.1.2:80 backup\n")
-	got := strings.Join(renderMap(a, newStyles(), 100), "\n")
-	for _, want := range []string{"frontend f  *:80", "├─ si x ──▶ backend b", "└─ por defecto ──▶ backend b", "balance roundrobin", "├─ s1 1.1.1.1:80 check", "└─ s2 1.1.1.2:80 backup"} {
+	got := strings.Join(renderMap(a, newStyles(core.LangEN), 100), "\n")
+	for _, want := range []string{"frontend f  *:80", "├─ if x ──▶ backend b", "└─ default ──▶ backend b", "balance roundrobin", "├─ s1 1.1.1.1:80 check", "└─ s2 1.1.1.2:80 backup"} {
 		if !strings.Contains(got, want) {
-			t.Errorf("falta %q:\n%s", want, got)
+			t.Errorf("missing %q:\n%s", want, got)
 		}
 	}
 }
@@ -180,16 +180,16 @@ func TestRenderMapTree(t *testing.T) {
 func TestHelpAndQuit(t *testing.T) {
 	m := model(t, problems)
 	m = press(t, m, "?")
-	if !strings.Contains(m.View(), "haro · ayuda") {
-		t.Error("? debe mostrar la ayuda")
+	if !strings.Contains(m.View(), "haro · help") {
+		t.Error("? must show the help")
 	}
-	m = press(t, m, "x") // cualquier tecla vuelve
-	if strings.Contains(m.View(), "haro · ayuda") {
-		t.Error("la ayuda debe cerrarse con cualquier tecla")
+	m = press(t, m, "x") // any key goes back
+	if strings.Contains(m.View(), "haro · help") {
+		t.Error("the help must close with any key")
 	}
 	_, cmd := m.Update(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")})
 	if cmd == nil || cmd() != tea.Quit() {
-		t.Error("q debe salir")
+		t.Error("q must quit")
 	}
 }
 
@@ -209,19 +209,19 @@ func TestEditorCommand(t *testing.T) {
 	}
 	for _, c := range cases {
 		if got := strings.Join(editorCommand(c.editor, "/tmp/a.cfg", 7), " "); got != c.want {
-			t.Errorf("editorCommand(%q) = %q, quería %q", c.editor, got, c.want)
+			t.Errorf("editorCommand(%q) = %q, wanted %q", c.editor, got, c.want)
 		}
 	}
 }
 
 func TestEditUsesSelectionAndHighlight(t *testing.T) {
 	m := model(t, problems)
-	m = press(t, m, "j") // frontend web, cabecera en la línea 7
+	m = press(t, m, "j") // frontend web, header on line 7
 	_, cmd := m.edit()
 	if cmd == nil {
 		t.Fatal("e debe lanzar el editor")
 	}
-	// Con una línea resaltada, el editor abre esa línea.
+	// With a highlighted line, the editor opens that line.
 	m.hl = &lineRef{file: 0, line: 11}
 	if args := editorCommand(m.opts.Editor, m.srcs[m.hl.file].Path, m.hl.line); args[1] != "+11" {
 		t.Errorf("args = %v", args)
@@ -244,9 +244,9 @@ func TestNoColorEnv(t *testing.T) {
 	}
 }
 
-// Recarga automática: al cambiar el archivo, la interfaz muestra el contenido
-// nuevo sin que el usuario haga nada. Se ejecuta con el programa real de
-// Bubble Tea (teatest).
+// Automatic reload: when the file changes, the interface shows the content
+// without the user doing anything. It runs with the real Bubble Tea program
+// (teatest).
 func TestWatchReloadsOnFileChange(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "haproxy.cfg")
@@ -274,7 +274,7 @@ func TestLoadErrorIsShown(t *testing.T) {
 	var tm tea.Model = m
 	tm, _ = tm.Update(tea.WindowSizeMsg{Width: 80, Height: 20})
 	tm, _ = tm.Update(m.load())
-	if out := tm.View(); !strings.Contains(out, "No se pudo leer la configuración") {
+	if out := tm.View(); !strings.Contains(out, "Could not read the configuration") {
 		t.Errorf("el error de carga debe mostrarse:\n%s", out)
 	}
 }
@@ -304,8 +304,8 @@ func TestListScrollIsRemembered(t *testing.T) {
 	}
 }
 
-// Con configuraciones reales (si se descargó el corpus) ninguna vista debe
-// fallar, con cualquier ancho de pantalla.
+// With real configurations (if the corpus was downloaded) no view must
+// fail, at any screen width.
 func TestCorpusRenders(t *testing.T) {
 	files, _ := filepath.Glob("../../core/testdata/corpus/*/*.cfg")
 	deep, _ := filepath.Glob("../../core/testdata/corpus/*/*/*.cfg")
@@ -339,10 +339,10 @@ func TestDetailInEnglish(t *testing.T) {
 	out := tm.View()
 	for _, want := range []string{"The backend “nope” does not exist.", "Traffic entry point", "Default backend"} {
 		if !strings.Contains(out, want) {
-			t.Errorf("falta %q en el detalle en inglés:\n%s", want, out)
+			t.Errorf("missing %q in the English detail:\n%s", want, out)
 		}
 	}
 	if strings.Contains(out, "no existe") {
-		t.Errorf("restos de español:\n%s", out)
+		t.Errorf("Spanish leftovers:\n%s", out)
 	}
 }

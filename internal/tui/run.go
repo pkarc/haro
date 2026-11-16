@@ -4,7 +4,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-// Run abre la interfaz a pantalla completa y bloquea hasta que el usuario sale.
+// Run opens the interface full screen and blocks until the user quits.
 func Run(opts Options) error {
 	p := tea.NewProgram(New(opts), tea.WithAltScreen())
 	_, err := p.Run()

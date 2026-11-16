@@ -7,14 +7,14 @@ import (
 	"strings"
 )
 
-// editorCommand construye la orden para abrir file en la línea dada con el
-// editor indicado (normalmente $VISUAL o $EDITOR; puede incluir argumentos).
-// Cada editor recibe la línea a su manera:
+// editorCommand builds the command to open file at the given line with the
+// given editor (normally $VISUAL or $EDITOR; it may include arguments).
+// Each editor takes the line its own way:
 //
-//	vim, nvim, vi, nano, emacs, micro, kak…  +N archivo
-//	code, codium, cursor                      --wait -g archivo:N
-//	hx                                        archivo:N
-//	subl                                      --wait archivo:N
+//	vim, nvim, vi, nano, emacs, micro, kak…  +N file
+//	code, codium, cursor                      --wait -g file:N
+//	hx                                        file:N
+//	subl                                      --wait file:N
 func editorCommand(editor, file string, line int) []string {
 	parts := strings.Fields(editor)
 	if len(parts) == 0 {
@@ -31,7 +31,7 @@ func editorCommand(editor, file string, line int) []string {
 	return append(parts, fmt.Sprintf("+%d", line), file)
 }
 
-// defaultEditor elige el editor del entorno.
+// defaultEditor picks the editor from the environment.
 func defaultEditor() string {
 	for _, v := range []string{"VISUAL", "EDITOR"} {
 		if e := strings.TrimSpace(os.Getenv(v)); e != "" {

@@ -1,5 +1,5 @@
-// Package tui es la interfaz de terminal de haro (Bubble Tea). Solo presenta:
-// toda la lógica de HAProxy viene de core.
+// Package tui is haro's terminal interface (Bubble Tea). It only presents:
+// all HAProxy logic comes from core.
 package tui
 
 import (
@@ -11,9 +11,10 @@ import (
 	"github.com/pkarc/haro/core"
 )
 
-// styles agrupa los estilos de la interfaz. Los colores son adaptativos: cada
-// uno tiene variante para terminal clara y oscura.
+// styles groups the interface styles and the interface language. Colors are
+// adaptive: each one has a variant for light and dark terminals.
 type styles struct {
+	lang                               core.Lang
 	title, dim, bold, code             lipgloss.Style
 	err, warn, info, ok                lipgloss.Style
 	pane, paneFocus                    lipgloss.Style
@@ -24,9 +25,10 @@ func ac(light, dark string) lipgloss.AdaptiveColor {
 	return lipgloss.AdaptiveColor{Light: light, Dark: dark}
 }
 
-func newStyles() styles {
+func newStyles(lang core.Lang) styles {
 	border := lipgloss.RoundedBorder()
 	return styles{
+		lang:      lang,
 		title:     lipgloss.NewStyle().Bold(true),
 		dim:       lipgloss.NewStyle().Foreground(ac("#6b7280", "#9ca3af")),
 		bold:      lipgloss.NewStyle().Bold(true),
@@ -45,7 +47,7 @@ func newStyles() styles {
 	}
 }
 
-// sectionColor devuelve el color de un tipo de sección según la base de conocimiento.
+// sectionColor returns the color of a section type according to the knowledge base.
 func sectionColor(typ string) lipgloss.Style {
 	if info, ok := core.KB.Sections[typ]; ok && info.Color != "" {
 		return lipgloss.NewStyle().Foreground(lipgloss.Color(info.Color))
@@ -63,18 +65,18 @@ func (s styles) sev(sev core.Severity) lipgloss.Style {
 	return s.info
 }
 
-func sevLabel(sev core.Severity) string {
+func (s styles) sevLabel(sev core.Severity) string {
 	switch sev {
 	case core.SevError:
 		return "error"
 	case core.SevWarn:
-		return "aviso"
+		return s.t("warning", "aviso")
 	}
-	return "sugerencia"
+	return s.t("suggestion", "sugerencia")
 }
 
-// noColor indica si hay que pintar sin colores: opción --no-color, la
-// variable NO_COLOR o un terminal «tonto».
+// noColor reports whether to draw without colors: the --no-color option, the
+// NO_COLOR variable or a "dumb" terminal.
 func noColor(flag bool) bool {
 	return flag || os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb"
 }

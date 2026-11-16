@@ -8,9 +8,9 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-// watcher avisa cuando cambian los archivos de la configuración (o aparecen
-// o desaparecen en los directorios indicados). Agrupa ráfagas de eventos, como
-// los que produce un editor al guardar.
+// watcher signals when the configuration files change (or appear or disappear
+// in the given directories). It groups bursts of events, like those an editor
+// produces when saving.
 type watcher struct {
 	w      *fsnotify.Watcher
 	Events chan struct{}
@@ -23,9 +23,8 @@ func newWatcher(files, dirs []string) (*watcher, error) {
 		return nil, err
 	}
 	w := &watcher{w: fw, Events: make(chan struct{}, 1), done: make(chan struct{})}
-	// Se vigila el directorio de cada archivo y no el archivo: los editores
-	// guardan con «escribir temporal y renombrar», que invalida la vigilancia
-	// de un archivo concreto.
+	// The directory of each file is watched, not the file: editors save with
+	// "write temp and rename", which invalidates the watch on a specific file.
 	seen := map[string]bool{}
 	for _, f := range files {
 		d := filepath.Dir(f)
