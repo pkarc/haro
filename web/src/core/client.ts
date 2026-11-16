@@ -1,7 +1,9 @@
+import { fromJson, toJson } from '@bufbuild/protobuf'
+import { ValueSchema } from '@bufbuild/protobuf/wkt'
 import { Code, ConnectError, createClient } from '@connectrpc/connect'
 import { createConnectTransport } from '@connectrpc/connect-web'
 import { ConfigService, CoreService } from '../gen/haro/v1/haro_pb'
-import type { Analysis, ApplyResult, Capabilities, CheckResult, DiffOp, Knowledge, Lang, Op, PutResult, SourceFile } from './types'
+import type { Analysis, ApplyResult, Capabilities, CheckResult, DiffOp, Knowledge, Lang, Op, ParamValue, PutResult, RenderResult, SourceFile, TechTemplate } from './types'
 
 // La interfaz no sabe con qué núcleo habla:
 //  - ConnectCoreClient: `haro serve` local (Go nativo), con el cliente
@@ -21,6 +23,14 @@ export interface CoreClient {
   // Guarda varios archivos a la vez: se valida el conjunto y se guarda todo o nada.
   putFiles(files: SourceFile[]): Promise<PutResult>
   knowledge(lang?: Lang): Promise<Knowledge>
+  /** Plantillas completas por tecnología, con sus parámetros en el idioma pedido. */
+  templates(lang?: Lang): Promise<TechTemplate[]>
+  /**
+   * Renderiza una plantilla sobre los archivos: devuelve las operaciones y el
+   * resultado de aplicarlas (sin escribir). Un parámetro inválido es un Error
+   * con el mensaje del núcleo en el idioma pedido.
+   */
+  renderTemplate(files: SourceFile[], id: string, params: Record<string, ParamValue>, lang?: Lang): Promise<RenderResult>
 }
 
 // Los errores de RPC llegan como Error con el mensaje del servidor (sin el
@@ -55,6 +65,21 @@ export class ConnectCoreClient implements CoreClient {
   async diff(before: string, after: string) { return plain<DiffOp[]>((await rpc(this.core.diff({ before, after }))).ops) }
   async check(files: SourceFile[]) { return plain<CheckResult>(await rpc(this.core.check({ files }))) }
   async knowledge(lang: Lang = 'es') { return plain<Knowledge>(await rpc(this.core.getKnowledge({ lang }))) }
+
+  // El valor por defecto de un parámetro llega como google.protobuf.Value; la
+  // interfaz trabaja con su JSON (texto, número, bool o lista).
+  async templates(lang: Lang = 'es') {
+    const res = await rpc(this.core.listTemplates({ lang }))
+    return res.templates.map(t => ({
+      ...t,
+      params: t.params.map(p => ({ ...p, defaultValue: p.defaultValue ? toJson(ValueSchema, p.defaultValue) : undefined })),
+    })) as unknown as TechTemplate[]
+  }
+
+  async renderTemplate(files: SourceFile[], id: string, params: Record<string, ParamValue>, lang: Lang = 'es') {
+    const values = Object.fromEntries(Object.entries(params).map(([k, v]) => [k, fromJson(ValueSchema, v)]))
+    return plain<RenderResult>(await rpc(this.core.renderTemplate({ files, id, params: values, lang })))
+  }
 
   async getConfig() {
     try { return plain<SourceFile[]>((await this.config.getConfig({})).files) }

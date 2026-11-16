@@ -25,6 +25,41 @@ Las explicaciones usan markdown mínimo: `**negrita**` y `` `código` ``. No met
 
 Los errores de edición (`core/edit.go`, `ApplyError`) y los textos de interfaz (CLI, TUI, web) no se traducen.
 
+## Añadir una plantilla de tecnología
+
+Las plantillas por tecnología (`haro template`, Fase 8.1) son datos: un JSON por tecnología en `core/knowledge/templates/<id>.json` (el nombre del archivo es el `id`), que `core/techtemplates.go` interpreta y devuelve como operaciones de edición (`add_section` + `add_directive`) para `core.Apply`. No se escribe código para añadir una.
+
+```json
+{
+  "id": "miapp", "kind": "web",
+  "name": {"es": "Mi app", "en": "My app"},
+  "description": {"es": "…", "en": "…"},
+  "params": [
+    {"key": "servers", "type": "list", "required": true, "example": "10.0.0.1:8080",
+     "label": {"es": "Servidores (host:puerto)", "en": "Servers (host:port)"},
+     "help": {"es": "…", "en": "…"}},
+    {"key": "ssh", "type": "bool", "default": false, "label": {…}},
+    {"key": "ssh_port", "type": "int", "default": 22, "dependsOn": "ssh", "label": {…}}
+  ],
+  "sections": [
+    {"type": "backend", "lines": [
+      "mode http",
+      {"comment": {"es": "…", "en": "…"}},
+      {"if": "ssh", "text": "timeout tunnel 1h"},
+      "http-check send meth GET uri /health ver HTTP/1.1 hdr Host {{domain}}",
+      {"each": "servers", "text": "server app{{n}} {{item}} check"}
+    ]}
+  ]
+}
+```
+
+- `kind` `web`: el motor añade los parámetros `domain` y `cert` y genera los frontends (puerto 80 con redirección a HTTPS y puerto 443 con `ssl crt … alpn h2,http/1.1`) apuntando al backend sin `suffix`; si ya hay un frontend TLS en el 443 se une a él con una ACL por dominio. El JSON solo describe el backend y lo extra, y **toda la lógica específica de la tecnología va en el backend** (cabeceras, redirecciones, `timeout tunnel`, comprobaciones), porque es lo único que se puede aplicar igual cuando el frontend se comparte. `kind` `tcp`: tú describes todas las secciones (frontend con `suffix` `_in` y backend). Un frontend y un backend no pueden llamarse igual (HAProxy 3.3+).
+- Tipos de parámetro: `string` (validadores opcionales `validate`: `domain`, `time`, `bind`; por defecto, un token sin espacios, comillas, `#` ni llaves), `int` (puerto 1–65535), `bool` y `list` (elementos `host:puerto`). `required` y `default` son excluyentes; `dependsOn` apunta a un `bool` declarado antes y oculta el parámetro (en la web) e ignora su valor si está desactivado.
+- Líneas: una cadena, o un objeto con `text`, `if` (`clave`, `!clave` o varias con `&`; además de los parámetros, `logging` indica que hay destino de logs, para fijar `option tcplog`), `each` (+ `where`: `first`/`rest`) o `comment`. Marcadores: `{{clave}}`, `{{base}}` (nombre sin colisiones) y, dentro de `each`, `{{item}}`, `{{host}}`, `{{port}}`, `{{n}}`. Todo texto visible lleva `es` y `en`. El motor valida la plantilla al cargar (un marcador desconocido hace fallar el arranque y los tests).
+- No pongas `bind` públicos (`*`) a servicios internos (bases de datos, cachés): pide `bind` como parámetro obligatorio, para que el detector (`internal-port-public`) no avise. No uses directivas que falten en la LTS más antigua soportada (2.8): si hace falta una más nueva, ponla tras un parámetro opt-in.
+- Pruebas: añade el caso a `typicalParams` en `core/techtemplates_test.go` (parámetros típicos; el resultado debe pasar el detector **sin ningún aviso ni sugerencia**), ejecuta `go test ./core -run TechTemplates -update` y **revisa** los `core/testdata/templates/<id>.golden.cfg` y `.golden.en.cfg`. `TestHAProxyAcceptsTechTemplates` (ver «Validar con HAProxy») comprueba que `haproxy -c -dW` la acepta sin avisos.
+- Los textos de las plantillas son propios; si te inspiras en una configuración publicada, cítala en el mensaje del commit.
+
 ## Reglas del detector
 
 - Cada regla tiene un identificador estable en `core.Rules`. No lo renombres: lo usan `--disable`, la salida JSON y la integración continua de los usuarios.

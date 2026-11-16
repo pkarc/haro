@@ -138,6 +138,64 @@ func (c coreService) Apply(_ context.Context, req *connect.Request[harov1.ApplyR
 	return connect.NewResponse(out), nil
 }
 
+// ListTemplates lista las plantillas completas por tecnología (Nextcloud,
+// PostgreSQL…) con sus parámetros, en el idioma pedido.
+func (c coreService) ListTemplates(_ context.Context, req *connect.Request[harov1.ListTemplatesRequest]) (*connect.Response[harov1.ListTemplatesResponse], error) {
+	lang, err := requestLang(req.Msg.Lang)
+	if err != nil {
+		return nil, err
+	}
+	out := &harov1.ListTemplatesResponse{}
+	for _, t := range core.TechTemplates(lang) {
+		m, err := toProto(t, &harov1.TechTemplate{})
+		if err != nil {
+			return nil, internal(err)
+		}
+		out.Templates = append(out.Templates, m)
+	}
+	return connect.NewResponse(out), nil
+}
+
+// RenderTemplate genera las operaciones de una plantilla por tecnología y las
+// aplica sin tocar el disco, para que la interfaz muestre el diff antes de
+// aceptar. Guardar sigue siendo ConfigService.PutConfig (o Apply con las ops).
+func (c coreService) RenderTemplate(_ context.Context, req *connect.Request[harov1.RenderTemplateRequest]) (*connect.Response[harov1.RenderTemplateResponse], error) {
+	lang, err := requestLang(req.Msg.Lang)
+	if err != nil {
+		return nil, err
+	}
+	srcs := sources(req.Msg.Text, req.Msg.Files)
+	params := make(map[string]any, len(req.Msg.Params))
+	for k, v := range req.Msg.Params {
+		params[k] = v.AsInterface()
+	}
+	cfg := core.NewConfig(srcs)
+	ops, err := core.RenderTechTemplate(req.Msg.Id, params, cfg, lang)
+	if err != nil {
+		var te *core.TemplateError
+		if errors.As(err, &te) {
+			return nil, connect.NewError(connect.CodeInvalidArgument, te)
+		}
+		return nil, internal(err)
+	}
+	_, changes, err := core.Apply(cfg, ops...)
+	if err != nil {
+		return nil, internal(err) // las ops de una plantilla siempre deben aplicarse
+	}
+	out := &harov1.RenderTemplateResponse{Ops: make([]*harov1.Op, len(ops)), Changes: []*harov1.FileChange{}}
+	for i, op := range ops {
+		if out.Ops[i], err = toProto(op, &harov1.Op{}); err != nil {
+			return nil, internal(err)
+		}
+	}
+	for _, ch := range changes {
+		srcs[ch.File].Text = ch.Text
+		out.Changes = append(out.Changes, &harov1.FileChange{File: int32(ch.File), Path: ch.Path, Text: ch.Text})
+	}
+	out.Files = sourceFiles(srcs)
+	return connect.NewResponse(out), nil
+}
+
 func (c coreService) Diff(_ context.Context, req *connect.Request[harov1.DiffRequest]) (*connect.Response[harov1.DiffResponse], error) {
 	out := &harov1.DiffResponse{}
 	for _, op := range core.DiffLines(core.Normalize(req.Msg.Before), core.Normalize(req.Msg.After)) {

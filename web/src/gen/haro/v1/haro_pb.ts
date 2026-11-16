@@ -12,13 +12,15 @@
 
 import type { GenFile, GenMessage, GenService } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc, serviceDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Value } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_struct } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file haro/v1/haro.proto.
  */
 export const file_haro_v1_haro: GenFile = /*@__PURE__*/
-  fileDesc("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bnNFbnRyeRI2CgpkaXJlY3RpdmVzGAMgAygLMiIuaGFyby52MS5Lbm93bGVkZ2UuRGlyZWN0aXZlc0VudHJ5EiwKBXJ1bGVzGAQgAygLMh0uaGFyby52MS5Lbm93bGVkZ2UuUnVsZXNFbnRyeRI0Cgl0ZW1wbGF0ZXMYBSADKAsyIS5oYXJvLnYxLktub3dsZWRnZS5UZW1wbGF0ZXNFbnRyeRoxCg9DYXRlZ29yaWVzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ARpFCg1TZWN0aW9uc0VudHJ5EgsKA2tleRgBIAEoCRIjCgV2YWx1ZRgCIAEoCzIULmhhcm8udjEuU2VjdGlvbkluZm86AjgBGkkKD0RpcmVjdGl2ZXNFbnRyeRILCgNrZXkYASABKAkSJQoFdmFsdWUYAiABKAsyFi5oYXJvLnYxLkRpcmVjdGl2ZUluZm86AjgBGiwKClJ1bGVzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ARpKCg5UZW1wbGF0ZXNFbnRyeRILCgNrZXkYASABKAkSJwoFdmFsdWUYAiABKAsyGC5oYXJvLnYxLlNlY3Rpb25UZW1wbGF0ZToCOAEiLAoLRGlmZlJlcXVlc3QSDgoGYmVmb3JlGAEgASgJEg0KBWFmdGVyGAIgASgJIiIKBkRpZmZPcBIKCgJvcBgBIAEoCRIMCgR0ZXh0GAIgASgJIiwKDERpZmZSZXNwb25zZRIcCgNvcHMYASADKAsyDy5oYXJvLnYxLkRpZmZPcCJACgxDaGVja1JlcXVlc3QSDAoEdGV4dBgBIAEoCRIiCgVmaWxlcxgCIAMoCzITLmhhcm8udjEuU291cmNlRmlsZSI8CgtDaGVja1Jlc3VsdBIRCglhdmFpbGFibGUYASABKAgSCgoCb2sYAiABKAgSDgoGb3V0cHV0GAMgASgJIhgKFkdldENhcGFiaWxpdGllc1JlcXVlc3QiewoMQ2FwYWJpbGl0aWVzEg8KB3ZlcnNpb24YASABKAkSDQoFcGF0aHMYAiADKAkSEAoIY2FuX3JlYWQYAyABKAgSEQoJY2FuX3dyaXRlGAQgASgIEhEKCWNhbl9jaGVjaxgFIAEoCBITCgtoYXByb3h5X2JpbhgGIAEoCSISChBHZXRDb25maWdSZXF1ZXN0IjAKCkNvbmZpZ0ZpbGUSIgoFZmlsZXMYASADKAsyEy5oYXJvLnYxLlNvdXJjZUZpbGUiUgoQUHV0Q29uZmlnUmVxdWVzdBIMCgRwYXRoGAEgASgJEgwKBHRleHQYAiABKAkSIgoFZmlsZXMYAyADKAsyEy5oYXJvLnYxLlNvdXJjZUZpbGUiKQoJU2F2ZWRGaWxlEgwKBHBhdGgYASABKAkSDgoGYmFja3VwGAIgASgJIrYBChFQdXRDb25maWdSZXNwb25zZRINCgVzYXZlZBgBIAEoCBIMCgRwYXRoGAIgASgJEg4KBmJhY2t1cBgDIAEoCRIjCgVjaGVjaxgEIAEoCzIULmhhcm8udjEuQ2hlY2tSZXN1bHQSIQoFZmlsZXMYBSADKAsyEi5oYXJvLnYxLlNhdmVkRmlsZRINCgVlcnJvchgGIAEoCRIdCgVpc3N1ZRgHIAEoCzIOLmhhcm8udjEuSXNzdWUyqQIKC0NvcmVTZXJ2aWNlEjUKB0FuYWx5emUSFy5oYXJvLnYxLkFuYWx5emVSZXF1ZXN0GhEuaGFyby52MS5BbmFseXNpcxIzCgREaWZmEhQuaGFyby52MS5EaWZmUmVxdWVzdBoVLmhhcm8udjEuRGlmZlJlc3BvbnNlEjYKBUFwcGx5EhUuaGFyby52MS5BcHBseVJlcXVlc3QaFi5oYXJvLnYxLkFwcGx5UmVzcG9uc2USQAoMR2V0S25vd2xlZGdlEhwuaGFyby52MS5HZXRLbm93bGVkZ2VSZXF1ZXN0GhIuaGFyby52MS5Lbm93bGVkZ2USNAoFQ2hlY2sSFS5oYXJvLnYxLkNoZWNrUmVxdWVzdBoULmhhcm8udjEuQ2hlY2tSZXN1bHQy2wEKDUNvbmZpZ1NlcnZpY2USSQoPR2V0Q2FwYWJpbGl0aWVzEh8uaGFyby52MS5HZXRDYXBhYmlsaXRpZXNSZXF1ZXN0GhUuaGFyby52MS5DYXBhYmlsaXRpZXMSOwoJR2V0Q29uZmlnEhkuaGFyby52MS5HZXRDb25maWdSZXF1ZXN0GhMuaGFyby52MS5Db25maWdGaWxlEkIKCVB1dENvbmZpZxIZLmhhcm8udjEuUHV0Q29uZmlnUmVxdWVzdBoaLmhhcm8udjEuUHV0Q29uZmlnUmVzcG9uc2VCKlooZ2l0aHViLmNvbS9wa2FyYy9oYXJvL2dlbi9oYXJvL3YxO2hhcm92MWIGcHJvdG8z");
+  fileDesc("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bnNFbnRyeRI2CgpkaXJlY3RpdmVzGAMgAygLMiIuaGFyby52MS5Lbm93bGVkZ2UuRGlyZWN0aXZlc0VudHJ5EiwKBXJ1bGVzGAQgAygLMh0uaGFyby52MS5Lbm93bGVkZ2UuUnVsZXNFbnRyeRI0Cgl0ZW1wbGF0ZXMYBSADKAsyIS5oYXJvLnYxLktub3dsZWRnZS5UZW1wbGF0ZXNFbnRyeRoxCg9DYXRlZ29yaWVzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ARpFCg1TZWN0aW9uc0VudHJ5EgsKA2tleRgBIAEoCRIjCgV2YWx1ZRgCIAEoCzIULmhhcm8udjEuU2VjdGlvbkluZm86AjgBGkkKD0RpcmVjdGl2ZXNFbnRyeRILCgNrZXkYASABKAkSJQoFdmFsdWUYAiABKAsyFi5oYXJvLnYxLkRpcmVjdGl2ZUluZm86AjgBGiwKClJ1bGVzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ARpKCg5UZW1wbGF0ZXNFbnRyeRILCgNrZXkYASABKAkSJwoFdmFsdWUYAiABKAsyGC5oYXJvLnYxLlNlY3Rpb25UZW1wbGF0ZToCOAEiLAoLRGlmZlJlcXVlc3QSDgoGYmVmb3JlGAEgASgJEg0KBWFmdGVyGAIgASgJIiIKBkRpZmZPcBIKCgJvcBgBIAEoCRIMCgR0ZXh0GAIgASgJIiwKDERpZmZSZXNwb25zZRIcCgNvcHMYASADKAsyDy5oYXJvLnYxLkRpZmZPcCJACgxDaGVja1JlcXVlc3QSDAoEdGV4dBgBIAEoCRIiCgVmaWxlcxgCIAMoCzITLmhhcm8udjEuU291cmNlRmlsZSI8CgtDaGVja1Jlc3VsdBIRCglhdmFpbGFibGUYASABKAgSCgoCb2sYAiABKAgSDgoGb3V0cHV0GAMgASgJIhgKFkdldENhcGFiaWxpdGllc1JlcXVlc3QiewoMQ2FwYWJpbGl0aWVzEg8KB3ZlcnNpb24YASABKAkSDQoFcGF0aHMYAiADKAkSEAoIY2FuX3JlYWQYAyABKAgSEQoJY2FuX3dyaXRlGAQgASgIEhEKCWNhbl9jaGVjaxgFIAEoCBITCgtoYXByb3h5X2JpbhgGIAEoCSISChBHZXRDb25maWdSZXF1ZXN0IjAKCkNvbmZpZ0ZpbGUSIgoFZmlsZXMYASADKAsyEy5oYXJvLnYxLlNvdXJjZUZpbGUiUgoQUHV0Q29uZmlnUmVxdWVzdBIMCgRwYXRoGAEgASgJEgwKBHRleHQYAiABKAkSIgoFZmlsZXMYAyADKAsyEy5oYXJvLnYxLlNvdXJjZUZpbGUiKQoJU2F2ZWRGaWxlEgwKBHBhdGgYASABKAkSDgoGYmFja3VwGAIgASgJIrYBChFQdXRDb25maWdSZXNwb25zZRINCgVzYXZlZBgBIAEoCBIMCgRwYXRoGAIgASgJEg4KBmJhY2t1cBgDIAEoCRIjCgVjaGVjaxgEIAEoCzIULmhhcm8udjEuQ2hlY2tSZXN1bHQSIQoFZmlsZXMYBSADKAsyEi5oYXJvLnYxLlNhdmVkRmlsZRINCgVlcnJvchgGIAEoCRIdCgVpc3N1ZRgHIAEoCzIOLmhhcm8udjEuSXNzdWUiJAoUTGlzdFRlbXBsYXRlc1JlcXVlc3QSDAoEbGFuZxgBIAEoCSKtAQoNVGVtcGxhdGVQYXJhbRILCgNrZXkYASABKAkSDQoFbGFiZWwYAiABKAkSDAoEaGVscBgDIAEoCRIMCgR0eXBlGAQgASgJEi0KDWRlZmF1bHRfdmFsdWUYBSABKAsyFi5nb29nbGUucHJvdG9idWYuVmFsdWUSEAoIcmVxdWlyZWQYBiABKAgSEgoKZGVwZW5kc19vbhgHIAEoCRIPCgdleGFtcGxlGAggASgJInMKDFRlY2hUZW1wbGF0ZRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEgwKBGtpbmQYBCABKAkSJgoGcGFyYW1zGAUgAygLMhYuaGFyby52MS5UZW1wbGF0ZVBhcmFtIkEKFUxpc3RUZW1wbGF0ZXNSZXNwb25zZRIoCgl0ZW1wbGF0ZXMYASADKAsyFS5oYXJvLnYxLlRlY2hUZW1wbGF0ZSLmAQoVUmVuZGVyVGVtcGxhdGVSZXF1ZXN0EgoKAmlkGAEgASgJEjoKBnBhcmFtcxgCIAMoCzIqLmhhcm8udjEuUmVuZGVyVGVtcGxhdGVSZXF1ZXN0LlBhcmFtc0VudHJ5EgwKBHRleHQYAyABKAkSIgoFZmlsZXMYBCADKAsyEy5oYXJvLnYxLlNvdXJjZUZpbGUSDAoEbGFuZxgFIAEoCRpFCgtQYXJhbXNFbnRyeRILCgNrZXkYASABKAkSJQoFdmFsdWUYAiABKAsyFi5nb29nbGUucHJvdG9idWYuVmFsdWU6AjgBInwKFlJlbmRlclRlbXBsYXRlUmVzcG9uc2USGAoDb3BzGAEgAygLMgsuaGFyby52MS5PcBIiCgVmaWxlcxgCIAMoCzITLmhhcm8udjEuU291cmNlRmlsZRIkCgdjaGFuZ2VzGAMgAygLMhMuaGFyby52MS5GaWxlQ2hhbmdlMswDCgtDb3JlU2VydmljZRI1CgdBbmFseXplEhcuaGFyby52MS5BbmFseXplUmVxdWVzdBoRLmhhcm8udjEuQW5hbHlzaXMSMwoERGlmZhIULmhhcm8udjEuRGlmZlJlcXVlc3QaFS5oYXJvLnYxLkRpZmZSZXNwb25zZRI2CgVBcHBseRIVLmhhcm8udjEuQXBwbHlSZXF1ZXN0GhYuaGFyby52MS5BcHBseVJlc3BvbnNlEkAKDEdldEtub3dsZWRnZRIcLmhhcm8udjEuR2V0S25vd2xlZGdlUmVxdWVzdBoSLmhhcm8udjEuS25vd2xlZGdlEjQKBUNoZWNrEhUuaGFyby52MS5DaGVja1JlcXVlc3QaFC5oYXJvLnYxLkNoZWNrUmVzdWx0Ek4KDUxpc3RUZW1wbGF0ZXMSHS5oYXJvLnYxLkxpc3RUZW1wbGF0ZXNSZXF1ZXN0Gh4uaGFyby52MS5MaXN0VGVtcGxhdGVzUmVzcG9uc2USUQoOUmVuZGVyVGVtcGxhdGUSHi5oYXJvLnYxLlJlbmRlclRlbXBsYXRlUmVxdWVzdBofLmhhcm8udjEuUmVuZGVyVGVtcGxhdGVSZXNwb25zZTLbAQoNQ29uZmlnU2VydmljZRJJCg9HZXRDYXBhYmlsaXRpZXMSHy5oYXJvLnYxLkdldENhcGFiaWxpdGllc1JlcXVlc3QaFS5oYXJvLnYxLkNhcGFiaWxpdGllcxI7CglHZXRDb25maWcSGS5oYXJvLnYxLkdldENvbmZpZ1JlcXVlc3QaEy5oYXJvLnYxLkNvbmZpZ0ZpbGUSQgoJUHV0Q29uZmlnEhkuaGFyby52MS5QdXRDb25maWdSZXF1ZXN0GhouaGFyby52MS5QdXRDb25maWdSZXNwb25zZUIqWihnaXRodWIuY29tL3BrYXJjL2hhcm8vZ2VuL2hhcm8vdjE7aGFyb3YxYgZwcm90bzM", [file_google_protobuf_struct]);
 
 /**
  * Un único texto (text) o varios archivos (files) en orden de carga, como
@@ -1253,6 +1255,220 @@ export const PutConfigResponseSchema: GenMessage<PutConfigResponse> = /*@__PURE_
   messageDesc(file_haro_v1_haro, 36);
 
 /**
+ * @generated from message haro.v1.ListTemplatesRequest
+ */
+export type ListTemplatesRequest = Message<"haro.v1.ListTemplatesRequest"> & {
+  /**
+   * Idioma de los textos: "es" o "en". Vacío = español.
+   *
+   * @generated from field: string lang = 1;
+   */
+  lang: string;
+};
+
+/**
+ * Describes the message haro.v1.ListTemplatesRequest.
+ * Use `create(ListTemplatesRequestSchema)` to create a new message.
+ */
+export const ListTemplatesRequestSchema: GenMessage<ListTemplatesRequest> = /*@__PURE__*/
+  messageDesc(file_haro_v1_haro, 37);
+
+/**
+ * Parámetro de una plantilla por tecnología. Su valor viaja como
+ * google.protobuf.Value (ver RenderTemplateRequest.params).
+ *
+ * @generated from message haro.v1.TemplateParam
+ */
+export type TemplateParam = Message<"haro.v1.TemplateParam"> & {
+  /**
+   * @generated from field: string key = 1;
+   */
+  key: string;
+
+  /**
+   * @generated from field: string label = 2;
+   */
+  label: string;
+
+  /**
+   * @generated from field: string help = 3;
+   */
+  help: string;
+
+  /**
+   * string | int | list | bool
+   *
+   * @generated from field: string type = 4;
+   */
+  type: string;
+
+  /**
+   * Valor por defecto con el tipo del parámetro (texto, número, lista de textos
+   * o bool); ausente si no hay.
+   *
+   * @generated from field: google.protobuf.Value default_value = 5;
+   */
+  defaultValue?: Value | undefined;
+
+  /**
+   * @generated from field: bool required = 6;
+   */
+  required: boolean;
+
+  /**
+   * solo se usa si ese parámetro bool es verdadero
+   *
+   * @generated from field: string depends_on = 7;
+   */
+  dependsOn: string;
+
+  /**
+   * @generated from field: string example = 8;
+   */
+  example: string;
+};
+
+/**
+ * Describes the message haro.v1.TemplateParam.
+ * Use `create(TemplateParamSchema)` to create a new message.
+ */
+export const TemplateParamSchema: GenMessage<TemplateParam> = /*@__PURE__*/
+  messageDesc(file_haro_v1_haro, 38);
+
+/**
+ * @generated from message haro.v1.TechTemplate
+ */
+export type TechTemplate = Message<"haro.v1.TechTemplate"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name: string;
+
+  /**
+   * @generated from field: string description = 3;
+   */
+  description: string;
+
+  /**
+   * web | tcp
+   *
+   * @generated from field: string kind = 4;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: repeated haro.v1.TemplateParam params = 5;
+   */
+  params: TemplateParam[];
+};
+
+/**
+ * Describes the message haro.v1.TechTemplate.
+ * Use `create(TechTemplateSchema)` to create a new message.
+ */
+export const TechTemplateSchema: GenMessage<TechTemplate> = /*@__PURE__*/
+  messageDesc(file_haro_v1_haro, 39);
+
+/**
+ * @generated from message haro.v1.ListTemplatesResponse
+ */
+export type ListTemplatesResponse = Message<"haro.v1.ListTemplatesResponse"> & {
+  /**
+   * @generated from field: repeated haro.v1.TechTemplate templates = 1;
+   */
+  templates: TechTemplate[];
+};
+
+/**
+ * Describes the message haro.v1.ListTemplatesResponse.
+ * Use `create(ListTemplatesResponseSchema)` to create a new message.
+ */
+export const ListTemplatesResponseSchema: GenMessage<ListTemplatesResponse> = /*@__PURE__*/
+  messageDesc(file_haro_v1_haro, 40);
+
+/**
+ * Un único texto (text) o varios archivos (files), como en Apply. Los
+ * parámetros son un mapa clave -> google.protobuf.Value: es la forma de llevar
+ * valores tipados (texto, número, bool y lista) sin inventar un mensaje con un
+ * oneof por tipo, y se corresponde 1:1 con el JSON que ya usan la CLI y el MCP.
+ * El núcleo también acepta texto para número, bool y lista (p. ej. "a:1,b:2").
+ * Un parámetro inválido o ausente es INVALID_ARGUMENT con el mensaje en lang.
+ *
+ * @generated from message haro.v1.RenderTemplateRequest
+ */
+export type RenderTemplateRequest = Message<"haro.v1.RenderTemplateRequest"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: map<string, google.protobuf.Value> params = 2;
+   */
+  params: { [key: string]: Value };
+
+  /**
+   * @generated from field: string text = 3;
+   */
+  text: string;
+
+  /**
+   * @generated from field: repeated haro.v1.SourceFile files = 4;
+   */
+  files: SourceFile[];
+
+  /**
+   * @generated from field: string lang = 5;
+   */
+  lang: string;
+};
+
+/**
+ * Describes the message haro.v1.RenderTemplateRequest.
+ * Use `create(RenderTemplateRequestSchema)` to create a new message.
+ */
+export const RenderTemplateRequestSchema: GenMessage<RenderTemplateRequest> = /*@__PURE__*/
+  messageDesc(file_haro_v1_haro, 41);
+
+/**
+ * @generated from message haro.v1.RenderTemplateResponse
+ */
+export type RenderTemplateResponse = Message<"haro.v1.RenderTemplateResponse"> & {
+  /**
+   * para aplicar con Apply
+   *
+   * @generated from field: repeated haro.v1.Op ops = 1;
+   */
+  ops: Op[];
+
+  /**
+   * todos los archivos tras aplicarlas
+   *
+   * @generated from field: repeated haro.v1.SourceFile files = 2;
+   */
+  files: SourceFile[];
+
+  /**
+   * solo los que cambiaron
+   *
+   * @generated from field: repeated haro.v1.FileChange changes = 3;
+   */
+  changes: FileChange[];
+};
+
+/**
+ * Describes the message haro.v1.RenderTemplateResponse.
+ * Use `create(RenderTemplateResponseSchema)` to create a new message.
+ */
+export const RenderTemplateResponseSchema: GenMessage<RenderTemplateResponse> = /*@__PURE__*/
+  messageDesc(file_haro_v1_haro, 42);
+
+/**
  * @generated from service haro.v1.CoreService
  */
 export const CoreService: GenService<{
@@ -1306,6 +1522,28 @@ export const CoreService: GenService<{
     methodKind: "unary";
     input: typeof CheckRequestSchema;
     output: typeof CheckResultSchema;
+  },
+  /**
+   * Plantillas completas por tecnología (Nextcloud, PostgreSQL…): metadatos y parámetros.
+   *
+   * @generated from rpc haro.v1.CoreService.ListTemplates
+   */
+  listTemplates: {
+    methodKind: "unary";
+    input: typeof ListTemplatesRequestSchema;
+    output: typeof ListTemplatesResponseSchema;
+  },
+  /**
+   * Renderiza una plantilla por tecnología: devuelve las operaciones de edición
+   * y el resultado de aplicarlas (como Apply), sin escribir en disco, para
+   * poder mostrar el diff antes de aceptar.
+   *
+   * @generated from rpc haro.v1.CoreService.RenderTemplate
+   */
+  renderTemplate: {
+    methodKind: "unary";
+    input: typeof RenderTemplateRequestSchema;
+    output: typeof RenderTemplateResponseSchema;
   },
 }> = /*@__PURE__*/
   serviceDesc(file_haro_v1_haro, 0);

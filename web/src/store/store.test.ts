@@ -20,6 +20,8 @@ function fakeClient(over: Partial<CoreClient> = {}): CoreClient {
     putFile: async () => ({ saved: true }),
     putFiles: async () => ({ saved: true }),
     knowledge: async () => ({ categories: {}, sections: {}, directives: {}, rules: {}, templates: {} }),
+    templates: async () => [],
+    renderTemplate: async files => ({ ops: [], files, changes: [] }),
     ...over,
   }
 }
@@ -81,6 +83,32 @@ describe('apply', () => {
 
   it('applyChanges rechaza rutas que no encajan', () => {
     expect(() => applyChanges([F('x')], [{ file: 0, path: 'otro.cfg', text: 'y' }])).toThrow()
+  })
+})
+
+describe('plantillas por tecnología', () => {
+  const ops = [{ op: 'add_section' as const, type: 'backend', name: 'nextcloud', at: 1 }]
+
+  it('guarda una versión antes de aplicar, cambia los archivos y avisa con deshacer', async () => {
+    const apply = vi.fn(async (files: SourceFile[]) => ({ files, changes: [{ file: 0, path: 'a.cfg', text: 'A\nbackend nextcloud' }] }))
+    const s = mk(fakeClient({ apply }))
+    s.setState({ files: [F('A')] })
+    expect(await s.getState().applyTemplate(ops, 'Nextcloud')).toBe(true)
+    expect(apply).toHaveBeenCalledWith([F('A')], ops)
+    expect(s.getState().files[0].text).toBe('A\nbackend nextcloud')
+    expect(s.getState().versions[0]).toMatchObject({ label: 'Antes de añadir Nextcloud', files: [F('A')] })
+    const toast = s.getState().toasts.at(-1)!
+    expect(toast.msg).toContain('Nextcloud')
+    toast.action!.run()
+    expect(s.getState().files[0].text).toBe('A')
+  })
+
+  it('si apply falla no cambia nada ni avisa de éxito', async () => {
+    const s = mk(fakeClient({ apply: async () => { throw new Error('operación 1: no existe') } }))
+    s.setState({ files: [F('A')] })
+    expect(await s.getState().applyTemplate(ops, 'Nextcloud')).toBe(false)
+    expect(s.getState().files[0].text).toBe('A')
+    expect(s.getState().toasts.some(t => t.msg.includes('añadida'))).toBe(false)
   })
 })
 

@@ -1,0 +1,28 @@
+{
+  "id": "homeassistant",
+  "kind": "web",
+  "name": {"es": "Home Assistant", "en": "Home Assistant"},
+  "description": {
+    "es": "Home Assistant (puerto 8123) con TLS, WebSocket (la interfaz y la app lo usan de forma permanente) y cabeceras X-Forwarded-*. En Home Assistant hay que activar http: use_x_forwarded_for y trusted_proxies con la IP de HAProxy; si no, rechaza las peticiones con 400.",
+    "en": "Home Assistant (port 8123) with TLS, WebSocket (the UI and the app keep one open) and X-Forwarded-* headers. In Home Assistant you must enable http: use_x_forwarded_for and trusted_proxies with HAProxy's IP; otherwise it rejects requests with 400."
+  },
+  "params": [
+    {"key": "servers", "type": "list", "required": true, "example": "10.0.0.20:8123",
+     "label": {"es": "Servidores de Home Assistant (host:puerto)", "en": "Home Assistant servers (host:port)"},
+     "help": {"es": "Normalmente uno, en el puerto 8123.", "en": "Usually one, on port 8123."}}
+  ],
+  "sections": [
+    {"type": "backend", "lines": [
+      "mode http",
+      "option forwardfor",
+      "http-request set-header X-Forwarded-Proto https",
+      "http-request set-header X-Forwarded-Host %[req.hdr(host)]",
+      {"comment": {"es": "WebSocket permanente (/api/websocket)", "en": "Permanent WebSocket (/api/websocket)"}},
+      "timeout tunnel 1h",
+      "option httpchk",
+      "http-check send meth GET uri / ver HTTP/1.1 hdr Host {{domain}}",
+      "http-check expect status 200",
+      {"each": "servers", "text": "server ha{{n}} {{item}} check"}
+    ]}
+  ]
+}

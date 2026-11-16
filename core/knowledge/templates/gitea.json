@@ -1,0 +1,47 @@
+{
+  "id": "gitea",
+  "kind": "web",
+  "name": {"es": "Gitea", "en": "Gitea"},
+  "description": {
+    "es": "Gitea (web en el puerto 3000) con TLS y, opcionalmente, git por SSH como TCP en el puerto que elijas (22 por defecto: si el servidor de HAProxy ya usa ese puerto para su propio SSH, cambia el de entrada). En Gitea, fija ROOT_URL a la dirección pública.",
+    "en": "Gitea (web on port 3000) with TLS and, optionally, git over SSH as TCP on the port you choose (22 by default: if the HAProxy host already uses it for its own SSH, change the entry port). In Gitea, set ROOT_URL to the public address."
+  },
+  "params": [
+    {"key": "servers", "type": "list", "required": true, "example": "10.0.0.40:3000",
+     "label": {"es": "Servidores web de Gitea (host:puerto)", "en": "Gitea web servers (host:port)"},
+     "help": {"es": "Normalmente uno, en el puerto 3000.", "en": "Usually one, on port 3000."}},
+    {"key": "ssh", "type": "bool", "default": false,
+     "label": {"es": "Publicar también git por SSH", "en": "Also publish git over SSH"},
+     "help": {"es": "Añade un frontend y un backend TCP para clonar y subir por SSH.", "en": "Adds a TCP frontend and backend to clone and push over SSH."}},
+    {"key": "ssh_port", "type": "int", "default": 22, "dependsOn": "ssh", "example": "22",
+     "label": {"es": "Puerto de entrada del SSH", "en": "SSH entry port"},
+     "help": {"es": "Puerto en el que escucha HAProxy para git por SSH.", "en": "Port HAProxy listens on for git over SSH."}},
+    {"key": "ssh_servers", "type": "list", "required": true, "dependsOn": "ssh", "example": "10.0.0.40:2222",
+     "label": {"es": "Servidores SSH de Gitea (host:puerto)", "en": "Gitea SSH servers (host:port)"},
+     "help": {"es": "El SSH integrado de Gitea suele estar en el 2222, o el sshd del servidor en el 22.", "en": "Gitea's built-in SSH is usually on 2222, or the host's sshd on 22."}}
+  ],
+  "sections": [
+    {"type": "backend", "lines": [
+      "mode http",
+      "option forwardfor",
+      "http-request set-header X-Forwarded-Proto https",
+      "option httpchk",
+      "http-check send meth GET uri / ver HTTP/1.1 hdr Host {{domain}}",
+      "http-check expect status 200",
+      {"each": "servers", "text": "server gitea{{n}} {{item}} check"}
+    ]},
+    {"type": "frontend", "suffix": "_ssh_in", "if": "ssh", "lines": [
+      {"comment": {"es": "git por SSH: TCP sin interpretar", "en": "git over SSH: plain TCP"}},
+      "bind *:{{ssh_port}}",
+      "mode tcp",
+      {"if": "logging", "text": "option tcplog"},
+      "timeout client 1h",
+      "default_backend {{base}}_ssh"
+    ]},
+    {"type": "backend", "suffix": "_ssh", "if": "ssh", "lines": [
+      "mode tcp",
+      "timeout server 1h",
+      {"each": "ssh_servers", "text": "server ssh{{n}} {{item}} check"}
+    ]}
+  ]
+}

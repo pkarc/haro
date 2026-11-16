@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { addSectionBox } from '../components/dialogs'
+import { templateBox } from '../templates/TemplateDialog'
 import { MapPanel } from '../map/MapPanel'
 import { useApp } from '../store'
 import { fileLabels } from '../store/files'
@@ -68,6 +69,7 @@ export function VisualView() {
         {addable.map(t => (
           <button key={t} className="chip" style={{ '--c': knowledge.sections[t].color } as React.CSSProperties} onClick={() => add(t)}>+ {t}</button>
         ))}
+        <button className="chip tpl-btn" data-testid="template-button" onClick={() => void templateBox()}>+ Añadir desde plantilla de tecnología</button>
       </div>
       <MapPanel analysis={analysis} />
       {pre.length > 0 && (

@@ -81,7 +81,7 @@ func TestGoldenMulti(t *testing.T) {
 	entries, _ := filepath.Glob("testdata/*")
 	found := 0
 	for _, dir := range entries {
-		if fi, err := os.Stat(dir); err != nil || !fi.IsDir() || filepath.Base(dir) == "corpus" {
+		if fi, err := os.Stat(dir); err != nil || !fi.IsDir() || filepath.Base(dir) == "corpus" || filepath.Base(dir) == "templates" {
 			continue
 		}
 		found++

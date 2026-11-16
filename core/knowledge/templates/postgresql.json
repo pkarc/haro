@@ -1,0 +1,41 @@
+{
+  "id": "postgresql",
+  "kind": "tcp",
+  "name": {"es": "PostgreSQL", "en": "PostgreSQL"},
+  "description": {
+    "es": "PostgreSQL por TCP (puerto 5432) con comprobación de salud pgsql-check. Por defecto solo el primer servidor recibe tráfico y los demás quedan de respaldo (backup): HAProxy no distingue primario de réplica, así que repartir escrituras entre ellos es peligroso. No termina TLS: PostgreSQL negocia TLS dentro del protocolo y pasa tal cual.",
+    "en": "PostgreSQL over TCP (port 5432) with a pgsql-check health check. By default only the first server gets traffic and the rest are backups: HAProxy cannot tell primary from replica, so spreading writes across them is dangerous. It does not terminate TLS: PostgreSQL negotiates TLS inside the protocol and passes through unchanged."
+  },
+  "params": [
+    {"key": "bind", "type": "string", "required": true, "validate": "bind", "example": "10.0.0.5:5432",
+     "label": {"es": "Dirección de escucha (dirección:puerto)", "en": "Listen address (address:port)"},
+     "help": {"es": "Usa la IP de la red interna, no «*»: así no queda abierto a todas las interfaces.", "en": "Use the internal network IP, not “*”, so it is not open on every interface."}},
+    {"key": "servers", "type": "list", "required": true, "example": "10.0.0.10:5432",
+     "label": {"es": "Servidores PostgreSQL (host:puerto)", "en": "PostgreSQL servers (host:port)"},
+     "help": {"es": "El primero es el primario; uno por línea.", "en": "The first is the primary; one per line."}},
+    {"key": "check_user", "type": "string", "default": "haproxy", "example": "haproxy",
+     "label": {"es": "Usuario de la comprobación", "en": "Health-check user"},
+     "help": {"es": "Usuario con el que pgsql-check abre la conexión; no necesita permisos.", "en": "User pgsql-check connects as; it needs no privileges."}},
+    {"key": "failover", "type": "bool", "default": true,
+     "label": {"es": "Solo el primero recibe tráfico (el resto, de respaldo)", "en": "Only the first receives traffic (the rest are backups)"},
+     "help": {"es": "Desactívalo solo si todos los servidores son equivalentes (por ejemplo, réplicas de lectura).", "en": "Disable it only if all servers are equivalent (for example, read replicas)."}}
+  ],
+  "sections": [
+    {"type": "frontend", "suffix": "_in", "lines": [
+      "bind {{bind}}",
+      "mode tcp",
+      {"if": "logging", "text": "option tcplog"},
+      "timeout client 30m",
+      "default_backend {{base}}"
+    ]},
+    {"type": "backend", "lines": [
+      "mode tcp",
+      "balance leastconn",
+      "timeout server 30m",
+      "option pgsql-check user {{check_user}}",
+      {"each": "servers", "where": "first", "text": "server pg{{n}} {{item}} check inter 3s fall 3 rise 2"},
+      {"each": "servers", "where": "rest", "if": "failover", "text": "server pg{{n}} {{item}} check inter 3s fall 3 rise 2 backup"},
+      {"each": "servers", "where": "rest", "if": "!failover", "text": "server pg{{n}} {{item}} check inter 3s fall 3 rise 2"}
+    ]}
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "id": "nextcloud",
+  "kind": "web",
+  "name": {"es": "Nextcloud", "en": "Nextcloud"},
+  "description": {
+    "es": "Nextcloud con TLS, cabecera HSTS, redirección de /.well-known/carddav y /.well-known/caldav a /remote.php/dav/, y un timeout de servidor largo para subidas grandes (HAProxy no limita el tamaño del cuerpo). Añade el dominio a trusted_domains y la IP de HAProxy a trusted_proxies en config.php.",
+    "en": "Nextcloud with TLS, an HSTS header, /.well-known/carddav and /.well-known/caldav redirected to /remote.php/dav/, and a long server timeout for large uploads (HAProxy does not limit body size). Add the domain to trusted_domains and HAProxy's IP to trusted_proxies in config.php."
+  },
+  "params": [
+    {"key": "servers", "type": "list", "required": true, "example": "10.0.0.10:80",
+     "label": {"es": "Servidores de Nextcloud (host:puerto)", "en": "Nextcloud servers (host:port)"},
+     "help": {"es": "Servidores web de Nextcloud por HTTP; uno por línea.", "en": "Nextcloud web servers over HTTP; one per line."}},
+    {"key": "hsts", "type": "bool", "default": true,
+     "label": {"es": "Enviar la cabecera HSTS", "en": "Send the HSTS header"},
+     "help": {"es": "Strict-Transport-Security durante 180 días. Actívala solo si todo el dominio va por HTTPS.", "en": "Strict-Transport-Security for 180 days. Enable it only if the whole domain is served over HTTPS."}},
+    {"key": "upload_timeout", "type": "string", "default": "10m", "validate": "time", "example": "10m",
+     "label": {"es": "Timeout de servidor para subidas grandes", "en": "Server timeout for large uploads"},
+     "help": {"es": "Tiempo que HAProxy espera la respuesta de Nextcloud (el ensamblado de archivos grandes tarda).", "en": "How long HAProxy waits for Nextcloud's response (assembling large files takes a while)."}}
+  ],
+  "sections": [
+    {"type": "backend", "lines": [
+      "mode http",
+      "option forwardfor",
+      "http-request set-header X-Forwarded-Proto https",
+      {"comment": {"es": "CardDAV y CalDAV: descubrimiento automático de clientes", "en": "CardDAV and CalDAV: automatic client discovery"}},
+      "http-request redirect location /remote.php/dav/ code 301 if { path /.well-known/carddav /.well-known/caldav }",
+      {"if": "hsts", "text": "http-response set-header Strict-Transport-Security \"max-age=15552000; includeSubDomains\""},
+      "timeout server {{upload_timeout}}",
+      "option httpchk",
+      "http-check send meth GET uri /status.php ver HTTP/1.1 hdr Host {{domain}}",
+      "http-check expect status 200",
+      {"each": "servers", "text": "server nc{{n}} {{item}} check"}
+    ]}
+  ]
+}

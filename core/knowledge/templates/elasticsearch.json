@@ -1,0 +1,34 @@
+{
+  "id": "elasticsearch",
+  "kind": "web",
+  "name": {"es": "Elasticsearch", "en": "Elasticsearch"},
+  "description": {
+    "es": "API HTTP de Elasticsearch (puerto 9200) con TLS delante de varios nodos. Cada nodo se comprueba con GET /_cluster/health: se acepta 200, o 401 si la seguridad está activa y la comprobación no lleva credenciales (indica que el nodo responde). Si la API del clúster está abierta, restringe quién puede llegar.",
+    "en": "Elasticsearch HTTP API (port 9200) with TLS in front of several nodes. Each node is checked with GET /_cluster/health: 200 is accepted, or 401 when security is on and the check has no credentials (it means the node responds). If the cluster API is open, restrict who can reach it."
+  },
+  "params": [
+    {"key": "servers", "type": "list", "required": true, "example": "10.0.0.71:9200",
+     "label": {"es": "Nodos de Elasticsearch (host:puerto)", "en": "Elasticsearch nodes (host:port)"},
+     "help": {"es": "Uno por línea.", "en": "One per line."}},
+    {"key": "ssl", "type": "bool", "default": false,
+     "label": {"es": "Los nodos usan TLS", "en": "Nodes use TLS"},
+     "help": {"es": "Actívalo si la API de los nodos es HTTPS (Elasticsearch 8 con la seguridad activada).", "en": "Enable it if the nodes' API is HTTPS (Elasticsearch 8 with security enabled)."}},
+    {"key": "ca_file", "type": "string", "dependsOn": "ssl", "example": "/etc/haproxy/certs/es-ca.pem",
+     "label": {"es": "CA para verificar los nodos (opcional)", "en": "CA to verify the nodes (optional)"},
+     "help": {"es": "Sin ella no se verifica el certificado de los nodos (el detector lo avisará).", "en": "Without it the nodes' certificate is not verified (the linter will warn)."}}
+  ],
+  "sections": [
+    {"type": "backend", "lines": [
+      "mode http",
+      "balance roundrobin",
+      "option forwardfor",
+      "http-request set-header X-Forwarded-Proto https",
+      "option httpchk",
+      "http-check send meth GET uri /_cluster/health ver HTTP/1.1 hdr Host {{domain}}",
+      "http-check expect rstatus ^(200|401)$",
+      {"each": "servers", "if": "!ssl", "text": "server es{{n}} {{item}} check"},
+      {"each": "servers", "if": "ssl&ca_file", "text": "server es{{n}} {{item}} check check-ssl ssl verify required ca-file {{ca_file}}"},
+      {"each": "servers", "if": "ssl&!ca_file", "text": "server es{{n}} {{item}} check check-ssl ssl verify none"}
+    ]}
+  ]
+}

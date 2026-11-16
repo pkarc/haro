@@ -47,6 +47,10 @@ haro explain mi.cfg
 haro explain --lang en mi.cfg           # explicaciones en inglés (también en lint, tui y mcp)
 cat mi.cfg | haro explain -
 haro diff antes.cfg despues.cfg
+haro template list                      # plantillas por tecnología (Nextcloud, PostgreSQL…)
+haro template show nextcloud            # sus parámetros
+haro template add nextcloud --param domain=cloud.example.com --param servers=10.0.0.10:80 \
+    --param cert=/etc/haproxy/certs/cloud.pem haproxy.cfg   # muestra el diff; con --write guarda
 haro serve --file /etc/haproxy/haproxy.cfg               # solo lectura
 haro serve --file /etc/haproxy/haproxy.cfg --allow-write # permite guardar
 haro serve --file haproxy.cfg --file conf.d/             # varios archivos
@@ -88,7 +92,7 @@ También hay binarios, `.deb` y `.rpm` en las [releases](https://github.com/pkar
 
 ### Servidor MCP
 
-`haro mcp` expone el análisis de haro como herramientas MCP: `haro_lint`, `haro_explain`, `haro_analyze`, `haro_diff`, `haro_check` (`haproxy -c`) y `haro_apply` (ediciones estructurales), más los recursos `haro://knowledge` y `haro://rules`. Habla las dos versiones del protocolo (el handshake `initialize` de 2025-11-25 y anteriores, y la versión sin sesión de 2026-07-28).
+`haro mcp` expone el análisis de haro como herramientas MCP: `haro_lint`, `haro_explain`, `haro_analyze`, `haro_diff`, `haro_check` (`haproxy -c`), `haro_apply` (ediciones estructurales), `haro_template_list` y `haro_template_render` (plantillas por tecnología, solo simulan), más los recursos `haro://knowledge` y `haro://rules`. Habla las dos versiones del protocolo (el handshake `initialize` de 2025-11-25 y anteriores, y la versión sin sesión de 2026-07-28).
 
 ```sh
 # Claude Code
@@ -101,6 +105,19 @@ claude mcp add haro -- haro mcp --root /etc/haproxy
 ```
 
 Seguridad: con `--root` (repetible) solo se leen y escriben rutas dentro de esos directorios (se resuelven los enlaces simbólicos). Sin `--root`, el cliente puede leer cualquier ruta que pueda leer el proceso. `haro_apply` solo escribe con `--allow-write` y `write: true`, con las mismas garantías que `haro serve`: valida la configuración completa, guarda todo o nada y deja copia `.bak`. En [`skills/haro`](skills/haro/SKILL.md) hay una skill de Claude con el flujo recomendado.
+
+### Plantillas por tecnología
+
+Cada plantilla añade los frontends y backends necesarios para publicar un servicio detrás de HAProxy, con los ajustes que esa tecnología necesita: **Proxmox VE** (TLS al backend y WebSocket de noVNC), **Home Assistant** (WebSocket, `X-Forwarded-*`), **Nextcloud** (HSTS, `/.well-known/carddav|caldav`, timeout para subidas grandes), **Jellyfin**, **Gitea** (web y, opcional, SSH por TCP), **Grafana**, **Vaultwarden**, **PostgreSQL** (`pgsql-check`), **Redis** (`tcp-check` con PING y, opcional, solo el master), **Elasticsearch** (varios nodos, `http-check` a `/_cluster/health`) y **Kubernetes API** (TCP 6443, varios control planes). Las web llevan el `bind` del 80 con redirección a HTTPS y el del 443 con `ssl crt … alpn h2,http/1.1`.
+
+```sh
+haro template show proxmox              # parámetros, tipos y valores por defecto
+haro template add nextcloud --param domain=cloud.example.com --param servers=10.0.0.10:80 \
+    --param cert=/etc/haproxy/certs/cloud.pem /etc/haproxy/haproxy.cfg
+haro template add postgresql --param bind=10.0.0.5:5432 --param servers=10.0.0.10:5432,10.0.0.11:5432 --write haproxy.cfg
+```
+
+`add` imprime el diff unificado y **no escribe**; con `--write` guarda con las mismas garantías que `haro serve` (valida la configuración completa con `haproxy -c`, escritura atómica y copia `.bak`). Las listas aceptan varios `--param` con la misma clave o valores separados por comas. La plantilla reutiliza el `global` y el `defaults` que ya existan (y solo añade los que falten), elige nombres sin colisiones (`nextcloud_2`…) y, si ya hay un frontend con TLS en el 443, se une a él con una ACL por dominio en vez de abrir otro `bind` en el mismo puerto. En la web, el botón «Añadir desde plantilla de tecnología» del modo visual abre un formulario con el diff antes de aceptar. Para Claude, `haro_template_list` y `haro_template_render` (simulan y devuelven el diff y las ops, que se aplican con `haro_apply`). En la API: `CoreService.ListTemplates` y `RenderTemplate` (los parámetros son un mapa de `google.protobuf.Value`).
 
 ### Configuraciones en varios archivos
 
@@ -182,7 +199,7 @@ El plan detallado está en [`docs/PLAN.md`](docs/PLAN.md).
 - [x] Configuraciones en varios archivos y directorios
 - [x] Test opcional con corpus de configuraciones reales
 - [ ] Ampliar la base de conocimiento con el catálogo de client-native (Apache-2.0)
-- [ ] Plantillas de backend por tecnología (PostgreSQL, Redis, Elasticsearch…)
+- [x] Plantillas por tecnología (Proxmox, Nextcloud, PostgreSQL, Redis, Elasticsearch, Kubernetes…)
 - [x] Servidor y cliente Connect generados desde `proto/` con buf (`make proto`)
 - [x] Web: modo código (CodeMirror 6), modo visual, mapa (React Flow) y panel de problemas
 - [ ] Web: asistente

@@ -1,0 +1,28 @@
+{
+  "id": "jellyfin",
+  "kind": "web",
+  "name": {"es": "Jellyfin", "en": "Jellyfin"},
+  "description": {
+    "es": "Servidor multimedia Jellyfin (puerto 8096) con TLS, WebSocket (SyncPlay y el control remoto) y comprobación de /health. En Jellyfin, añade la IP de HAProxy a «Proxies conocidos» en Redes.",
+    "en": "Jellyfin media server (port 8096) with TLS, WebSocket (SyncPlay and remote control) and a /health check. In Jellyfin, add HAProxy's IP to “Known proxies” under Networking."
+  },
+  "params": [
+    {"key": "servers", "type": "list", "required": true, "example": "10.0.0.30:8096",
+     "label": {"es": "Servidores de Jellyfin (host:puerto)", "en": "Jellyfin servers (host:port)"},
+     "help": {"es": "Normalmente uno, en el puerto 8096.", "en": "Usually one, on port 8096."}}
+  ],
+  "sections": [
+    {"type": "backend", "lines": [
+      "mode http",
+      "option forwardfor",
+      "http-request set-header X-Forwarded-Proto https",
+      "http-request set-header X-Forwarded-Host %[req.hdr(host)]",
+      {"comment": {"es": "WebSocket (SyncPlay, mando a distancia)", "en": "WebSocket (SyncPlay, remote control)"}},
+      "timeout tunnel 1h",
+      "option httpchk",
+      "http-check send meth GET uri /health ver HTTP/1.1 hdr Host {{domain}}",
+      "http-check expect status 200",
+      {"each": "servers", "text": "server jf{{n}} {{item}} check"}
+    ]}
+  ]
+}

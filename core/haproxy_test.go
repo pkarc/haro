@@ -90,8 +90,15 @@ func selfSignedPEM(t *testing.T) string {
 // directorio temporal) y devuelve si fue aceptada y la salida.
 func haproxyCheck(t *testing.T, bin string, texts []string) (bool, string) {
 	t.Helper()
+	return haproxyCheckWith(t, bin, texts, "-c")
+}
+
+// haproxyCheckWith es haproxyCheck con las opciones dadas (p. ej. -dW, que
+// convierte los avisos en error: con -c salen con código 2).
+func haproxyCheckWith(t *testing.T, bin string, texts []string, opts ...string) (bool, string) {
+	t.Helper()
 	dir := openTempDir(t)
-	args := []string{"-c"}
+	args := append([]string{}, opts...)
 	for i, txt := range texts {
 		p := filepath.Join(dir, strings.Repeat("0", 2)+string(rune('0'+i))+".cfg")
 		if err := os.WriteFile(p, []byte(txt), 0o644); err != nil {
@@ -198,4 +205,107 @@ func TestHAProxyAcceptsTemplates(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Cada plantilla por tecnología, con parámetros típicos, debe pasar haproxy -c
+// sin ningún aviso (-dW): sobre una base mínima, sobre una configuración vacía
+// y, en las web, uniéndose a un frontend TLS ya existente. Los certificados
+// son el .pem autofirmado de la prueba (también como CA de los servidores).
+func TestHAProxyAcceptsTechTemplates(t *testing.T) {
+	bin := haproxyBin(t)
+	pemPath := selfSignedPEM(t)
+	fix := func(m map[string]any) map[string]any {
+		out := map[string]any{}
+		for k, v := range m {
+			switch k {
+			case "cert", "ca_file":
+				v = pemPath
+			}
+			out[k] = v
+		}
+		return out
+	}
+	base, err := os.ReadFile("testdata/templates/base.cfg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	example, err := os.ReadFile("testdata/example.cfg")
+	if err != nil {
+		t.Fatal(err)
+	}
+	example = []byte(strings.ReplaceAll(string(example), "/etc/haproxy/certs/sitio.pem", pemPath))
+
+	check := func(t *testing.T, cfg *Config, opts ...string) {
+		t.Helper()
+		texts := make([]string, len(cfg.Files))
+		for i := range cfg.Files {
+			texts[i] = cfg.Serialize(i)
+		}
+		if ok, out := haproxyCheckWith(t, bin, texts, opts...); !ok {
+			t.Errorf("haproxy %s rechaza el resultado:\n%s\n%s", strings.Join(opts, " "), strings.Join(texts, "\n--\n"), out)
+		}
+	}
+	strict := func(t *testing.T, cfg *Config) { t.Helper(); check(t, cfg, "-c", "-dW") }
+	for _, tpl := range TechTemplates(LangES) {
+		p := fix(typicalParams[tpl.ID])
+		for _, c := range []struct {
+			name string
+			text string
+		}{{"base", string(base)}, {"vacia", ""}, {"example", string(example)}} {
+			t.Run(tpl.ID+"/"+c.name, func(t *testing.T) {
+				cfg := NewConfig([]Source{{Path: "haproxy.cfg", Text: c.text}})
+				out, _ := renderOn(t, cfg, tpl.ID, p, LangES)
+				if c.name == "example" && strings.Contains(out.Serialize(0), "mode tcp") {
+					// El defaults de example.cfg tiene option forwardfor, que HAProxy
+					// avisa de que ignora en las secciones TCP que lo heredan: es del
+					// defaults del usuario, no de la plantilla. Se exige que lo acepte.
+					check(t, out, "-c")
+					return
+				}
+				strict(t, out)
+			})
+		}
+	}
+	// Variantes de parámetros que cambian las directivas generadas.
+	variants := []struct {
+		id string
+		p  map[string]any
+	}{
+		{"proxmox", map[string]any{"domain": "pve.example.com", "cert": pemPath, "servers": "10.0.0.11:8006"}},
+		{"elasticsearch", map[string]any{"domain": "es.example.com", "cert": pemPath, "servers": "10.0.0.71:9200"}},
+		{"elasticsearch", map[string]any{"domain": "es.example.com", "cert": pemPath, "servers": "10.0.0.71:9200", "ssl": true}},
+		{"nextcloud", map[string]any{"domain": "c.example.com", "cert": pemPath, "servers": "10.0.0.10:80", "hsts": false, "upload_timeout": "90s"}},
+		{"gitea", map[string]any{"domain": "g.example.com", "cert": pemPath, "servers": "10.0.0.40:3000"}},
+		{"postgresql", map[string]any{"bind": "10.0.0.5:5432", "servers": "10.0.0.10:5432,10.0.0.11:5432,10.0.0.12:5432", "failover": false}},
+		{"redis", map[string]any{"bind": "10.0.0.5:6379", "servers": "10.0.0.20:6379"}},
+		{"kubernetes", map[string]any{"servers": "10.0.0.81:6443", "ssl_hello": false, "bind": "10.0.0.5:6443"}},
+	}
+	for i, v := range variants {
+		t.Run("variante/"+v.id+"/"+string(rune('a'+i)), func(t *testing.T) {
+			out, _ := renderOn(t, NewConfig([]Source{{Path: "haproxy.cfg", Text: string(base)}}), v.id, v.p, LangEN)
+			strict(t, out)
+		})
+	}
+	// Todas las plantillas a la vez en una misma configuración (los frontends
+	// web se unen en un único bind 443) y repetidas (nombres _2).
+	t.Run("todas-juntas", func(t *testing.T) {
+		cfg := NewConfig([]Source{{Path: "haproxy.cfg", Text: string(base)}})
+		for round := 0; round < 2; round++ {
+			for _, tpl := range TechTemplates(LangES) {
+				cfg, _ = renderOn(t, cfg, tpl.ID, fix(typicalParams[tpl.ID]), LangES)
+			}
+		}
+		strict(t, cfg)
+	})
+	// En varios archivos (global, defaults y secciones repartidos).
+	t.Run("varios-archivos", func(t *testing.T) {
+		cfg := NewConfig([]Source{
+			{Path: "00-global.cfg", Text: "global\n    daemon\n"},
+			{Path: "10-defaults.cfg", Text: "defaults\n    mode http\n    timeout connect 5s\n    timeout client 30s\n    timeout server 30s\n"},
+			{Path: "20-apps.cfg", Text: ""},
+		})
+		cfg, _ = renderOn(t, cfg, "nextcloud", fix(typicalParams["nextcloud"]), LangES)
+		cfg, _ = renderOn(t, cfg, "postgresql", fix(typicalParams["postgresql"]), LangES)
+		strict(t, cfg)
+	})
 }

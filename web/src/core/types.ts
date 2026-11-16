@@ -2,7 +2,7 @@
 // código generado con buf (src/gen); aquí solo se convierten en objetos planos
 // (sin $typeName) para que la interfaz pueda crearlos con literales, y se
 // precisan las cadenas que en el contrato son enumeraciones.
-import type { Message } from '@bufbuild/protobuf'
+import type { JsonValue, Message } from '@bufbuild/protobuf'
 import type * as pb from '../gen/haro/v1/haro_pb'
 
 type Meta = '$typeName' | '$unknown'
@@ -82,3 +82,12 @@ export interface PutResult {
   issue?: Issue
   path?: string
 }
+
+/** Valor tipado de un parámetro de plantilla: texto, número, bool o lista de textos (google.protobuf.Value en el contrato). */
+export type ParamValue = JsonValue
+export type ParamType = 'string' | 'int' | 'list' | 'bool'
+export type TemplateParam = Omit<Plain<pb.TemplateParam>, 'type' | 'defaultValue'> & { type: ParamType; defaultValue?: ParamValue }
+/** Plantilla completa por tecnología (Nextcloud, PostgreSQL…). No confundir con SectionTemplate. */
+export type TechTemplate = Omit<Plain<pb.TechTemplate>, 'kind' | 'params'> & { kind: 'web' | 'tcp'; params: TemplateParam[] }
+/** Resultado de renderizar una plantilla: las operaciones y el efecto de aplicarlas (como ApplyResult). */
+export type RenderResult = Omit<Plain<pb.RenderTemplateResponse>, 'ops'> & { ops: Op[] }

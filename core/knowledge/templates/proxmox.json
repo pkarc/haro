@@ -1,0 +1,32 @@
+{
+  "id": "proxmox",
+  "kind": "web",
+  "name": {"es": "Proxmox VE", "en": "Proxmox VE"},
+  "description": {
+    "es": "Interfaz web de Proxmox VE (puerto 8006) publicada con TLS. Los nodos hablan TLS, y las consolas noVNC usan WebSocket, así que se alarga el timeout de túnel. Con varios nodos del clúster se reparte por IP de origen.",
+    "en": "Proxmox VE web interface (port 8006) published with TLS. Nodes speak TLS, and noVNC consoles use WebSocket, so the tunnel timeout is extended. With several cluster nodes, traffic is spread by source IP."
+  },
+  "params": [
+    {"key": "servers", "type": "list", "required": true, "example": "10.0.0.11:8006",
+     "label": {"es": "Nodos de Proxmox VE (host:puerto)", "en": "Proxmox VE nodes (host:port)"},
+     "help": {"es": "Uno por línea. Cada nodo del clúster escucha en el 8006.", "en": "One per line. Every cluster node listens on 8006."}},
+    {"key": "ca_file", "type": "string", "example": "/etc/haproxy/certs/pve-root-ca.pem",
+     "label": {"es": "CA de Proxmox para verificar los nodos (opcional)", "en": "Proxmox CA to verify the nodes (optional)"},
+     "help": {"es": "Copia de /etc/pve/pve-root-ca.pem. Sin ella no se verifica el certificado de los nodos (el detector lo avisará).", "en": "Copy of /etc/pve/pve-root-ca.pem. Without it the nodes' certificate is not verified (the linter will warn)."}}
+  ],
+  "sections": [
+    {"type": "backend", "lines": [
+      "mode http",
+      "balance source",
+      "option forwardfor",
+      "http-request set-header X-Forwarded-Proto https",
+      {"comment": {"es": "noVNC y las consolas usan WebSocket: túnel largo", "en": "noVNC and consoles use WebSocket: long tunnel"}},
+      "timeout tunnel 1h",
+      "option httpchk",
+      "http-check send meth GET uri / ver HTTP/1.1 hdr Host {{domain}}",
+      "http-check expect status 200",
+      {"each": "servers", "if": "ca_file", "text": "server pve{{n}} {{item}} check check-ssl ssl verify required ca-file {{ca_file}}"},
+      {"each": "servers", "if": "!ca_file", "text": "server pve{{n}} {{item}} check check-ssl ssl verify none"}
+    ]}
+  ]
+}

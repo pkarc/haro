@@ -120,3 +120,56 @@ test('idioma: cambiar a English reanaliza y las explicaciones salen en inglés',
   await page.reload()
   await expect(page.getByTestId('directive').filter({ hasText: 'maxconn 4096' }).first()).toContainText('Maximum simultaneous connections')
 })
+
+test('añadir Nextcloud desde plantilla de tecnología cambia el texto de forma mínima', async ({ page }) => {
+  await page.getByTestId('template-button').click()
+  const dialog = page.getByRole('dialog', { name: 'Añadir desde plantilla de tecnología' })
+  await expect(dialog).toBeVisible()
+  const add = dialog.getByRole('button', { name: 'Añadir a la configuración' })
+  await expect(add).toBeDisabled()
+  await dialog.getByLabel('Tecnología').selectOption('nextcloud')
+  // Sin los obligatorios, la vista previa pide que se rellenen.
+  await expect(page.getByTestId('template-preview')).toContainText('Rellena')
+  await dialog.getByLabel('Dominio público').fill('cloud.example.com')
+  await dialog.getByLabel('Servidores de Nextcloud (host:puerto)').fill('10.0.0.10:80')
+  await dialog.getByLabel('Certificado TLS (.pem)').fill('/etc/haproxy/certs/cloud.pem')
+  // Un parámetro inválido muestra el error del núcleo y no deja confirmar.
+  await dialog.getByLabel('Servidores de Nextcloud (host:puerto)').fill('10.0.0.10')
+  await expect(page.getByRole('alert').filter({ hasText: 'no es un servidor válido' })).toBeVisible()
+  await expect(add).toBeDisabled()
+  await dialog.getByLabel('Servidores de Nextcloud (host:puerto)').fill('10.0.0.10:80')
+  // Diff del núcleo antes de aceptar.
+  const diff = page.getByTestId('template-preview').getByTestId('diff')
+  await expect(diff).toContainText('use_backend nextcloud if host_nextcloud')
+  await expect(diff.locator('[data-op="+"]').filter({ hasText: 'server nc1 10.0.0.10:80 check' })).toHaveCount(1)
+  await add.click()
+  await expect(dialog).toBeHidden()
+  await expect(page.getByTestId('section')).toHaveCount(9)
+  await expect(page.getByRole('status').filter({ hasText: 'añadida' })).toBeVisible()
+
+  const backend = [
+    'backend nextcloud',
+    '    # Nextcloud: generado con la plantilla de haro',
+    '    mode http',
+    '    option forwardfor',
+    '    http-request set-header X-Forwarded-Proto https',
+    '    # CardDAV y CalDAV: descubrimiento automático de clientes',
+    '    http-request redirect location /remote.php/dav/ code 301 if { path /.well-known/carddav /.well-known/caldav }',
+    '    http-response set-header Strict-Transport-Security "max-age=15552000; includeSubDomains"',
+    '    timeout server 10m',
+    '    option httpchk',
+    '    http-check send meth GET uri /status.php ver HTTP/1.1 hdr Host cloud.example.com',
+    '    http-check expect status 200',
+    '    server nc1 10.0.0.10:80 check',
+  ].join('\n')
+  const expected = original
+    .replace('crt /etc/haproxy/certs/sitio.pem alpn', 'crt /etc/haproxy/certs/sitio.pem crt /etc/haproxy/certs/cloud.pem alpn')
+    .replace('    default_backend web_servers\n', '    acl host_nextcloud hdr(host),field(1,:) -i cloud.example.com\n    use_backend nextcloud if host_nextcloud\n    default_backend web_servers\n')
+    .replace(/\n*$/, '\n\n' + backend + '\n')
+  expect(await fullText(page)).toBe(expected)
+
+  // La versión anterior queda guardada y «Deshacer» devuelve el original.
+  await page.getByRole('button', { name: 'Deshacer' }).first().click()
+  await expect(page.getByTestId('section')).toHaveCount(8)
+  expect(await fullText(page)).toBe(original)
+})

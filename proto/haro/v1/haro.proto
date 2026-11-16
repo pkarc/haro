@@ -9,6 +9,8 @@ syntax = "proto3";
 
 package haro.v1;
 
+import "google/protobuf/struct.proto";
+
 option go_package = "github.com/pkarc/haro/gen/haro/v1;harov1";
 
 service CoreService {
@@ -23,6 +25,12 @@ service CoreService {
   rpc GetKnowledge(GetKnowledgeRequest) returns (Knowledge);
   // Valida con el binario real de HAProxy (`haproxy -c`), si está disponible.
   rpc Check(CheckRequest) returns (CheckResult);
+  // Plantillas completas por tecnología (Nextcloud, PostgreSQL…): metadatos y parámetros.
+  rpc ListTemplates(ListTemplatesRequest) returns (ListTemplatesResponse);
+  // Renderiza una plantilla por tecnología: devuelve las operaciones de edición
+  // y el resultado de aplicarlas (como Apply), sin escribir en disco, para
+  // poder mostrar el diff antes de aceptar.
+  rpc RenderTemplate(RenderTemplateRequest) returns (RenderTemplateResponse);
 }
 
 service ConfigService {
@@ -303,4 +311,56 @@ message PutConfigResponse {
   // saved=false, el motivo en error y, según el validador, check o issue.
   string error = 6;
   Issue issue = 7; // error del detector de haro cuando no hay haproxy
+}
+
+message ListTemplatesRequest {
+  // Idioma de los textos: "es" o "en". Vacío = español.
+  string lang = 1;
+}
+
+// Parámetro de una plantilla por tecnología. Su valor viaja como
+// google.protobuf.Value (ver RenderTemplateRequest.params).
+message TemplateParam {
+  string key = 1;
+  string label = 2;
+  string help = 3;
+  string type = 4; // string | int | list | bool
+  // Valor por defecto con el tipo del parámetro (texto, número, lista de textos
+  // o bool); ausente si no hay.
+  google.protobuf.Value default_value = 5;
+  bool required = 6;
+  string depends_on = 7; // solo se usa si ese parámetro bool es verdadero
+  string example = 8;
+}
+
+message TechTemplate {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string kind = 4; // web | tcp
+  repeated TemplateParam params = 5;
+}
+
+message ListTemplatesResponse {
+  repeated TechTemplate templates = 1;
+}
+
+// Un único texto (text) o varios archivos (files), como en Apply. Los
+// parámetros son un mapa clave -> google.protobuf.Value: es la forma de llevar
+// valores tipados (texto, número, bool y lista) sin inventar un mensaje con un
+// oneof por tipo, y se corresponde 1:1 con el JSON que ya usan la CLI y el MCP.
+// El núcleo también acepta texto para número, bool y lista (p. ej. "a:1,b:2").
+// Un parámetro inválido o ausente es INVALID_ARGUMENT con el mensaje en lang.
+message RenderTemplateRequest {
+  string id = 1;
+  map<string, google.protobuf.Value> params = 2;
+  string text = 3;
+  repeated SourceFile files = 4;
+  string lang = 5;
+}
+
+message RenderTemplateResponse {
+  repeated Op ops = 1;              // para aplicar con Apply
+  repeated SourceFile files = 2;    // todos los archivos tras aplicarlas
+  repeated FileChange changes = 3;  // solo los que cambiaron
 }

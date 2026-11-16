@@ -205,7 +205,7 @@ Aceptación: cobertura del corpus por encima del 95 %; golden en inglés y espa�
 
 ## Fase 8 · Plantillas, asistente, WASM y web pública
 
-1. **Plantillas por tecnología** (`core/knowledge/templates/`): Proxmox, Home Assistant, Nextcloud, Jellyfin, Gitea, PostgreSQL, Redis, Elasticsearch, Kubernetes API… con TLS y redirección. Usar el corpus de HariSekhon como inspiración (MIT, citar).
+1. **Plantillas por tecnología** (`core/knowledge/templates/`) — **hecho (8.1)**: Proxmox VE, Home Assistant, Nextcloud, Jellyfin, Gitea, Grafana, Vaultwarden, PostgreSQL, Redis, Elasticsearch y Kubernetes API, con TLS y redirección las web. Un JSON por tecnología interpretado por `core.RenderTechTemplate` (devuelve operaciones para `Apply`); `CoreService.ListTemplates`/`RenderTemplate`, `haro template list|show|add`, herramientas MCP `haro_template_list`/`haro_template_render` y diálogo en el modo visual de la web. Validadas con `haproxy -c -dW` (LTS 3.4 y 2.8). Pendiente: los defaults del usuario con directivas solo-HTTP (`option forwardfor`) hacen que HAProxy avise en las secciones TCP que los heredan (habría que usar `defaults` con nombre y `from`).
 2. **Asistente**:
    - Construcción del contexto en el núcleo (`core.BuildPrompt(cfg, issues, request)`) y extracción de la configuración propuesta de la respuesta.
    - Llamada a la API de Anthropic en `haro serve` (clave en `ANTHROPIC_API_KEY`, nunca en el navegador) y en la TUI.

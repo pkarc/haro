@@ -229,7 +229,7 @@ func TestMCPDiffAndCheckAndResources(t *testing.T) {
 
 func TestMCPToolListHasAllTools(t *testing.T) {
 	got := strings.Join((&mcpTools{}).server().SortedNames(), ",")
-	if got != "haro_analyze,haro_apply,haro_check,haro_diff,haro_explain,haro_lint" {
+	if got != "haro_analyze,haro_apply,haro_check,haro_diff,haro_explain,haro_lint,haro_template_list,haro_template_render" {
 		t.Errorf("herramientas: %s", got)
 	}
 }

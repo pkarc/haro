@@ -17,6 +17,7 @@ Uso:
   haro lint    [rutas...]       Detecta problemas (código de salida 1 si hay errores)
   haro explain [rutas...]       Explica cada sección y directiva en lenguaje humano
   haro diff    <antes> <después> Compara dos configuraciones
+  haro template list|show|add   Plantillas completas por tecnología (Nextcloud, PostgreSQL…)
   haro serve   [opciones]       Abre la interfaz web local
   haro mcp     [opciones]       Servidor MCP por stdio (para Claude Code, Claude Desktop…)
   haro version                  Muestra la versión
@@ -52,6 +53,8 @@ func main() {
 		err = runDiff(args)
 	case "tui":
 		err = runTUI(args)
+	case "template":
+		err = runTemplate(args)
 	case "mcp":
 		err = runMCP(args)
 	case "serve":

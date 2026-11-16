@@ -1,0 +1,37 @@
+{
+  "id": "kubernetes",
+  "kind": "tcp",
+  "name": {"es": "Kubernetes API", "en": "Kubernetes API"},
+  "description": {
+    "es": "Punto de entrada del API de Kubernetes (puerto 6443) delante de varios control planes, en TCP puro: el TLS llega intacto al kube-apiserver, así que los certificados del clúster deben incluir la dirección de HAProxy. La comprobación es option ssl-hello-chk (el servidor responde a un saludo TLS) o, si lo prefieres, solo la conexión TCP. Timeouts de 1 h para watch y kubectl logs -f.",
+    "en": "Kubernetes API entry point (port 6443) in front of several control planes, as plain TCP: TLS reaches kube-apiserver untouched, so the cluster certificates must include HAProxy's address. The health check is option ssl-hello-chk (the server answers a TLS hello) or, if you prefer, just the TCP connection. 1 h timeouts for watch and kubectl logs -f."
+  },
+  "params": [
+    {"key": "bind", "type": "string", "default": "*:6443", "validate": "bind", "example": "*:6443",
+     "label": {"es": "Dirección de escucha (dirección:puerto)", "en": "Listen address (address:port)"},
+     "help": {"es": "Por defecto, todas las interfaces en el 6443.", "en": "By default, all interfaces on 6443."}},
+    {"key": "servers", "type": "list", "required": true, "example": "10.0.0.81:6443",
+     "label": {"es": "Control planes (host:puerto)", "en": "Control planes (host:port)"},
+     "help": {"es": "Uno por línea; kube-apiserver escucha en el 6443.", "en": "One per line; kube-apiserver listens on 6443."}},
+    {"key": "ssl_hello", "type": "bool", "default": true,
+     "label": {"es": "Comprobar con un saludo TLS (ssl-hello-chk)", "en": "Check with a TLS hello (ssl-hello-chk)"},
+     "help": {"es": "Si lo desactivas, solo se comprueba que el puerto acepta conexiones (tcp-check).", "en": "If disabled, it only checks that the port accepts connections (tcp-check)."}}
+  ],
+  "sections": [
+    {"type": "frontend", "suffix": "_in", "lines": [
+      "bind {{bind}}",
+      "mode tcp",
+      {"if": "logging", "text": "option tcplog"},
+      "timeout client 1h",
+      "default_backend {{base}}"
+    ]},
+    {"type": "backend", "lines": [
+      "mode tcp",
+      "balance roundrobin",
+      "timeout server 1h",
+      {"if": "ssl_hello", "text": "option ssl-hello-chk"},
+      {"if": "!ssl_hello", "text": "option tcp-check"},
+      {"each": "servers", "text": "server cp{{n}} {{item}} check inter 3s fall 3 rise 2"}
+    ]}
+  ]
+}

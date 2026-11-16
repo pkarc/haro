@@ -54,6 +54,12 @@ const (
 	CoreServiceGetKnowledgeProcedure = "/haro.v1.CoreService/GetKnowledge"
 	// CoreServiceCheckProcedure is the fully-qualified name of the CoreService's Check RPC.
 	CoreServiceCheckProcedure = "/haro.v1.CoreService/Check"
+	// CoreServiceListTemplatesProcedure is the fully-qualified name of the CoreService's ListTemplates
+	// RPC.
+	CoreServiceListTemplatesProcedure = "/haro.v1.CoreService/ListTemplates"
+	// CoreServiceRenderTemplateProcedure is the fully-qualified name of the CoreService's
+	// RenderTemplate RPC.
+	CoreServiceRenderTemplateProcedure = "/haro.v1.CoreService/RenderTemplate"
 	// ConfigServiceGetCapabilitiesProcedure is the fully-qualified name of the ConfigService's
 	// GetCapabilities RPC.
 	ConfigServiceGetCapabilitiesProcedure = "/haro.v1.ConfigService/GetCapabilities"
@@ -76,6 +82,12 @@ type CoreServiceClient interface {
 	GetKnowledge(context.Context, *connect.Request[v1.GetKnowledgeRequest]) (*connect.Response[v1.Knowledge], error)
 	// Valida con el binario real de HAProxy (`haproxy -c`), si está disponible.
 	Check(context.Context, *connect.Request[v1.CheckRequest]) (*connect.Response[v1.CheckResult], error)
+	// Plantillas completas por tecnología (Nextcloud, PostgreSQL…): metadatos y parámetros.
+	ListTemplates(context.Context, *connect.Request[v1.ListTemplatesRequest]) (*connect.Response[v1.ListTemplatesResponse], error)
+	// Renderiza una plantilla por tecnología: devuelve las operaciones de edición
+	// y el resultado de aplicarlas (como Apply), sin escribir en disco, para
+	// poder mostrar el diff antes de aceptar.
+	RenderTemplate(context.Context, *connect.Request[v1.RenderTemplateRequest]) (*connect.Response[v1.RenderTemplateResponse], error)
 }
 
 // NewCoreServiceClient constructs a client for the haro.v1.CoreService service. By default, it uses
@@ -119,16 +131,30 @@ func NewCoreServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(coreServiceMethods.ByName("Check")),
 			connect.WithClientOptions(opts...),
 		),
+		listTemplates: connect.NewClient[v1.ListTemplatesRequest, v1.ListTemplatesResponse](
+			httpClient,
+			baseURL+CoreServiceListTemplatesProcedure,
+			connect.WithSchema(coreServiceMethods.ByName("ListTemplates")),
+			connect.WithClientOptions(opts...),
+		),
+		renderTemplate: connect.NewClient[v1.RenderTemplateRequest, v1.RenderTemplateResponse](
+			httpClient,
+			baseURL+CoreServiceRenderTemplateProcedure,
+			connect.WithSchema(coreServiceMethods.ByName("RenderTemplate")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // coreServiceClient implements CoreServiceClient.
 type coreServiceClient struct {
-	analyze      *connect.Client[v1.AnalyzeRequest, v1.Analysis]
-	diff         *connect.Client[v1.DiffRequest, v1.DiffResponse]
-	apply        *connect.Client[v1.ApplyRequest, v1.ApplyResponse]
-	getKnowledge *connect.Client[v1.GetKnowledgeRequest, v1.Knowledge]
-	check        *connect.Client[v1.CheckRequest, v1.CheckResult]
+	analyze        *connect.Client[v1.AnalyzeRequest, v1.Analysis]
+	diff           *connect.Client[v1.DiffRequest, v1.DiffResponse]
+	apply          *connect.Client[v1.ApplyRequest, v1.ApplyResponse]
+	getKnowledge   *connect.Client[v1.GetKnowledgeRequest, v1.Knowledge]
+	check          *connect.Client[v1.CheckRequest, v1.CheckResult]
+	listTemplates  *connect.Client[v1.ListTemplatesRequest, v1.ListTemplatesResponse]
+	renderTemplate *connect.Client[v1.RenderTemplateRequest, v1.RenderTemplateResponse]
 }
 
 // Analyze calls haro.v1.CoreService.Analyze.
@@ -156,6 +182,16 @@ func (c *coreServiceClient) Check(ctx context.Context, req *connect.Request[v1.C
 	return c.check.CallUnary(ctx, req)
 }
 
+// ListTemplates calls haro.v1.CoreService.ListTemplates.
+func (c *coreServiceClient) ListTemplates(ctx context.Context, req *connect.Request[v1.ListTemplatesRequest]) (*connect.Response[v1.ListTemplatesResponse], error) {
+	return c.listTemplates.CallUnary(ctx, req)
+}
+
+// RenderTemplate calls haro.v1.CoreService.RenderTemplate.
+func (c *coreServiceClient) RenderTemplate(ctx context.Context, req *connect.Request[v1.RenderTemplateRequest]) (*connect.Response[v1.RenderTemplateResponse], error) {
+	return c.renderTemplate.CallUnary(ctx, req)
+}
+
 // CoreServiceHandler is an implementation of the haro.v1.CoreService service.
 type CoreServiceHandler interface {
 	// Analiza una configuración: árbol, problemas, explicaciones, herencia y topología.
@@ -169,6 +205,12 @@ type CoreServiceHandler interface {
 	GetKnowledge(context.Context, *connect.Request[v1.GetKnowledgeRequest]) (*connect.Response[v1.Knowledge], error)
 	// Valida con el binario real de HAProxy (`haproxy -c`), si está disponible.
 	Check(context.Context, *connect.Request[v1.CheckRequest]) (*connect.Response[v1.CheckResult], error)
+	// Plantillas completas por tecnología (Nextcloud, PostgreSQL…): metadatos y parámetros.
+	ListTemplates(context.Context, *connect.Request[v1.ListTemplatesRequest]) (*connect.Response[v1.ListTemplatesResponse], error)
+	// Renderiza una plantilla por tecnología: devuelve las operaciones de edición
+	// y el resultado de aplicarlas (como Apply), sin escribir en disco, para
+	// poder mostrar el diff antes de aceptar.
+	RenderTemplate(context.Context, *connect.Request[v1.RenderTemplateRequest]) (*connect.Response[v1.RenderTemplateResponse], error)
 }
 
 // NewCoreServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -208,6 +250,18 @@ func NewCoreServiceHandler(svc CoreServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(coreServiceMethods.ByName("Check")),
 		connect.WithHandlerOptions(opts...),
 	)
+	coreServiceListTemplatesHandler := connect.NewUnaryHandler(
+		CoreServiceListTemplatesProcedure,
+		svc.ListTemplates,
+		connect.WithSchema(coreServiceMethods.ByName("ListTemplates")),
+		connect.WithHandlerOptions(opts...),
+	)
+	coreServiceRenderTemplateHandler := connect.NewUnaryHandler(
+		CoreServiceRenderTemplateProcedure,
+		svc.RenderTemplate,
+		connect.WithSchema(coreServiceMethods.ByName("RenderTemplate")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/haro.v1.CoreService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CoreServiceAnalyzeProcedure:
@@ -220,6 +274,10 @@ func NewCoreServiceHandler(svc CoreServiceHandler, opts ...connect.HandlerOption
 			coreServiceGetKnowledgeHandler.ServeHTTP(w, r)
 		case CoreServiceCheckProcedure:
 			coreServiceCheckHandler.ServeHTTP(w, r)
+		case CoreServiceListTemplatesProcedure:
+			coreServiceListTemplatesHandler.ServeHTTP(w, r)
+		case CoreServiceRenderTemplateProcedure:
+			coreServiceRenderTemplateHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -247,6 +305,14 @@ func (UnimplementedCoreServiceHandler) GetKnowledge(context.Context, *connect.Re
 
 func (UnimplementedCoreServiceHandler) Check(context.Context, *connect.Request[v1.CheckRequest]) (*connect.Response[v1.CheckResult], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("haro.v1.CoreService.Check is not implemented"))
+}
+
+func (UnimplementedCoreServiceHandler) ListTemplates(context.Context, *connect.Request[v1.ListTemplatesRequest]) (*connect.Response[v1.ListTemplatesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("haro.v1.CoreService.ListTemplates is not implemented"))
+}
+
+func (UnimplementedCoreServiceHandler) RenderTemplate(context.Context, *connect.Request[v1.RenderTemplateRequest]) (*connect.Response[v1.RenderTemplateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("haro.v1.CoreService.RenderTemplate is not implemented"))
 }
 
 // ConfigServiceClient is a client for the haro.v1.ConfigService service.

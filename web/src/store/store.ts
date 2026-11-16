@@ -52,6 +52,8 @@ export interface AppState {
   setActive(i: number): void
   setText(index: number, text: string, opts?: { coalesce?: boolean }): void
   applyOps(ops: Op[]): Promise<boolean>
+  /** Aplica las operaciones de una plantilla por tecnología guardando antes una versión. */
+  applyTemplate(ops: Op[], label: string): Promise<boolean>
   undo(): void
   redo(): void
   setLang(l: Lang): Promise<void>
@@ -209,6 +211,15 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
         const p = applyQueue.then(run, run)
         applyQueue = p
         return p
+      },
+
+      // Una plantilla por tecnología es un cambio grande: se guarda una versión
+      // antes y se avisa con la opción de deshacer.
+      async applyTemplate(ops, label) {
+        get().saveVersion(`Antes de añadir ${label}`)
+        const ok = await get().applyOps(ops)
+        if (ok) get().toast(`Plantilla «${label}» añadida`, 'info', { label: 'Deshacer', run: () => get().undo() })
+        return ok
       },
 
       undo() {

@@ -1,0 +1,27 @@
+{
+  "id": "vaultwarden",
+  "kind": "web",
+  "name": {"es": "Vaultwarden", "en": "Vaultwarden"},
+  "description": {
+    "es": "Vaultwarden (gestor de contraseñas compatible con Bitwarden, puerto 80 del contenedor) con TLS, WebSocket para las notificaciones y comprobación de /alive. En Vaultwarden, fija DOMAIN a la dirección pública con https.",
+    "en": "Vaultwarden (Bitwarden-compatible password manager, container port 80) with TLS, WebSocket for notifications and an /alive check. In Vaultwarden, set DOMAIN to the public https address."
+  },
+  "params": [
+    {"key": "servers", "type": "list", "required": true, "example": "10.0.0.60:80",
+     "label": {"es": "Servidores de Vaultwarden (host:puerto)", "en": "Vaultwarden servers (host:port)"},
+     "help": {"es": "Normalmente uno. Desde la 1.29 las notificaciones van por el mismo puerto web.", "en": "Usually one. Since 1.29 notifications use the same web port."}}
+  ],
+  "sections": [
+    {"type": "backend", "lines": [
+      "mode http",
+      "option forwardfor",
+      "http-request set-header X-Forwarded-Proto https",
+      {"comment": {"es": "Notificaciones por WebSocket", "en": "Notifications over WebSocket"}},
+      "timeout tunnel 1h",
+      "option httpchk",
+      "http-check send meth GET uri /alive ver HTTP/1.1 hdr Host {{domain}}",
+      "http-check expect status 200",
+      {"each": "servers", "text": "server vw{{n}} {{item}} check"}
+    ]}
+  ]
+}

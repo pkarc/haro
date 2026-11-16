@@ -1,0 +1,43 @@
+{
+  "id": "redis",
+  "kind": "tcp",
+  "name": {"es": "Redis", "en": "Redis"},
+  "description": {
+    "es": "Redis por TCP (puerto 6379) con comprobación tcp-check: envía PING y espera +PONG. Opcionalmente solo da por buenos los servidores con role:master, para publicar el primario de una replicación. No incluye autenticación en la comprobación: si Redis exige contraseña, ajusta el tcp-check a mano.",
+    "en": "Redis over TCP (port 6379) with a tcp-check health check: it sends PING and expects +PONG. Optionally it only accepts servers with role:master, to publish the primary of a replication. The check carries no authentication: if Redis requires a password, adjust the tcp-check by hand."
+  },
+  "params": [
+    {"key": "bind", "type": "string", "required": true, "validate": "bind", "example": "10.0.0.5:6379",
+     "label": {"es": "Dirección de escucha (dirección:puerto)", "en": "Listen address (address:port)"},
+     "help": {"es": "Usa la IP de la red interna, no «*»: así no queda abierto a todas las interfaces.", "en": "Use the internal network IP, not “*”, so it is not open on every interface."}},
+    {"key": "servers", "type": "list", "required": true, "example": "10.0.0.20:6379",
+     "label": {"es": "Servidores Redis (host:puerto)", "en": "Redis servers (host:port)"},
+     "help": {"es": "Uno por línea.", "en": "One per line."}},
+    {"key": "only_master", "type": "bool", "default": false,
+     "label": {"es": "Solo el master recibe tráfico", "en": "Only the master receives traffic"},
+     "help": {"es": "Comprueba además que INFO replication diga role:master.", "en": "Also checks that INFO replication says role:master."}}
+  ],
+  "sections": [
+    {"type": "frontend", "suffix": "_in", "lines": [
+      "bind {{bind}}",
+      "mode tcp",
+      {"if": "logging", "text": "option tcplog"},
+      "timeout client 30m",
+      "default_backend {{base}}"
+    ]},
+    {"type": "backend", "lines": [
+      "mode tcp",
+      "balance first",
+      "timeout server 30m",
+      "option tcp-check",
+      "tcp-check connect",
+      "tcp-check send PING\\r\\n",
+      "tcp-check expect string +PONG",
+      {"if": "only_master", "text": "tcp-check send info\\ replication\\r\\n"},
+      {"if": "only_master", "text": "tcp-check expect string role:master"},
+      "tcp-check send QUIT\\r\\n",
+      "tcp-check expect string +OK",
+      {"each": "servers", "text": "server redis{{n}} {{item}} check inter 1s"}
+    ]}
+  ]
+}

@@ -267,3 +267,15 @@ label.btn{cursor:pointer}
 .tbtn.ro{opacity:.5}
 :focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .cm-editor :focus-visible{outline:none}
+
+/* Plantillas por tecnología */
+.tpl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:18px;align-items:start}
+.tpl-form textarea{padding:8px 10px;border-radius:8px;border:1px solid var(--line2);background:var(--bg);outline:none;resize:vertical}
+.tpl-form textarea:focus{border-color:var(--accent)}
+.tpl-form small{font-size:11px}
+.tpl-desc{margin:4px 0 10px}
+.tpl-preview{min-width:0;position:sticky;top:0}
+.tpl-preview h4{margin:0 0 8px;font-size:13px}
+.tpl-preview h5{margin:10px 0 4px;font-size:12px}
+.tpl-btn{margin-left:auto}
+@media (max-width:760px){.tpl{grid-template-columns:1fr}.tpl-preview{position:static}}

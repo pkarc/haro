@@ -1,0 +1,27 @@
+{
+  "id": "grafana",
+  "kind": "web",
+  "name": {"es": "Grafana", "en": "Grafana"},
+  "description": {
+    "es": "Grafana (puerto 3000) con TLS, WebSocket para Grafana Live y comprobación de /api/health. En Grafana, fija root_url a la dirección pública.",
+    "en": "Grafana (port 3000) with TLS, WebSocket for Grafana Live and a /api/health check. In Grafana, set root_url to the public address."
+  },
+  "params": [
+    {"key": "servers", "type": "list", "required": true, "example": "10.0.0.50:3000",
+     "label": {"es": "Servidores de Grafana (host:puerto)", "en": "Grafana servers (host:port)"},
+     "help": {"es": "Normalmente uno, en el puerto 3000.", "en": "Usually one, on port 3000."}}
+  ],
+  "sections": [
+    {"type": "backend", "lines": [
+      "mode http",
+      "option forwardfor",
+      "http-request set-header X-Forwarded-Proto https",
+      {"comment": {"es": "Grafana Live usa WebSocket", "en": "Grafana Live uses WebSocket"}},
+      "timeout tunnel 1h",
+      "option httpchk",
+      "http-check send meth GET uri /api/health ver HTTP/1.1 hdr Host {{domain}}",
+      "http-check expect status 200",
+      {"each": "servers", "text": "server grafana{{n}} {{item}} check"}
+    ]}
+  ]
+}
