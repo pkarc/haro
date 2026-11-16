@@ -12,7 +12,7 @@ haro (*HAProxy readout*) es una herramienta open source para leer, explicar, val
 - **API local**: Connect RPC (`/haro.v1.CoreService/*`, `/haro.v1.ConfigService/*`), generado con `buf` (`make proto`) desde `proto/haro/v1/haro.proto`. El código generado (`gen/`, `web/src/gen`) se commitea. La conversión núcleo↔proto vive en `cmd/haro/rpc.go`, nunca en `core`.
 - **Web**: React + Vite + TypeScript. La web solo habla con el núcleo a través de `CoreClient` (`web/src/core/client.ts`), para poder añadir después un `WasmCoreClient` (web pública sin servidor).
 - **TUI**: Bubble Tea (`haro` sin argumentos), con lipgloss y bubbles.
-- **Web pública futura** (otro repo, p. ej. `haro-cloud`): misma web, núcleo compilado a WASM, sesión en localStorage.
+- **Web pública** (repo aparte, abierto y gratuito: `haro-site`): incluye este repo como **submódulo git** (`haro/`) y declara `haro/web` como workspace de npm (una sola instalación; `resolve.dedupe` de react). La misma web con el núcleo en WASM; su código propio (`GitHubStore`, inicio de sesión, Worker de Cloudflare solo para el intercambio OAuth, GitHub App con permiso *Contents* en los repos que el usuario instale) vive allí, nunca dentro del submódulo. Por eso `web/` expone puntos de extensión (`ConfigStore`, `mountApp`). No se publica paquete npm.
 - **Seguridad de `haro serve`**: solo `127.0.0.1` por defecto, rechaza `Host` externos (DNS rebinding), escritura solo con `--allow-write`, valida la configuración completa con `haproxy -c` (o con el detector si no hay binario) antes de guardar, escritura atómica y copia `.bak`. No relajes esto.
 
 ## Estructura
