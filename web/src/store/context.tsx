@@ -10,9 +10,9 @@ export interface AppContextValue {
   client: CoreClient
   configStore: ConfigStore
   store: AppStoreApi
-  /** Contenido sobre la barra superior. */
+  /** Content above the top bar. */
   header?: ReactNode
-  /** Botones extra al final de la barra superior (antes de Ajustes). */
+  /** Extra buttons at the end of the top bar (before Settings). */
   actions?: ReactNode
 }
 
@@ -20,18 +20,18 @@ export const AppContext = createContext<AppContextValue | null>(null)
 
 export function useAppContext(): AppContextValue {
   const v = useContext(AppContext)
-  if (!v) throw new Error('Falta <App>: los componentes de haro solo funcionan dentro de ella')
+  if (!v) throw new Error('Missing <App>: haro components only work inside it')
   return v
 }
 
-/** Estado de la aplicación (zustand), con selector. Equivale al antiguo singleton `useApp`. */
+/** Application state (zustand), with a selector. */
 export function useApp<T>(selector: (s: AppState) => T): T {
   return useStore(useAppContext().store, selector)
 }
 
-/** El almacén zustand en sí, para leer o llamar acciones fuera de render (`useAppApi().getState()`). */
+/** The zustand store itself, to read or call actions outside render (`useAppApi().getState()`). */
 export const useAppApi = (): AppStoreApi => useAppContext().store
-/** El cliente del núcleo inyectado. */
+/** The injected core client. */
 export const useCoreClient = (): CoreClient => useAppContext().client
-/** El almacén de configuración inyectado. */
+/** The injected configuration store. */
 export const useConfigStore = (): ConfigStore => useAppContext().configStore

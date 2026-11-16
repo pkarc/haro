@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useT } from '../i18n/react'
 import { useApp } from '../store'
 import { useAnalysisIndex } from '../store/selectors'
 import { CodeEditor } from './CodeEditor'
@@ -6,6 +7,7 @@ import { CodeStatus } from './CodeStatus'
 import { FileTabs } from './FileTabs'
 
 export function CodeView() {
+  const t = useT()
   const files = useApp(s => s.files)
   const active = useApp(s => s.active)
   const analysis = useApp(s => s.analysis)
@@ -19,19 +21,20 @@ export function CodeView() {
   const [line, setLine] = useState(1)
   const issues = useMemo(() => analysis?.issues.filter(i => i.file === active) ?? [], [analysis, active])
   const focusHere = useMemo(() => focus && focus.file === active ? { line: focus.line, nonce: focus.nonce } : null, [focus, active])
-  // El editor hijo ya consumió la petición de salto (sus efectos corren antes).
+  // The child editor already consumed the jump request (its effects run first).
   useEffect(() => { if (focusHere) clearFocus() }, [focusHere, clearFocus])
   const file = files[active]
   if (!file) return null
   return (
     <div className="code-view">
       <FileTabs />
-      {/* key: un editor por archivo, cada uno con su estado propio */}
+      {/* key: one editor per file, each with its own state; the language is part of the key so the accessible name updates */}
       <div className="editor">
         <CodeEditor
-          key={`${active}:${file.path}`}
+          key={`${active}:${file.path}:${t.lang}`}
           value={file.text}
           knowledge={knowledge}
+          label={t('editor.label')}
           issues={issues}
           focus={focusHere}
           onChange={t => setText(active, t, { coalesce: true })}

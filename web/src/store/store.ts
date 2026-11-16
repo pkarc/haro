@@ -2,10 +2,11 @@ import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import type { CoreClient } from '../core/client'
 import type { ConfigStore, SaveResult } from '../core/configstore'
+import { makeT, setActiveLang, type T } from '../i18n'
 import { browserLang, type Analysis, type Capabilities, type Knowledge, type Lang, type Op, type SourceFile } from '../core/types'
 import { applyProposalToFiles, buildMessages, persistableChat, sanitizeChat, snapshotFor, type ChatMessage } from './chat'
 import { applyChanges, dirtyIndexes, sameFiles } from './files'
-import { SAMPLE_FILES } from './sample'
+import { sampleFiles } from './sample'
 
 export const ANALYZE_DELAY_MS = 200
 export const COALESCE_MS = 1200
@@ -18,34 +19,34 @@ export interface FocusRequest { file: number; line: number; nonce: number }
 export type Mode = 'code' | 'visual'
 
 export interface UiPrefs {
-  /** Secciones plegadas, por clave `archivo:tipo:nombre`. */
+  /** Collapsed sections, by `file:type:name` key. */
   collapsed: Record<string, boolean>
   mapOpen: boolean
-  /** Escritorio: panel del asistente abierto. */
+  /** Desktop: assistant panel open. */
   chatOpen: boolean
 }
 
 export interface AppState {
   files: SourceFile[]
   active: number
-  /** Lo último leído de disco (modo haro serve --file); null en sesión local. */
+  /** Last thing read from disk (haro serve --file mode); null in a local session. */
   disk: SourceFile[] | null
   analysis: Analysis | null
   analysisError: string
-  /** `rev` de los archivos con los que se calculó `analysis`; si no coincide con `rev`, está atrasado. */
+  /** `rev` of the files `analysis` was computed with; if it differs from `rev`, it is stale. */
   analysisRev: number
   knowledge: Knowledge | null
-  /** Idioma de las explicaciones y de los mensajes del detector (la interfaz sigue en español). */
+  /** Language of the interface, of the explanations and of the detector messages. */
   lang: Lang
   capabilities: Capabilities | null
   ready: boolean
   mode: Mode
-  /** Solo móvil: pestaña «Asistente». */
+  /** Mobile only: «Assistant» tab. */
   showAssistant: boolean
-  /** Conversación con el asistente (se guarda con el resto del estado). */
+  /** Conversation with the assistant (saved with the rest of the state). */
   chat: ChatMessage[]
   chatBusy: boolean
-  /** El usuario ya confirmó en esta sesión que la configuración se envía a Anthropic (no se guarda). */
+  /** The user already confirmed in this session that the configuration is sent to Anthropic (not saved). */
   chatAck: boolean
   undoStack: SourceFile[][]
   redoStack: SourceFile[][]
@@ -53,17 +54,17 @@ export interface AppState {
   ui: UiPrefs
   focus: FocusRequest | null
   toasts: Toast[]
-  /** Se incrementa con cada cambio de archivos; sirve para descartar respuestas viejas. */
+  /** Incremented on every change of files; used to discard stale responses. */
   rev: number
 
   init(): Promise<void>
   loadServed(served: SourceFile[] | null): void
-  /** Vuelve a leer del almacén de configuración (tras un conflicto de versión). Guarda antes una versión con lo local. */
+  /** Reads again from the configuration store (after a version conflict). Saves a version of the local state first. */
   reload(): Promise<boolean>
   setActive(i: number): void
   setText(index: number, text: string, opts?: { coalesce?: boolean }): void
   applyOps(ops: Op[]): Promise<boolean>
-  /** Aplica las operaciones de una plantilla por tecnología guardando antes una versión. */
+  /** Applies the operations of a technology template, saving a version first. */
   applyTemplate(ops: Op[], label: string): Promise<boolean>
   undo(): void
   redo(): void
@@ -72,14 +73,14 @@ export interface AppState {
   setShowAssistant(v: boolean): void
   setChatOpen(v: boolean): void
   ackChat(): void
-  /** Envía una petición al asistente y va pintando la respuesta. */
+  /** Sends a request to the assistant and renders the response as it arrives. */
   sendChat(text: string): Promise<void>
-  /** Reenvía la última petición tras un error. */
+  /** Resends the last request after an error. */
   retryChat(): Promise<void>
-  /** Corta la respuesta en curso (conserva lo recibido). */
+  /** Cuts the response in progress (keeps what was received). */
   stopChat(): void
   newChat(): void
-  /** Aplica la propuesta del mensaje `mi` (guarda antes una versión; un solo paso de deshacer). */
+  /** Applies the proposal of message `mi` (saves a version first; a single undo step). */
   applyProposal(mi: number): boolean
   discardProposal(mi: number): void
   saveVersion(label: string): void
@@ -92,7 +93,7 @@ export interface AppState {
   goto(file: number, line: number): void
   clearFocus(): void
   dirty(): number[]
-  // Guarda varios archivos a la vez: se valida el conjunto y se guarda todo o nada.
+  // Saves several files at once: the set is validated and everything or nothing is saved.
   save(indexes: number[]): Promise<SaveResult>
   markSaved(path: string, text: string): void
   toast(msg: string, kind?: Toast['kind'], action?: Toast['action']): void
@@ -104,9 +105,9 @@ export const DEFAULT_STORAGE_KEY = 'haro.v1'
 
 export interface StoreOptions {
   storage?: StateStorage
-  /** Por defecto, la del almacén de configuración (`ConfigStore.storageKey`) o `haro.v1`. */
+  /** Defaults to the configuration store's (`ConfigStore.storageKey`) or `haro.v1`. */
   storageKey?: string
-  /** Para pruebas: sin esperar el debounce real. */
+  /** For tests: without waiting for the real debounce. */
   analyzeDelay?: number
 }
 
@@ -118,32 +119,35 @@ const memoryStorage = (): StateStorage => {
 function browserStorage(): StateStorage {
   try {
     if (typeof localStorage !== 'undefined') return localStorage
-  } catch { /* almacenamiento bloqueado */ }
+  } catch { /* storage blocked */ }
   return memoryStorage()
 }
 
 const normalize = (t: string) => t.replace(/\r\n?/g, '\n')
 
 /**
- * Crea el almacén de la aplicación. Recibe el cliente del núcleo (Connect o
- * WASM, o uno falso en pruebas) y el almacén de configuración (de dónde
- * se cargan y adónde se guardan los archivos).
+ * Creates the application store. It receives the core client (Connect or
+ * WASM, or a fake one in tests) and the configuration store (where the files
+ * are loaded from and saved to).
  */
 export function createAppStore(client: CoreClient, configStore: ConfigStore, opts: StoreOptions = {}) {
   let timer: ReturnType<typeof setTimeout> | undefined
   let requestId = 0
   let toastId = 0
   let focusNonce = 0
-  // Última edición de texto, para fusionar pulsaciones seguidas en un solo paso de deshacer.
+  // Last text edit, to merge consecutive keystrokes into a single undo step.
   let lastTyping: { at: number; file: number } | null = null
   let applyQueue: Promise<unknown> = Promise.resolve()
-  // Conversación en curso: la época invalida las escrituras de una respuesta cuando se empieza otra conversación.
+  // Conversation in progress: the epoch invalidates the writes of a response when another conversation starts.
   let chatEpoch = 0
   let chatCtl: AbortController | null = null
   const delay = opts.analyzeDelay ?? ANALYZE_DELAY_MS
+  const initialLang = browserLang()
 
-  return create<AppState>()(persist((set, get) => {
-    // Cambia los archivos registrando un paso de historial (salvo `record: false`).
+  const store = create<AppState>()(persist((set, get) => {
+    // Translator for the current language (it changes when the user switches).
+    const t = (): T => makeT(get().lang)
+    // Changes the files recording a history step (unless `record: false`).
     const commit = (files: SourceFile[], o: { record?: boolean; coalesce?: boolean; file?: number } = {}) => {
       const s = get()
       if (files === s.files) return
@@ -164,8 +168,8 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
     const setProposalStatus = (chat: ChatMessage[], mi: number, status: 'applied' | 'discarded') =>
       chat.map((m, i) => i === mi && m.proposal ? { ...m, proposal: { ...m.proposal, status } } : m)
 
-    // Un turno del asistente: envía la conversación con la configuración actual
-    // y va completando el último mensaje con lo que llega por el stream.
+    // One assistant turn: sends the conversation with the current configuration
+    // and completes the last message with what arrives through the stream.
     const runChat = async () => {
       const s = get()
       const messages = buildMessages(s.chat)
@@ -192,21 +196,21 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
         patch(m => ctl.signal.aborted ? { ...m, pending: false, stopped: true } : { ...m, pending: false })
       } catch (e) {
         if (ctl.signal.aborted) patch(m => ({ ...m, pending: false, stopped: true }))
-        else patch(m => ({ ...m, pending: false, error: (e as Error).message || 'Error desconocido' }))
+        else patch(m => ({ ...m, pending: false, error: (e as Error).message || t()('state.unknownError') }))
       } finally {
         if (epoch === chatEpoch) { set({ chatBusy: false }); chatCtl = null }
       }
     }
 
     return {
-      files: SAMPLE_FILES,
+      files: sampleFiles(browserLang()),
       active: 0,
       disk: null,
       analysis: null,
       analysisError: '',
       analysisRev: -1,
       knowledge: null,
-      lang: browserLang(),
+      lang: initialLang,
       capabilities: null,
       ready: false,
       mode: 'visual',
@@ -227,7 +231,7 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
           client.capabilities().catch(() => null),
           client.knowledge(get().lang).catch(() => null),
           configStore.load().catch((e: unknown) => {
-            get().toast(`No se pudo cargar desde ${configStore.label}: ${(e as Error).message}`, 'error')
+            get().toast(t()('state.loadFailed', { label: configStore.label, msg: (e as Error).message }), 'error')
             return null
           }),
         ])
@@ -237,9 +241,9 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
         get().refreshAnalysis(true)
       },
 
-      // Si haro serve sirve archivos, sustituyen a la sesión local; salvo que
-      // la sesión guardada ya partiera exactamente de ese contenido de disco
-      // (recarga de la página con ediciones sin guardar).
+      // If haro serve serves files, they replace the local session, unless the
+      // saved session already started from exactly that disk content (page
+      // reload with unsaved edits).
       loadServed(served) {
         const s = get()
         if (!served) {
@@ -255,11 +259,11 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
       async reload() {
         let files: SourceFile[] | null
         try { files = await configStore.load() } catch (e) {
-          get().toast(`No se pudo recargar desde ${configStore.label}: ${(e as Error).message}`, 'error')
+          get().toast(t()('state.reloadFailed', { label: configStore.label, msg: (e as Error).message }), 'error')
           return false
         }
         if (!files?.length) return false
-        get().saveVersion('Antes de recargar')
+        get().saveVersion(t()('state.beforeReload'))
         set(s => ({ files: files!, disk: files, active: 0, undoStack: [], redoStack: [], rev: s.rev + 1 }))
         get().refreshAnalysis()
         return true
@@ -276,21 +280,21 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
         commit(files, { coalesce: o.coalesce, file: index })
       },
 
-      // Todas las ediciones del modo visual pasan por el núcleo (apply). Se
-      // encolan para que cada una vea el resultado de la anterior.
+      // All visual-mode edits go through the core (apply). They are queued so
+      // each one sees the result of the previous one.
       applyOps(ops) {
         const run = async (): Promise<boolean> => {
           const { files, rev } = get()
           try {
             const res = await client.apply(files, ops)
             if (get().rev !== rev) {
-              get().toast('Los archivos cambiaron mientras se aplicaba la edición; inténtalo de nuevo.', 'warn')
+              get().toast(t()('state.changedWhileApplying'), 'warn')
               return false
             }
-            if (res.changes.length) commit(applyChanges(files, res.changes))
+            if (res.changes.length) commit(applyChanges(files, res.changes, get().lang))
             return true
           } catch (e) {
-            get().toast(`No se pudo aplicar el cambio: ${(e as Error).message}`, 'warn')
+            get().toast(t()('state.applyFailed', { msg: (e as Error).message }), 'warn')
             return false
           }
         }
@@ -299,12 +303,12 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
         return p
       },
 
-      // Una plantilla por tecnología es un cambio grande: se guarda una versión
-      // antes y se avisa con la opción de deshacer.
+      // A technology template is a big change: a version is saved first and the
+      // user is notified with an undo option.
       async applyTemplate(ops, label) {
-        get().saveVersion(`Antes de añadir ${label}`)
+        get().saveVersion(t()('state.beforeTemplate', { label }))
         const ok = await get().applyOps(ops)
-        if (ok) get().toast(`Plantilla «${label}» añadida`, 'info', { label: 'Deshacer', run: () => get().undo() })
+        if (ok) get().toast(t()('state.templateAdded', { label }), 'info', { label: t()('common.undo'), run: () => get().undo() })
         return ok
       },
 
@@ -326,8 +330,9 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
         set(st => ({ active: Math.min(st.active, st.files.length - 1) }))
       },
 
-      // Cambia el idioma de los textos del núcleo: recarga el conocimiento y
-      // vuelve a analizar. Si el conocimiento no llega, se conserva el anterior.
+      // Changes the language of the interface and of the core texts: reloads the
+      // knowledge and analyzes again. If the knowledge does not arrive, the
+      // previous one is kept.
       async setLang(l) {
         if (get().lang === l) return
         set({ lang: l })
@@ -369,14 +374,14 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
         const m = get().chat[mi]
         if (!m?.proposal || m.proposal.status !== 'pending') return false
         let files: SourceFile[]
-        try { files = applyProposalToFiles(get().files, m.proposal.changes) } catch (e) {
+        try { files = applyProposalToFiles(get().files, m.proposal.changes, get().lang) } catch (e) {
           get().toast((e as Error).message, 'warn')
           return false
         }
-        get().saveVersion('Antes de aplicar propuesta del asistente')
+        get().saveVersion(t()('state.beforeProposal'))
         commit(files)
         set(st => ({ chat: setProposalStatus(st.chat, mi, 'applied') }))
-        get().toast('Propuesta del asistente aplicada', 'info', { label: 'Deshacer', run: () => get().undo() })
+        get().toast(t()('state.proposalApplied'), 'info', { label: t()('common.undo'), run: () => get().undo() })
         return true
       },
 
@@ -391,20 +396,20 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
       restoreVersion(i) {
         const v = get().versions[i]
         if (!v) return
-        get().saveVersion('Antes de restaurar')
+        get().saveVersion(t()('state.beforeRestore'))
         commit(v.files)
         set(st => ({ active: Math.min(st.active, st.files.length - 1) }))
-        get().toast(`Restaurada «${v.label}»`, 'info', { label: 'Deshacer', run: () => get().undo() })
+        get().toast(t()('state.restored', { label: v.label }), 'info', { label: t()('common.undo'), run: () => get().undo() })
       },
 
       deleteVersion(i) { set(s => ({ versions: s.versions.filter((_, k) => k !== i) })) },
 
-      // Con archivos servidos desde disco solo se puede reemplazar el contenido
-      // del archivo activo (las rutas las fija el servidor).
+      // With files served from disk only the content of the active file can be
+      // replaced (the paths are set by the server).
       importFiles(incoming) {
         if (!incoming.length) return
         const s = get()
-        get().saveVersion('Antes de importar')
+        get().saveVersion(t()('state.beforeImport'))
         let files: SourceFile[]
         if (s.disk) {
           files = s.files.slice()
@@ -414,13 +419,13 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
         }
         commit(files)
         set(st => ({ active: Math.min(st.active, st.files.length - 1) }))
-        get().toast('Configuración importada', 'info', { label: 'Deshacer', run: () => get().undo() })
+        get().toast(t()('state.imported'), 'info', { label: t()('common.undo'), run: () => get().undo() })
       },
 
       loadSample() {
-        get().saveVersion('Antes de cargar el ejemplo')
+        get().saveVersion(t()('state.beforeSample'))
         set({ disk: null })
-        commit(SAMPLE_FILES)
+        commit(sampleFiles(get().lang))
         set({ active: 0 })
       },
 
@@ -449,7 +454,7 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
       },
       dismissToast(id) { set(s => ({ toasts: s.toasts.filter(t => t.id !== id) })) },
 
-      // Análisis con debounce; las respuestas de peticiones superadas se descartan.
+      // Debounced analysis; responses of superseded requests are discarded.
       refreshAnalysis(immediate = false) {
         clearTimeout(timer)
         const run = () => {
@@ -468,8 +473,8 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
     name: opts.storageKey ?? configStore.storageKey ?? DEFAULT_STORAGE_KEY,
     version: 1,
     storage: createJSONStorage(() => opts.storage ?? browserStorage()),
-    partialize: s => ({ lang: s.lang, chat: persistableChat(s.chat).slice(-100), files: s.files, active: s.active, disk: s.disk, mode: s.mode, versions: s.versions, ui: s.ui }),
-    // Validar lo guardado: un localStorage corrupto no debe romper la app.
+    partialize: s => ({ lang: s.lang, chat: persistableChat(s.chat, s.lang).slice(-100), files: s.files, active: s.active, disk: s.disk, mode: s.mode, versions: s.versions, ui: s.ui }),
+    // Validate what was saved: a corrupt localStorage must not break the app.
     merge: (persisted, base) => {
       let current = base
       const p = persisted as Partial<AppState> | undefined
@@ -487,4 +492,8 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
       }
     },
   }))
+  // Code outside React (core client, configuration stores) translates with the active language.
+  setActiveLang(store.getState().lang)
+  store.subscribe(st => setActiveLang(st.lang))
+  return store
 }

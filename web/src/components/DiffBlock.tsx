@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
+import { useT } from '../i18n/react'
 import { useCoreClient } from '../store'
 import type { DiffOp } from '../core/types'
 
 const CONTEXT = 3
 
-// Diff de líneas calculado por el núcleo (CoreService.Diff).
+// Line diff computed by the core (CoreService.Diff).
 export function DiffBlock({ before, after }: { before: string; after: string }) {
+  const t = useT()
   const coreClient = useCoreClient()
   const [ops, setOps] = useState<DiffOp[] | null>(null)
   const [error, setError] = useState('')
@@ -14,8 +16,8 @@ export function DiffBlock({ before, after }: { before: string; after: string }) 
     coreClient.diff(before, after).then(o => { if (live) setOps(o) }, e => { if (live) setError((e as Error).message) })
     return () => { live = false }
   }, [coreClient, before, after])
-  if (error) return <p className="iss sev-error">No se pudo calcular el diff: {error}</p>
-  if (!ops) return <p className="muted sm">Calculando diferencias…</p>
+  if (error) return <p className="iss sev-error">{t('diff.failed', { msg: error })}</p>
+  if (!ops) return <p className="muted sm">{t('diff.calculating')}</p>
   return <DiffView ops={ops} />
 }
 
@@ -24,6 +26,7 @@ export function diffStats(ops: DiffOp[]) {
 }
 
 export function DiffView({ ops }: { ops: DiffOp[] }) {
+  const t = useT()
   let oldN = 0, newN = 0
   const rows = ops.map(o => {
     if (o.op !== '+') oldN++
@@ -34,7 +37,7 @@ export function DiffView({ ops }: { ops: DiffOp[] }) {
   const near = (k: number) => { for (let d = -CONTEXT; d <= CONTEXT; d++) if (changed[k + d]) return true; return false }
   const out: React.ReactNode[] = []
   let skipping = 0
-  const flush = (k: number) => { if (skipping) { out.push(<div key={`s${k}`} className="dl skip">⋯ {skipping} líneas sin cambios</div>); skipping = 0 } }
+  const flush = (k: number) => { if (skipping) { out.push(<div key={`s${k}`} className="dl skip">{t.n('diff.skip', skipping)}</div>); skipping = 0 } }
   rows.forEach((r, k) => {
     if (r.op === '=' && !near(k)) { skipping++; return }
     flush(k)
@@ -49,8 +52,8 @@ export function DiffView({ ops }: { ops: DiffOp[] }) {
   const { add, del } = diffStats(ops)
   return (
     <>
-      <div className="diff-sum"><span className="add">+{add}</span> <span className="del">−{del}</span> líneas</div>
-      <div className="diff" data-testid="diff">{out.length ? out : <div className="dl skip">Sin cambios</div>}</div>
+      <div className="diff-sum"><span className="add">+{add}</span> <span className="del">−{del}</span> {t('diff.lines')}</div>
+      <div className="diff" data-testid="diff">{out.length ? out : <div className="dl skip">{t('diff.none')}</div>}</div>
     </>
   )
 }

@@ -6,7 +6,7 @@ import { INDENTABLE, SUBKEYWORDS, tokenClass } from './syntax'
 
 interface LState { idx: number; kw: string; indented: boolean; sec: boolean }
 
-// Colores de los tokens: los mismos que el prototipo (clases .t-* de hlLine).
+// Token colors: the same as the prototype (.t-* classes of hlLine).
 const COLORS: Record<string, { color: string; fontStyle?: string; fontWeight?: string }> = {
   cm: { color: '#64748b', fontStyle: 'italic' },
   name: { color: '#f8fafc', fontWeight: '600' },
@@ -23,7 +23,7 @@ const COLORS: Record<string, { color: string; fontStyle?: string; fontWeight?: s
   arg: { color: '#cbd5e1' },
 }
 
-/** Lenguaje HAProxy para CodeMirror: StreamLanguage + estilo propio. */
+/** HAProxy language for CodeMirror: StreamLanguage + own style. */
 export function haproxyLanguage(knowledge: Knowledge | null): Extension {
   const sections = knowledge?.sections ?? {}
   const names = [...Object.keys(COLORS), ...Object.keys(sections).map(t => `sec-${t}`)]

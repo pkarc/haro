@@ -4,35 +4,38 @@ import { App } from './App'
 import type { CoreClient } from './core/client'
 import type { ConfigStore } from './core/configstore'
 
-/** Lo que recibe la pantalla previa (`gate`) para dar paso a la aplicación. */
+/** What the previous screen (`gate`) receives to let the application through. */
 export interface GateApi {
-  /** Entra en la aplicación; con `store` sustituye al almacén inicial (p. ej. el del repositorio elegido). */
+  /** Enters the application; with `store` it replaces the initial store (e.g. that of the chosen repository). */
   enter(store?: ConfigStore): void
 }
 
 export interface MountOptions {
   client: CoreClient
-  /** Almacén de configuración; con `gate` puede sustituirse al entrar. */
+  /** Configuration store; with `gate` it can be replaced on entering. */
   store: ConfigStore
   container: HTMLElement
-  /** Contenido sobre la barra superior. */
+  /** Content above the top bar. */
   header?: ReactNode
-  /** Botones extra en la barra superior, antes de Ajustes. */
+  /** Extra buttons in the top bar, before Settings. */
   actions?: ReactNode
-  /** Pantalla previa (login, selector de repositorio…): se pinta en lugar de la app hasta llamar a `enter`. */
+  /** Previous screen (login, repository picker…): rendered instead of the app until `enter` is called. */
   gate?: (api: GateApi) => ReactNode
-  /** Envuelve en React.StrictMode (por defecto, sí). */
+  /** Wraps in React.StrictMode (default: yes). */
   strict?: boolean
 }
 
 function Root({ gate, store: initial, ...rest }: Omit<MountOptions, 'container' | 'strict'>) {
   const [entered, setEntered] = useState(!gate)
   const [store, setStore] = useState(initial)
-  if (!entered && gate) return <>{gate({ enter: s => { if (s) setStore(s); setEntered(true) } })}</>
-  return <App {...rest} store={store} key={store.label} />
+  // The app is recreated when the store is replaced. The key is a counter, not
+  // `store.label`, because labels may be translated and change with the language.
+  const [generation, setGeneration] = useState(0)
+  if (!entered && gate) return <>{gate({ enter: s => { if (s) { setStore(s); setGeneration(g => g + 1) } setEntered(true) } })}</>
+  return <App {...rest} store={store} key={generation} />
 }
 
-/** Monta la aplicación en `container`. Devuelve `unmount` para desmontarla. */
+/** Mounts the application in `container`. Returns `unmount` to unmount it. */
 export function mountApp(opts: MountOptions): { unmount(): void } {
   const { container, strict = true, ...rest } = opts
   const root = createRoot(container)

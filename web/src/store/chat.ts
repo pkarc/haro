@@ -1,14 +1,15 @@
-import type { AssistDone, AssistMessage, AssistProposal, FileChange, SourceFile } from '../core/types'
+import type { AssistDone, AssistMessage, AssistProposal, FileChange, Lang, SourceFile } from '../core/types'
+import { translate } from '../i18n'
 
-// Estado y funciones puras de la conversación con el asistente (sin red ni
-// store), fáciles de probar. El store las usa en sendChat/applyProposal.
+// State and pure functions of the conversation with the assistant (no network
+// or store), easy to test. The store uses them in sendChat/applyProposal.
 
 export type ProposalStatus = 'pending' | 'applied' | 'discarded'
 
-/** Propuesta del asistente dentro de un mensaje, con su estado y el texto base con el que se pidió. */
+/** Assistant proposal inside a message, with its status and the base text it was requested with. */
 export interface ChatProposal extends AssistProposal {
   status: ProposalStatus
-  /** Texto que tenían los archivos propuestos cuando se hizo la petición. */
+  /** Text the proposed files had when the request was made. */
   base: SourceFile[]
 }
 
@@ -16,23 +17,23 @@ export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   ts: number
-  /** Solo asistente: sigue llegando (streaming). No se guarda. */
+  /** Assistant only: still arriving (streaming). Not saved. */
   pending?: boolean
-  /** Solo asistente: el usuario detuvo la respuesta. */
+  /** Assistant only: the user stopped the response. */
   stopped?: boolean
-  /** Solo asistente: mensaje de error (la respuesta no llegó entera). */
+  /** Assistant only: error message (the response did not arrive in full). */
   error?: string
   proposal?: ChatProposal
   done?: Pick<AssistDone, 'stopReason' | 'refusalCategory'>
 }
 
-/** Máximo de mensajes que se envían (el servidor admite 40): conserva el hilo reciente. */
+/** Maximum number of messages sent (the server accepts 40): keeps the recent thread. */
 export const MAX_SENT = 20
 
 /**
- * Conversación que se envía al servidor: sin mensajes vacíos ni fallidos,
- * alternando roles (los turnos seguidos del mismo rol se unen) y terminando
- * en un turno del usuario.
+ * Conversation sent to the server: no empty or failed messages, alternating
+ * roles (consecutive turns of the same role are merged) and ending in a user
+ * turn.
  */
 export function buildMessages(chat: ChatMessage[]): AssistMessage[] {
   const out: AssistMessage[] = []
@@ -48,7 +49,7 @@ export function buildMessages(chat: ChatMessage[]): AssistMessage[] {
   return tail
 }
 
-/** Un mensaje sin terminar (cierre de pestaña a mitad de respuesta) se recupera como interrumpido. */
+/** An unfinished message (tab closed mid-response) is recovered as interrupted. */
 export function sanitizeChat(raw: unknown): ChatMessage[] {
   if (!Array.isArray(raw)) return []
   const out: ChatMessage[] = []
@@ -64,16 +65,16 @@ export function sanitizeChat(raw: unknown): ChatMessage[] {
   return out
 }
 
-/** Quita el estado transitorio antes de guardar. */
-export function persistableChat(chat: ChatMessage[]): ChatMessage[] {
+/** Removes the transient state before saving. */
+export function persistableChat(chat: ChatMessage[], lang: Lang = 'en'): ChatMessage[] {
   return chat.map(m => {
     if (!m.pending) return m
     const { pending: _p, ...rest } = m
-    return { ...rest, error: rest.error ?? 'La respuesta se interrumpió.' }
+    return { ...rest, error: rest.error ?? translate(lang, 'state.interrupted') }
   })
 }
 
-/** ¿Cambió la configuración desde que se pidió la propuesta (en alguno de los archivos que propone)? */
+/** Did the configuration change since the proposal was requested (in any of the files it proposes)? */
 export function proposalStale(p: ChatProposal, files: SourceFile[]): boolean {
   return p.changes.some(c => {
     const base = p.base.find(b => b.path === c.path)
@@ -85,9 +86,9 @@ export function proposalStale(p: ChatProposal, files: SourceFile[]): boolean {
 const normalize = (t: string) => t.replace(/\r\n?/g, '\n')
 
 /**
- * Texto con el que quedaría un archivo: el del bloque del asistente, con los
- * saltos de línea normalizados y respetando que el archivo termine (o no) en
- * salto de línea como el actual (el bloque de código no incluye el último).
+ * Text a file would end up with: that of the assistant's block, with line
+ * breaks normalized and respecting whether the file ends (or not) in a newline
+ * like the current one (the code block does not include the last one).
  */
 export function proposedText(current: string, proposed: string): string {
   let t = normalize(proposed)
@@ -97,18 +98,18 @@ export function proposedText(current: string, proposed: string): string {
   return t
 }
 
-/** Archivos con el texto de la propuesta; lanza si algún archivo propuesto ya no existe. */
-export function applyProposalToFiles(files: SourceFile[], changes: FileChange[]): SourceFile[] {
+/** Files with the proposal's text; throws if a proposed file no longer exists. */
+export function applyProposalToFiles(files: SourceFile[], changes: FileChange[], lang: Lang = 'en'): SourceFile[] {
   const out = files.slice()
   for (const c of changes) {
     const i = out.findIndex(f => f.path === c.path)
-    if (i < 0) throw new Error(`El archivo «${c.path}» de la propuesta ya no existe en la configuración`)
+    if (i < 0) throw new Error(translate(lang, 'state.proposalFileGone', { path: c.path }))
     out[i] = { path: c.path, text: proposedText(out[i].text, c.text) }
   }
   return out
 }
 
-/** Textos de los archivos que la propuesta toca, tal como estaban al pedirla. */
+/** Texts of the files the proposal touches, as they were when it was requested. */
 export function snapshotFor(files: SourceFile[], changes: FileChange[]): SourceFile[] {
   return changes.flatMap(c => {
     const f = files.find(x => x.path === c.path)

@@ -1,6 +1,6 @@
-// Package web embebe la interfaz compilada (web/dist) en el binario de haro.
-// Compílala con `make web` antes de `make build`; si no existe, se sirve una
-// página provisional que permite probar el API local.
+// Package web embeds the compiled interface (web/dist) in the haro binary.
+// Build it with `make web` before `make build`; if it does not exist, a
+// placeholder page that allows trying the local API is served.
 package web
 
 import (
@@ -15,7 +15,7 @@ var dist embed.FS
 //go:embed placeholder.html
 var placeholder []byte
 
-// FS devuelve los archivos de la interfaz listos para servir.
+// FS returns the interface files ready to be served.
 func FS() fs.FS {
 	sub, err := fs.Sub(dist, "dist")
 	if err == nil {

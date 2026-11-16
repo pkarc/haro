@@ -1,52 +1,56 @@
+import { tr } from '../i18n'
 import type { CoreClient } from './client'
 import type { PutResult, SourceFile } from './types'
 
 /**
- * Resultado de guardar: el de `CoreClient.putFiles` más la señal de conflicto
- * de versión (alguien cambió el origen desde que se cargó; hay que recargar).
+ * Result of saving: that of `CoreClient.putFiles` plus the version-conflict
+ * signal (someone changed the origin since it was loaded; a reload is needed).
  */
 export interface SaveResult extends PutResult {
   conflict?: boolean
 }
 
 /**
- * De dónde vienen y adónde van los archivos de una configuración. La web solo
- * lo usa a través de esta interfaz; las implementaciones viven fuera del
- * núcleo (disco servido por `haro serve`, un repositorio de GitHub…).
+ * Where the files of a configuration come from and where they go. The web only
+ * uses it through this interface; the implementations live outside the core
+ * (disk served by `haro serve`, a GitHub repository…).
  */
 export interface ConfigStore {
-  /** Nombre corto del destino, para la interfaz («disco», «owner/repo@main»). */
+  /** Short name of the destination, for the UI («disk», «owner/repo@main»). */
   readonly label: string
-  /** Se puede guardar. Se lee tras `load()`, así que puede depender de lo que este averigüe. */
+  /** Saving is possible. Read after `load()`, so it may depend on what that finds out. */
   readonly canSave: boolean
-  /** Por qué no se puede guardar, si `canSave` es false (se muestra al pulsar «Guardar»). */
+  /** Why saving is not possible, if `canSave` is false (shown when pressing «Save»). */
   readonly readOnlyHint?: string
-  /** Aviso bajo el título del diálogo de guardado (p. ej. «se deja una copia .bak»). */
+  /** Note under the title of the save dialog (e.g. «a .bak copy is kept»). */
   readonly saveHint?: string
-  /** Clave del localStorage con la sesión (por defecto `haro.v1`); distinta por origen para no mezclar archivos. */
+  /** localStorage key of the session (default `haro.v1`); distinct per origin so files do not get mixed. */
   readonly storageKey?: string
   /**
-   * Carga los archivos, en orden de carga. `null`: el origen no tiene
-   * configuración y la sesión es solo local (sin botón de guardar).
+   * Loads the files, in load order. `null`: the origin has no configuration
+   * and the session is local only (no save button).
    */
   load(): Promise<SourceFile[] | null>
   /**
-   * Guarda los archivos modificados (todos o nada). Los fallos esperables
-   * (validación, permisos, conflicto) son un `SaveResult` con `saved: false`,
-   * no una excepción.
+   * Saves the modified files (all or nothing). Expected failures (validation,
+   * permissions, conflict) are a `SaveResult` with `saved: false`, not an
+   * exception.
    */
   save(files: SourceFile[]): Promise<SaveResult>
 }
 
 /**
- * Sin origen: la sesión vive solo en el navegador (el estado de la
- * aplicación, incluidos los archivos, se persiste en localStorage) y se sale
- * con importar/exportar. Es el almacén de la web sin servidor.
+ * No origin: the session lives only in the browser (the application state,
+ * files included, is persisted in localStorage) and leaves through
+ * import/export. It is the store of the serverless web.
+ *
+ * Its texts follow the interface language (the app keeps the active language
+ * in sync), so they are getters.
  */
 export class LocalStore implements ConfigStore {
-  readonly label = 'navegador'
+  get label() { return tr('store.local.label') }
   readonly canSave = false
-  readonly readOnlyHint = 'La sesión se guarda en este navegador; usa Exportar para sacar los archivos.'
+  get readOnlyHint() { return tr('store.local.readOnly') }
   async load() { return null }
   async save(): Promise<SaveResult> {
     return { saved: false, error: this.readOnlyHint, status: 400 }
@@ -54,21 +58,21 @@ export class LocalStore implements ConfigStore {
 }
 
 /**
- * Archivos de `haro serve --file` (GetConfig/PutConfig del CoreClient). Es un
- * almacén aparte de LocalStore porque depende del cliente y de las
- * capacidades del servidor (`--allow-write`), y porque la validación con
- * `haproxy -c` y la copia `.bak` las hace el servidor al guardar. Sin
- * `--file`, `load()` da `null` y la sesión queda como local.
+ * Files of `haro serve --file` (GetConfig/PutConfig of the CoreClient). It is
+ * a separate store from LocalStore because it depends on the client and on the
+ * server capabilities (`--allow-write`), and because validation with
+ * `haproxy -c` and the `.bak` copy are done by the server when saving. Without
+ * `--file`, `load()` gives `null` and the session stays local.
  */
 export class ServedStore implements ConfigStore {
-  readonly label = 'disco'
-  readonly saveHint = 'Se valida la configuración completa antes de escribir y se deja una copia .bak de cada archivo.'
+  get label() { return tr('store.served.label') }
+  get saveHint() { return tr('store.served.saveHint') }
   private writable = false
 
   constructor(private client: CoreClient) {}
 
   get canSave() { return this.writable }
-  get readOnlyHint() { return 'No hay permiso de escritura: inicia haro serve con --allow-write para guardar en disco.' }
+  get readOnlyHint() { return tr('store.served.readOnly') }
 
   async load() {
     const [caps, files] = await Promise.all([this.client.capabilities().catch(() => null), this.client.getConfig().catch(() => null)])

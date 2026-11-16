@@ -1,14 +1,14 @@
 import type { Topology } from '../core/types'
 
-// Disposición en tres columnas (entradas → backends → servidores). Solo
-// geometría: qué conecta con qué lo decide el núcleo (topology).
+// Three-column layout (entries → backends → servers). Geometry only: what
+// connects to what is decided by the core (topology).
 
 export interface PlacedNode {
   id: string
   kind: 'entry' | 'backend' | 'missing' | 'server'
   x: number
   y: number
-  /** Índice de sección (vista unificada) al que lleva el clic; -1 si no hay. */
+  /** Section index (unified view) the click leads to; -1 if none. */
   section: number
   index?: number
 }
@@ -37,7 +37,7 @@ export function layoutTopology(t: Topology): { nodes: PlacedNode[]; height: numb
     y += H.missing + H.gap
   }
 
-  // Entradas: cerca de sus destinos; los listen aportan además sus propios servidores.
+  // Entries: close to their targets; listens also contribute their own servers.
   const pos = new Map(nodes.map(n => [n.id, n.y]))
   let ey = 0
   let sy = y
@@ -49,7 +49,7 @@ export function layoutTopology(t: Topology): { nodes: PlacedNode[]; height: numb
     const top = Math.max(want, ey)
     nodes.push({ id: entryId(e.section), kind: 'entry', x: COL_X.entry, y: top, section: e.section })
     ey = top + H.entry + H.gap
-    // Los servidores de un listen van debajo de los de los backends.
+    // The servers of a listen go below those of the backends.
     ;(e.servers ?? []).forEach((_, i) => {
       nodes.push({ id: serverId(e.section, i), kind: 'server', x: COL_X.server, y: sy, section: e.section, index: i })
       sy += H.server + 6

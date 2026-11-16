@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 
-// El núcleo devuelve markdown mínimo: **negrita** y `código`. Se interpreta a
-// mano y se pinta con elementos React; nunca se inserta HTML crudo.
+// The core returns minimal markdown: **bold** and `code`. It is interpreted by
+// hand and rendered with React elements; raw HTML is never inserted.
 
 export type MiniNode =
   | { t: 'text'; v: string }
@@ -24,7 +24,7 @@ export function parseMini(src: string, allowBold = true): MiniNode[] {
   return out
 }
 
-/** Quita el formato y deja el texto plano (para títulos, tooltips…). */
+/** Strips the formatting and leaves plain text (for titles, tooltips…). */
 export function plainMini(src: string): string {
   return src.replace(/\*\*(.+?)\*\*/g, '$1').replace(/`([^`]+)`/g, '$1')
 }

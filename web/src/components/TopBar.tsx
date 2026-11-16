@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n/react'
 import { useApp, useAppContext } from '../store'
 import { dirtyIndexes } from '../store/files'
 import { ExportDialog } from './ExportDialog'
@@ -10,6 +11,7 @@ import { SettingsDialog } from './SettingsDialog'
 type Dlg = 'history' | 'import' | 'export' | 'save' | 'settings' | null
 
 export function TopBar() {
+  const t = useT()
   const undo = useApp(s => s.undo)
   const redo = useApp(s => s.redo)
   const canUndo = useApp(s => s.undoStack.length > 0)
@@ -23,8 +25,8 @@ export function TopBar() {
   const close = () => setDlg(null)
 
   const onSave = () => {
-    if (!canSave) { toast(configStore.readOnlyHint ?? 'Esta configuración es de solo lectura.', 'warn'); return }
-    if (!nDirty) { toast('No hay cambios sin guardar.'); return }
+    if (!canSave) { toast(configStore.readOnlyHint ?? t('topbar.readOnly'), 'warn'); return }
+    if (!nDirty) { toast(t('topbar.nothingToSave')); return }
     setDlg('save')
   }
 
@@ -35,19 +37,19 @@ export function TopBar() {
         <span><b>haro</b></span>
       </div>
       <div className="top-actions">
-        <button className="icon" aria-label="Deshacer" title="Deshacer (Ctrl+Z)" disabled={!canUndo} onClick={undo}>↶</button>
-        <button className="icon" aria-label="Rehacer" title="Rehacer (Ctrl+Shift+Z)" disabled={!canRedo} onClick={redo}>↷</button>
+        <button className="icon" aria-label={t('common.undo')} title={t('topbar.undoTitle')} disabled={!canUndo} onClick={undo}>↶</button>
+        <button className="icon" aria-label={t('common.redo')} title={t('topbar.redoTitle')} disabled={!canRedo} onClick={redo}>↷</button>
         <span className="sep" />
-        <button className="tbtn" title="Historial de versiones" onClick={() => setDlg('history')}><span className="ic">⟲</span><span className="lbl">Historial</span></button>
-        <button className="tbtn" title="Importar" onClick={() => setDlg('import')}><span className="ic">⇣</span><span className="lbl">Importar</span></button>
-        <button className="tbtn" title="Exportar" onClick={() => setDlg('export')}><span className="ic">⇡</span><span className="lbl">Exportar</span></button>
+        <button className="tbtn" title={t('topbar.historyTitle')} onClick={() => setDlg('history')}><span className="ic">⟲</span><span className="lbl">{t('topbar.history')}</span></button>
+        <button className="tbtn" title={t('topbar.import')} onClick={() => setDlg('import')}><span className="ic">⇣</span><span className="lbl">{t('topbar.import')}</span></button>
+        <button className="tbtn" title={t('topbar.export')} onClick={() => setDlg('export')}><span className="ic">⇡</span><span className="lbl">{t('topbar.export')}</span></button>
         {served && (
-          <button className={`tbtn save${nDirty ? ' on' : ''}${canSave ? '' : ' ro'}`} title={canSave ? `Guardar en ${configStore.label}` : `Solo lectura: ${configStore.readOnlyHint ?? ''}`} onClick={onSave} data-testid="save-button">
-            <span className="ic">💾</span><span className="lbl">Guardar{nDirty ? ` (${nDirty})` : ''}</span>
+          <button className={`tbtn save${nDirty ? ' on' : ''}${canSave ? '' : ' ro'}`} title={canSave ? t('topbar.saveTitle', { label: configStore.label }) : t('topbar.readOnlyTitle', { hint: configStore.readOnlyHint ?? '' })} onClick={onSave} data-testid="save-button">
+            <span className="ic">💾</span><span className="lbl">{t('topbar.save')}{nDirty ? ` (${nDirty})` : ''}</span>
           </button>
         )}
         {actions}
-        <button className="icon" aria-label="Ajustes" title="Ajustes" onClick={() => setDlg('settings')}>⚙</button>
+        <button className="icon" aria-label={t('topbar.settings')} title={t('topbar.settings')} onClick={() => setDlg('settings')}>⚙</button>
       </div>
       {dlg === 'history' && <HistoryDialog onClose={close} />}
       {dlg === 'import' && <ImportDialog onClose={close} />}

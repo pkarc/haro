@@ -1,12 +1,12 @@
-// Tipos del núcleo. Salen del contrato (proto/haro/v1/haro.proto) a través del
-// código generado con buf (src/gen); aquí solo se convierten en objetos planos
-// (sin $typeName) para que la interfaz pueda crearlos con literales, y se
-// precisan las cadenas que en el contrato son enumeraciones.
+// Core types. They come from the contract (proto/haro/v1/haro.proto) through the
+// code generated with buf (src/gen); here they are only converted into plain
+// objects (no $typeName) so the UI can create them with literals, and the
+// strings that are enumerations in the contract are narrowed.
 import type { JsonValue, Message } from '@bufbuild/protobuf'
 import type * as pb from '../gen/haro/v1/haro_pb'
 
 type Meta = '$typeName' | '$unknown'
-/** Mensaje protobuf → objeto plano, recursivamente. */
+/** Protobuf message → plain object, recursively. */
 export type Plain<T> = T extends Message
   ? { [K in keyof Omit<T, Meta>]: Plain<T[K]> }
   : T extends readonly (infer U)[]
@@ -17,16 +17,17 @@ export type Plain<T> = T extends Message
 
 export type Severity = 'error' | 'warn' | 'info'
 
-/** Idioma de los textos que produce el núcleo (explicaciones y mensajes del detector). */
-export type Lang = 'es' | 'en'
-export const LANGS: { value: Lang; label: string }[] = [{ value: 'es', label: 'Español' }, { value: 'en', label: 'English' }]
+/** Language of the interface and of the texts produced by the core (explanations and detector messages). */
+export type Lang = 'en' | 'es'
+// Each language is named in its own language.
+export const LANGS: { value: Lang; label: string }[] = [{ value: 'en', label: 'English' }, { value: 'es', label: 'Español' }]
 
-/** Idioma por defecto: el del navegador si es inglés; si no, español (la interfaz está en español). */
+/** Default language: Spanish only if the browser language starts with «es»; English otherwise. */
 export function browserLang(): Lang {
   try {
-    if (typeof navigator !== 'undefined' && /^en\b/i.test(navigator.language || '')) return 'en'
-  } catch { /* sin navigator */ }
-  return 'es'
+    if (typeof navigator !== 'undefined' && /^es\b/i.test(navigator.language || '')) return 'es'
+  } catch { /* no navigator */ }
+  return 'en'
 }
 
 export type SourceFile = Plain<pb.SourceFile>
@@ -44,7 +45,7 @@ export type BackendNode = Plain<pb.BackendNode>
 export type Edge = Plain<pb.Edge>
 export type Topology = Plain<pb.Topology>
 
-/** El núcleo siempre rellena doc y topology; el contrato los marca opcionales por ser mensajes. */
+/** The core always fills in doc and topology; the contract marks them optional because they are messages. */
 export type Analysis = Omit<Plain<pb.Analysis>, 'doc' | 'topology' | 'issues' | 'explanations' | 'effective'> & {
   doc: Doc
   topology: Topology
@@ -58,7 +59,7 @@ export type CheckResult = Plain<pb.CheckResult>
 export type Capabilities = Plain<pb.Capabilities>
 
 export type OpName = 'add_section' | 'remove_section' | 'move_section' | 'rename_section' | 'add_directive' | 'update_directive' | 'remove_directive' | 'move_directive'
-/** Operación de edición (ver core/edit.go para qué campos usa cada una). */
+/** Edit operation (see core/edit.go for the fields each one uses). */
 export type Op = Partial<Omit<Plain<pb.Op>, 'op'>> & { op: OpName }
 export type FileChange = Plain<pb.FileChange>
 export type ApplyResult = Plain<pb.ApplyResponse>
@@ -69,10 +70,10 @@ export type SectionTemplate = Plain<pb.SectionTemplate>
 export type Knowledge = Omit<Plain<pb.Knowledge>, 'sections'> & { sections: Record<string, SectionInfo> }
 
 /**
- * Resultado de guardar. Si la validación rechaza el guardado, `saved` es false,
- * `error` explica por qué y llega `check` (salida de haproxy -c) o `issue`
- * (error del detector cuando no hay haproxy). Si falla por otro motivo (sin
- * permiso de escritura, archivo ajeno…), solo `error` y `status`.
+ * Result of saving. If validation rejects the save, `saved` is false, `error`
+ * explains why and `check` (haproxy -c output) or `issue` (detector error when
+ * there is no haproxy) is included. If it fails for another reason (no write
+ * permission, foreign file…), only `error` and `status` are set.
  */
 export interface PutResult {
   saved: boolean
@@ -83,22 +84,22 @@ export interface PutResult {
   path?: string
 }
 
-/** Valor tipado de un parámetro de plantilla: texto, número, bool o lista de textos (google.protobuf.Value en el contrato). */
+/** Typed value of a template parameter: text, number, bool or list of texts (google.protobuf.Value in the contract). */
 export type ParamValue = JsonValue
 export type ParamType = 'string' | 'int' | 'list' | 'bool'
 export type TemplateParam = Omit<Plain<pb.TemplateParam>, 'type' | 'defaultValue'> & { type: ParamType; defaultValue?: ParamValue }
-/** Plantilla completa por tecnología (Nextcloud, PostgreSQL…). No confundir con SectionTemplate. */
+/** Complete per-technology template (Nextcloud, PostgreSQL…). Not to be confused with SectionTemplate. */
 export type TechTemplate = Omit<Plain<pb.TechTemplate>, 'kind' | 'params'> & { kind: 'web' | 'tcp'; params: TemplateParam[] }
-/** Resultado de renderizar una plantilla: las operaciones y el efecto de aplicarlas (como ApplyResult). */
+/** Result of rendering a template: the operations and the effect of applying them (like ApplyResult). */
 export type RenderResult = Omit<Plain<pb.RenderTemplateResponse>, 'ops'> & { ops: Op[] }
 
-/** Capacidades relevantes para el asistente ya vienen en Capabilities (canAssist, assistantModel). */
+/** What matters for the assistant is already in Capabilities (canAssist, assistantModel). */
 export interface AssistMessage { role: 'user' | 'assistant'; content: string }
 export interface AssistRequest { files: SourceFile[]; messages: AssistMessage[]; lang: Lang }
-/** Propuesta del asistente: texto completo de cada archivo que cambia y problemas de la configuración resultante. */
+/** Assistant proposal: the full text of each file that changes and the problems of the resulting configuration. */
 export interface AssistProposal { changes: FileChange[]; issuesAfter: Issue[]; unmatched: number; truncated: boolean }
 export interface AssistDone { stopReason: string; refusalCategory: string; inputTokens: number; outputTokens: number }
-/** Eventos del stream del asistente: trozos de texto, la propuesta (si la hay) y el cierre. */
+/** Assistant stream events: text chunks, the proposal (if any) and the end. */
 export type AssistEvent =
   | { type: 'text'; text: string }
   | { type: 'proposal'; proposal: AssistProposal }

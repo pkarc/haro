@@ -1,5 +1,5 @@
 :root{
-  /* Colores: fondos casi negros con tinte azul. El acento solo para la acción principal y el foco. */
+  /* Colors: near-black backgrounds with a blue tint. The accent only for the main action and focus. */
   --bg:#0c0f14;--panel:#12161d;--panel2:#171c25;--panel3:#1d2330;--line:#242c39;--line2:#2f3948;
   --text:#d9e0ea;--muted:#8592a5;--dim:#5d6a7d;--accent:#5eead4;--accent2:#2dd4bf;--accent-text:#06221e;
   --err:#f87171;--warn:#fbbf24;--info:#60a5fa;--ok:#4ade80;--add:#4ade80;--del:#f87171;
@@ -225,7 +225,7 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}
 }
 @media (max-width:420px){.brand span{display:none}}
 
-/* ---- haro: añadidos sobre el prototipo ---- */
+/* ---- haro: additions over the prototype ---- */
 .pane-body > .code-view{position:absolute;inset:0;display:flex;flex-direction:column}
 .editor{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--bg)}
 .code-host{flex:1;min-height:0}
@@ -270,7 +270,7 @@ label.btn{cursor:pointer}
 :focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .cm-editor :focus-visible{outline:none}
 
-/* Plantillas por tecnología */
+/* Technology templates */
 .tpl{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:18px;align-items:start}
 .tpl-form textarea{padding:8px 10px;border-radius:var(--r-xs);border:1px solid var(--line2);background:var(--bg);outline:none;resize:vertical}
 .tpl-form textarea:focus{border-color:var(--accent)}
@@ -329,7 +329,7 @@ label.btn{cursor:pointer}
 .chat-note{margin:0;padding:2px 12px 8px}
 @media (max-width:899px){.chat-input textarea{font-size:16px}}
 
-/* Búsqueda de CodeMirror y React Flow: rectos y neutros */
+/* CodeMirror search and React Flow: square and neutral */
 .cm-panels{background:var(--panel)!important;color:var(--text)!important;border-color:var(--line)!important}
 .cm-panel input,.cm-panel button{border-radius:var(--r-xs)!important;font-size:var(--fs-sm)!important}
 .cm-tooltip-autocomplete{border-radius:var(--r)!important;font-size:var(--fs-sm)}

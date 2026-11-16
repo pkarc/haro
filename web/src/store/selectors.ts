@@ -29,4 +29,5 @@ const RANK = { error: 3, warn: 2, info: 1 } as const
 export const worstSeverity = (list: Issue[]): Issue['severity'] =>
   list.reduce<Issue['severity']>((w, i) => RANK[i.severity] > RANK[w] ? i.severity : w, 'info')
 
-export const SEVERITY_LABEL = { error: 'Error', warn: 'Aviso', info: 'Sugerencia' } as const
+/** Dictionary key of the label of each severity (translate with `t(SEVERITY_KEY[sev])`). */
+export const SEVERITY_KEY = { error: 'severity.error', warn: 'severity.warn', info: 'severity.info' } as const

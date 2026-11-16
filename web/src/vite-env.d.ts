@@ -1,5 +1,5 @@
 /// <reference types="vite/client" />
 interface ImportMetaEnv {
-  /** `wasm` para compilar la web sin servidor (núcleo en WebAssembly). */
+  /** `wasm` to build the serverless web (core in WebAssembly). */
   readonly VITE_CORE?: 'wasm'
 }

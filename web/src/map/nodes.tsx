@@ -1,3 +1,4 @@
+import { useT } from '../i18n/react'
 import { Handle, Position, type NodeProps, type Node, BaseEdge, getBezierPath, type EdgeProps, type Edge } from '@xyflow/react'
 
 export interface EntryData extends Record<string, unknown> { type: string; name: string; binds: { address: string; tls: boolean }[]; color: string }
@@ -11,6 +12,7 @@ const handles = (left: boolean, right: boolean) => <>
 </>
 
 export function EntryNode({ data }: NodeProps<Node<EntryData>>) {
+  const t = useT()
   return (
     <div className="node fe" style={{ '--c': data.color } as React.CSSProperties} data-testid="map-entry">
       {handles(true, true)}
@@ -18,49 +20,52 @@ export function EntryNode({ data }: NodeProps<Node<EntryData>>) {
       <div className="node-s">
         {data.binds.length
           ? data.binds.map((b, i) => <span key={i}>{i > 0 && ', '}{b.address}{b.tls && <span title="TLS"> 🔒</span>}</span>)
-          : <span className="warn">sin bind</span>}
+          : <span className="warn">{t('map.noBind')}</span>}
       </div>
     </div>
   )
 }
 
 export function BackendNode({ data }: NodeProps<Node<BackendData>>) {
+  const t = useT()
   return (
     <div className="node be" data-testid="map-backend">
       {handles(true, true)}
       <div className="node-t">{data.name}</div>
       <div className="node-s">{data.balance}</div>
       <div className="node-c">
-        {data.incoming.map((e, i) => e.def ? <span key={i} className="def">por defecto</span> : <span key={i} className="cnd">si {e.condition}</span>)}
-        {!data.incoming.length && <span className="muted">sin tráfico entrante</span>}
+        {data.incoming.map((e, i) => e.def ? <span key={i} className="def">{t('map.default')}</span> : <span key={i} className="cnd">{t('map.if', { cond: e.condition ?? '' })}</span>)}
+        {!data.incoming.length && <span className="muted">{t('map.noTraffic')}</span>}
       </div>
     </div>
   )
 }
 
 export function MissingNode({ data }: NodeProps<Node<MissingData>>) {
+  const t = useT()
   return (
     <div className="node missing" data-testid="map-missing">
       {handles(true, false)}
       <div className="node-t">{data.name}</div>
-      <div className="node-s">⚠ no existe</div>
+      <div className="node-s">{t('map.notExist')}</div>
     </div>
   )
 }
 
 export function ServerNode({ data }: NodeProps<Node<ServerData>>) {
+  const t = useT()
   return (
     <div className={`node srv ${data.backup ? 'backup' : ''} ${data.disabled ? 'disabled' : ''}`} data-testid="map-server">
       {handles(true, false)}
-      <div className="node-t">{data.name}{data.check && <span className="dot ok" title="health check" />}</div>
-      <div className="node-s">{data.address}{data.backup ? ' · respaldo' : ''}{data.disabled ? ' · deshabilitado' : ''}</div>
+      <div className="node-t">{data.name}{data.check && <span className="dot ok" title={t('map.healthCheck')} />}</div>
+      <div className="node-s">{data.address}{data.backup ? ` · ${t('map.backup')}` : ''}{data.disabled ? ` · ${t('map.disabled')}` : ''}</div>
     </div>
   )
 }
 
 export interface TipEdgeData extends Record<string, unknown> { tip?: string }
 
-// Arista con tooltip (<title> de SVG) sobre una banda ancha, fácil de apuntar.
+// Edge with a tooltip (SVG <title>) over a wide band that is easy to point at.
 export function TipEdge(p: EdgeProps<Edge<TipEdgeData>>) {
   const [path] = getBezierPath(p)
   return (

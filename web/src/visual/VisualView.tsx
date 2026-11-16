@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { addSectionBox } from '../components/dialogs'
+import { useT } from '../i18n/react'
 import { templateBox } from '../templates/TemplateDialog'
 import { MapPanel } from '../map/MapPanel'
 import { useApp } from '../store'
@@ -9,6 +10,7 @@ import { opAddSection, sectionKey } from './ops'
 import { SectionCard } from './SectionCard'
 
 export function VisualView() {
+  const t = useT()
   const analysis = useApp(s => s.analysis)
   const knowledge = useApp(s => s.knowledge)
   const files = useApp(s => s.files)
@@ -21,11 +23,11 @@ export function VisualView() {
   const idx = useAnalysisIndex(analysis)
   const root = useRef<HTMLDivElement>(null)
 
-  // Saltar a una línea o sección (panel de problemas, mapa).
+  // Jump to a line or section (problems panel, map).
   useEffect(() => {
     if (!focus || !analysis || stale) return
     const el = root.current?.querySelector<HTMLElement>(`[data-file="${focus.file}"][data-line="${focus.line}"]`)
-    if (!el) { setMode('code'); return } // líneas que el modo visual no pinta (p. ej. blancos)
+    if (!el) { setMode('code'); return } // lines that visual mode does not render (e.g. blanks)
     const sec = el.closest<HTMLElement>('.sec')
     if (sec?.classList.contains('collapsed')) {
       const s = analysis.doc.sections[Number(sec.dataset.section)]
@@ -39,13 +41,13 @@ export function VisualView() {
     clearFocus()
   }, [focus, analysis, stale, clearFocus, setMode, toggleCollapsed])
 
-  if (!analysis || !knowledge) return <div className="visual-view"><p className="muted pad">Analizando…</p></div>
+  if (!analysis || !knowledge) return <div className="visual-view"><p className="muted pad">{t('visual.analyzing')}</p></div>
 
   const labels = fileLabels(files)
   const sections = analysis.doc.sections
-  const addable = Object.keys(knowledge.templates).filter(t => t in knowledge.sections)
+  const addable = Object.keys(knowledge.templates).filter(k => k in knowledge.sections)
   const types = [...new Set(sections.map(s => s.type))]
-  // Clave estable ante cambios de numeración de líneas (conserva foco y estado local).
+  // Key that is stable when line numbering changes (keeps focus and local state).
   const seen = new Map<string, number>()
   const keys = sections.map(s => { const k = sectionKey(s), n = seen.get(k) ?? 0; seen.set(k, n + 1); return `${k}#${n}` })
   const pre = analysis.doc.pre.filter(l => l.kind !== 'blank')
@@ -65,18 +67,18 @@ export function VisualView() {
   return (
     <div className={`visual-view${stale ? ' stale' : ''}`} ref={root} data-testid="visual-view">
       <div className="v-toolbar">
-        <span className="muted">Añadir sección</span>
-        {addable.map(t => (
-          <button key={t} className="chip" style={{ '--c': knowledge.sections[t].color } as React.CSSProperties} onClick={() => add(t)}>+ {t}</button>
+        <span className="muted">{t('visual.addSection')}</span>
+        {addable.map(k => (
+          <button key={k} className="chip" style={{ '--c': knowledge.sections[k].color } as React.CSSProperties} onClick={() => add(k)}>+ {k}</button>
         ))}
-        <button className="chip tpl-btn" data-testid="template-button" onClick={() => void templateBox()}>+ Añadir desde plantilla de tecnología</button>
+        <button className="chip tpl-btn" data-testid="template-button" onClick={() => void templateBox()}>{t('visual.fromTemplate')}</button>
       </div>
       <MapPanel analysis={analysis} />
       {pre.length > 0 && (
         <div className="pre-notes">
           {pre.map(l => l.kind === 'comment'
             ? <div key={`${l.file}:${l.line}`} className="cmt" data-file={l.file} data-line={l.line}>{l.text}</div>
-            : <div key={`${l.file}:${l.line}`} className="iss sev-error" data-file={l.file} data-line={l.line}><span>Error</span> <code>{l.text}</code> está fuera de cualquier sección</div>)}
+            : <div key={`${l.file}:${l.line}`} className="iss sev-error" data-file={l.file} data-line={l.line}><span>{t('common.error')}</span> <code>{l.text}</code> {t('visual.outside')}</div>)}
         </div>
       )}
       {sections.map((s, si) => (
@@ -87,11 +89,11 @@ export function VisualView() {
         />
       ))}
       {!sections.length && (
-        <div className="empty"><p>La configuración está vacía.</p><p className="muted">Añade una sección arriba o pega una configuración en «Importar».</p></div>
+        <div className="empty"><p>{t('visual.empty')}</p><p className="muted">{t('visual.emptyHint')}</p></div>
       )}
-      {types.map(t => (
-        <datalist key={t} id={`dl-${t}`}>
-          {Object.entries(knowledge.directives).filter(([, d]) => d.sections.includes(t)).map(([name]) => <option key={name} value={name} />)}
+      {types.map(k => (
+        <datalist key={k} id={`dl-${k}`}>
+          {Object.entries(knowledge.directives).filter(([, d]) => d.sections.includes(k)).map(([name]) => <option key={name} value={name} />)}
         </datalist>
       ))}
     </div>

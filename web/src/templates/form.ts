@@ -1,10 +1,10 @@
 import type { ParamValue, TechTemplate, TemplateParam } from '../core/types'
 
-// Estado y conversión del formulario de plantillas por tecnología. El
-// formulario se genera a partir de los metadatos del núcleo (TechTemplate);
-// aquí no hay nada específico de ninguna tecnología.
+// State and conversion of the technology template form. The form is generated
+// from the core's metadata (TechTemplate); nothing here is specific to any
+// technology.
 
-/** Texto para string, int y list (un elemento por línea); booleano para bool. */
+/** Text for string, int and list (one item per line); boolean for bool. */
 export type FormValues = Record<string, string | boolean>
 
 const listText = (v: ParamValue | undefined) => (Array.isArray(v) ? v.join('\n') : '')
@@ -20,17 +20,17 @@ export function initialValues(t: TechTemplate): FormValues {
   return values
 }
 
-/** Un parámetro con `dependsOn` solo se muestra (y se envía) si ese bool está activado. */
+/** A parameter with `dependsOn` is only shown (and sent) if that bool is enabled. */
 export function isVisible(p: TemplateParam, values: FormValues): boolean {
   return !p.dependsOn || values[p.dependsOn] === true
 }
 
-/** Elementos de una lista escrita con un elemento por línea (también admite comas). */
+/** Items of a list written with one item per line (commas are also accepted). */
 export function splitList(text: string): string[] {
   return text.split(/[\n,;]+/).map(x => x.trim()).filter(Boolean)
 }
 
-/** Claves de los parámetros obligatorios visibles que están vacíos. */
+/** Keys of the visible required parameters that are empty. */
 export function missingRequired(t: TechTemplate, values: FormValues): string[] {
   return t.params.filter(p => {
     if (!p.required || !isVisible(p, values)) return false
@@ -41,8 +41,8 @@ export function missingRequired(t: TechTemplate, values: FormValues): string[] {
 }
 
 /**
- * Parámetros para el núcleo, con su tipo. Los vacíos se omiten (así se aplican
- * los valores por defecto) y los ocultos no se envían.
+ * Parameters for the core, with their type. Empty ones are omitted (so the
+ * defaults apply) and hidden ones are not sent.
  */
 export function toParams(t: TechTemplate, values: FormValues): Record<string, ParamValue> {
   const out: Record<string, ParamValue> = {}
@@ -60,7 +60,7 @@ export function toParams(t: TechTemplate, values: FormValues): Record<string, Pa
       }
       case 'int': {
         const s = String(v ?? '').trim()
-        if (s) out[p.key] = /^-?\d+$/.test(s) ? Number(s) : s // un texto no numérico lo rechaza el núcleo con su mensaje
+        if (s) out[p.key] = /^-?\d+$/.test(s) ? Number(s) : s // a non-numeric text is rejected by the core with its message
         break
       }
       default: {

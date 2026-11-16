@@ -1,7 +1,7 @@
-// Arranca `haro serve` para las pruebas e2e. Uso: node e2e/serve.mjs example|multi|assist <puerto>
-// «assist» sirve example.cfg con --assistant contra la API falsa (puerto 7476; sin --allow-write).
-// «multi» trabaja sobre una copia temporal de core/testdata/multiok con --allow-write,
-// nunca sobre el original.
+// Starts `haro serve` for the e2e tests. Usage: node e2e/serve.mjs example|multi|assist <port>
+// «assist» serves example.cfg with --assistant against the fake API (port 7476; no --allow-write).
+// «multi» works on a temporary copy of core/testdata/multiok with --allow-write,
+// never on the original.
 import { spawn } from 'node:child_process'
 import { cpSync, mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'

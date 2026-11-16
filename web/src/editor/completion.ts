@@ -3,9 +3,9 @@ import type { Knowledge } from '../core/types'
 import { sectionTypeAt } from './syntax'
 
 /**
- * Autocompletado de la primera palabra de cada línea: con sangría, las
- * directivas de la sección bajo el cursor; sin sangría, los tipos de sección.
- * Todo sale de CoreService.GetKnowledge.
+ * Completion of the first word of each line: with indentation, the directives
+ * of the section under the cursor; without it, the section types. Everything
+ * comes from CoreService.GetKnowledge.
  */
 export function directiveCompletion(knowledge: Knowledge | null): CompletionSource {
   if (!knowledge) return () => null
@@ -35,7 +35,7 @@ export function directiveCompletion(knowledge: Knowledge | null): CompletionSour
     if (!word || (word.from === word.to && !ctx.explicit)) return null
     const line = ctx.state.doc.lineAt(word.from)
     const before = line.text.slice(0, word.from - line.from)
-    if (before.trim() !== '') return null // solo la primera palabra de la línea
+    if (before.trim() !== '') return null // only the first word of the line
     if (before === '') return { from: word.from, options: sectionOptions, validFor: /^[\w-]*$/ }
     const type = sectionTypeAt(n => ctx.state.doc.line(n).text, line.number, knowledge)
     return { from: word.from, options: (type && bySection.get(type)) || all, validFor: /^[\w.-]*$/ }

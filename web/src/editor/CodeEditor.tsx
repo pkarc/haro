@@ -32,8 +32,10 @@ const theme = EditorView.theme({
 export interface CodeEditorProps {
   value: string
   knowledge: Knowledge | null
+  /** Accessible name of the editor. */
+  label: string
   issues: Issue[]
-  /** Línea (1-based) a la que saltar; `nonce` distingue peticiones repetidas. */
+  /** Line (1-based) to jump to; `nonce` tells repeated requests apart. */
   focus: { line: number; nonce: number } | null
   onChange(text: string): void
   onCursorLine(line: number): void
@@ -58,7 +60,7 @@ export function CodeEditor(props: CodeEditorProps) {
       linter(v => latest.current.issues.map(i => toDiagnostic(v, i)).filter((d): d is Diagnostic => d !== null), { delay: 100 }),
       lintGutter(),
       keymap.of([
-        // El historial lo lleva el almacén (un único Ctrl+Z para modo código y visual).
+        // The history is kept by the store (a single Ctrl+Z for code and visual modes).
         { key: 'Mod-z', run: () => { p().onUndo(); return true } },
         { key: 'Mod-y', run: () => { p().onRedo(); return true } },
         { key: 'Mod-Shift-z', run: () => { p().onRedo(); return true } },
@@ -67,7 +69,7 @@ export function CodeEditor(props: CodeEditorProps) {
         ...lintKeymap, ...defaultKeymap,
       ]),
       theme,
-      EditorView.contentAttributes.of({ 'aria-label': 'Configuración de HAProxy', spellcheck: 'false', autocapitalize: 'off', autocorrect: 'off' }),
+      EditorView.contentAttributes.of({ 'aria-label': props.label, spellcheck: 'false', autocapitalize: 'off', autocorrect: 'off' }),
       EditorView.updateListener.of(u => {
         if (u.docChanged && !u.transactions.some(t => t.annotation(External))) p().onChange(u.state.doc.toString())
         if (u.selectionSet || u.docChanged) p().onCursorLine(u.state.doc.lineAt(u.state.selection.main.head).number)
@@ -77,11 +79,12 @@ export function CodeEditor(props: CodeEditorProps) {
     view.current = v
     props.onCursorLine(1)
     return () => { v.destroy(); view.current = null }
-    // El editor se crea una vez por montaje; el resto llega por refs y efectos.
+    // The editor is created once per mount (the parent remounts it when the language changes);
+    // the rest arrives through refs and effects.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Cambios externos (deshacer, modo visual, importar…): se reemplaza solo el trozo distinto.
+  // External changes (undo, visual mode, import…): only the differing chunk is replaced.
   useEffect(() => {
     const v = view.current
     if (!v) return
@@ -110,7 +113,7 @@ export function CodeEditor(props: CodeEditorProps) {
 }
 
 function toDiagnostic(v: EditorView, i: Issue): Diagnostic | null {
-  if (i.line < 1 || i.line > v.state.doc.lines) return null // análisis algo atrasado respecto al texto
+  if (i.line < 1 || i.line > v.state.doc.lines) return null // analysis slightly behind the text
   const l = v.state.doc.line(i.line)
   const from = l.from + (l.text.length - l.text.trimStart().length)
   const to = Math.max(l.to, Math.min(from + 1, v.state.doc.length))
@@ -126,7 +129,7 @@ function insertTab(v: EditorView): boolean {
   return indentMore(v)
 }
 
-// Enter conserva la sangría; tras una cabecera de sección sangra 4 espacios.
+// Enter keeps the indentation; after a section header it indents 4 spaces.
 function enter(v: EditorView, kn: Knowledge | null): boolean {
   const { state } = v
   const sel = state.selection.main

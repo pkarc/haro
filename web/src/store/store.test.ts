@@ -34,26 +34,26 @@ const mk = (client = fakeClient(), configStore: ConfigStore = new ServedStore(cl
 }
 const F = (text: string, path = 'a.cfg'): SourceFile => ({ path, text })
 
-beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(0) })
-afterEach(() => { vi.useRealTimers() })
+beforeEach(() => { vi.useFakeTimers(); vi.setSystemTime(0); vi.stubGlobal('navigator', { language: 'en-US' }) })
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals() })
 
-describe('deshacer y rehacer', () => {
-  it('deshace y rehace ediciones', () => {
+describe('undo and redo', () => {
+  it('undoes and redoes edits', () => {
     const s = mk()
-    s.setState({ files: [F('uno')] })
-    s.getState().setText(0, 'dos')
-    s.getState().setText(0, 'tres')
+    s.setState({ files: [F('one')] })
+    s.getState().setText(0, 'two')
+    s.getState().setText(0, 'three')
     s.getState().undo()
-    expect(s.getState().files[0].text).toBe('dos')
+    expect(s.getState().files[0].text).toBe('two')
     s.getState().undo()
-    expect(s.getState().files[0].text).toBe('uno')
+    expect(s.getState().files[0].text).toBe('one')
     s.getState().redo()
-    expect(s.getState().files[0].text).toBe('dos')
-    s.getState().setText(0, 'nuevo')
+    expect(s.getState().files[0].text).toBe('two')
+    s.getState().setText(0, 'new')
     expect(s.getState().redoStack).toHaveLength(0)
   })
 
-  it('fusiona pulsaciones seguidas y separa tras una pausa', () => {
+  it('merges consecutive keystrokes and splits after a pause', () => {
     const s = mk()
     s.setState({ files: [F('')] })
     for (const t of ['a', 'ab', 'abc']) { s.getState().setText(0, t, { coalesce: true }); vi.advanceTimersByTime(100) }
@@ -67,7 +67,7 @@ describe('deshacer y rehacer', () => {
 })
 
 describe('apply', () => {
-  it('aplica los changes a los archivos', async () => {
+  it('applies the changes to the files', async () => {
     const client = fakeClient({ apply: async files => ({ files, changes: [{ file: 1, path: 'b.cfg', text: 'B2' }] }) })
     const s = mk(client)
     s.setState({ files: [F('A'), F('B', 'b.cfg')] })
@@ -76,62 +76,62 @@ describe('apply', () => {
     expect(s.getState().undoStack).toHaveLength(1)
   })
 
-  it('muestra un aviso si apply falla y no cambia nada', async () => {
-    const s = mk(fakeClient({ apply: async () => { throw new Error('operación 1: no existe') } }))
+  it('shows a warning if apply fails and changes nothing', async () => {
+    const s = mk(fakeClient({ apply: async () => { throw new Error('operation 1: does not exist') } }))
     s.setState({ files: [F('A')] })
     expect(await s.getState().applyOps([{ op: 'remove_section', section: 9 }])).toBe(false)
     expect(s.getState().files[0].text).toBe('A')
-    expect(s.getState().toasts[0].msg).toContain('no existe')
+    expect(s.getState().toasts[0].msg).toContain('does not exist')
   })
 
-  it('applyChanges rechaza rutas que no encajan', () => {
-    expect(() => applyChanges([F('x')], [{ file: 0, path: 'otro.cfg', text: 'y' }])).toThrow()
+  it('applyChanges rejects paths that do not match', () => {
+    expect(() => applyChanges([F('x')], [{ file: 0, path: 'other.cfg', text: 'y' }])).toThrow()
   })
 })
 
-describe('plantillas por tecnología', () => {
+describe('technology templates', () => {
   const ops = [{ op: 'add_section' as const, type: 'backend', name: 'nextcloud', at: 1 }]
 
-  it('guarda una versión antes de aplicar, cambia los archivos y avisa con deshacer', async () => {
+  it('saves a version before applying, changes the files and notifies with undo', async () => {
     const apply = vi.fn(async (files: SourceFile[]) => ({ files, changes: [{ file: 0, path: 'a.cfg', text: 'A\nbackend nextcloud' }] }))
     const s = mk(fakeClient({ apply }))
     s.setState({ files: [F('A')] })
     expect(await s.getState().applyTemplate(ops, 'Nextcloud')).toBe(true)
     expect(apply).toHaveBeenCalledWith([F('A')], ops)
     expect(s.getState().files[0].text).toBe('A\nbackend nextcloud')
-    expect(s.getState().versions[0]).toMatchObject({ label: 'Antes de añadir Nextcloud', files: [F('A')] })
+    expect(s.getState().versions[0]).toMatchObject({ label: 'Before adding Nextcloud', files: [F('A')] })
     const toast = s.getState().toasts.at(-1)!
     expect(toast.msg).toContain('Nextcloud')
     toast.action!.run()
     expect(s.getState().files[0].text).toBe('A')
   })
 
-  it('si apply falla no cambia nada ni avisa de éxito', async () => {
-    const s = mk(fakeClient({ apply: async () => { throw new Error('operación 1: no existe') } }))
+  it('if apply fails nothing changes and no success is reported', async () => {
+    const s = mk(fakeClient({ apply: async () => { throw new Error('operation 1: does not exist') } }))
     s.setState({ files: [F('A')] })
     expect(await s.getState().applyTemplate(ops, 'Nextcloud')).toBe(false)
     expect(s.getState().files[0].text).toBe('A')
-    expect(s.getState().toasts.some(t => t.msg.includes('añadida'))).toBe(false)
+    expect(s.getState().toasts.some(t => t.msg.includes('added'))).toBe(false)
   })
 })
 
-describe('análisis', () => {
-  it('descarta respuestas obsoletas', async () => {
+describe('analysis', () => {
+  it('discards stale responses', async () => {
     const resolvers: Record<string, (a: Analysis) => void> = {}
     const s = mk(fakeClient({ analyze: f => new Promise(r => { resolvers[f[0].text] = r }) }))
     s.setState({ files: [F('v1')] })
     s.getState().refreshAnalysis(true)
     s.getState().setText(0, 'v2')
-    await vi.advanceTimersByTimeAsync(250) // el debounce lanza la segunda petición
+    await vi.advanceTimersByTimeAsync(250) // the debounce fires the second request
     resolvers.v2(emptyAnalysis('v2'))
     await vi.advanceTimersByTimeAsync(0)
-    resolvers.v1(emptyAnalysis('v1')) // llega tarde
+    resolvers.v1(emptyAnalysis('v1')) // arrives late
     await vi.advanceTimersByTimeAsync(0)
     expect(s.getState().analysis?.doc.files?.[0]).toBe('v2')
     expect(s.getState().analysisRev).toBe(s.getState().rev)
   })
 
-  it('agrupa varias ediciones en un solo análisis (debounce)', async () => {
+  it('groups several edits into a single analysis (debounce)', async () => {
     const analyze = vi.fn(async (f: SourceFile[]) => emptyAnalysis(f[0].text))
     const s = mk(fakeClient({ analyze }))
     s.setState({ files: [F('')] })
@@ -141,8 +141,8 @@ describe('análisis', () => {
   })
 })
 
-describe('archivos de disco', () => {
-  it('los archivos servidos sustituyen a la sesión local y se marcan sucios al editar', () => {
+describe('files from disk', () => {
+  it('served files replace the local session and are marked dirty on edit', () => {
     const s = mk()
     s.getState().loadServed([F('X', 'x.cfg')])
     expect(s.getState().files[0].text).toBe('X')
@@ -152,177 +152,187 @@ describe('archivos de disco', () => {
     expect(s.getState().dirty()).toEqual([])
   })
 
-  it('conserva ediciones sin guardar si el disco no cambió', () => {
+  it('keeps unsaved edits if the disk did not change', () => {
     const s = mk()
     s.getState().loadServed([F('X', 'x.cfg')])
-    s.getState().setText(0, 'editado')
+    s.getState().setText(0, 'edited')
     s.getState().loadServed([F('X', 'x.cfg')])
-    expect(s.getState().files[0].text).toBe('editado')
+    expect(s.getState().files[0].text).toBe('edited')
     s.getState().loadServed([F('X2', 'x.cfg')])
     expect(s.getState().files[0].text).toBe('X2')
   })
 
-  it('dirtyIndexes ignora archivos que no están en disco', () => {
+  it('dirtyIndexes ignores files that are not on disk', () => {
     expect(dirtyIndexes([F('a'), F('b', 'n.cfg')], [F('z')])).toEqual([0])
   })
 })
 
-describe('idioma', () => {
+describe('language', () => {
   const kn = (tag: string) => ({ categories: { net: tag }, sections: {}, directives: {}, rules: {}, templates: {} })
 
-  it('usa el idioma del navegador si es inglés y español si no', async () => {
-    const orig = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
-    const setNav = (language: string) => Object.defineProperty(globalThis, 'navigator', { value: { language }, configurable: true })
-    try {
-      setNav('en-US')
-      expect(mk().getState().lang).toBe('en')
-      setNav('es-MX')
-      expect(mk().getState().lang).toBe('es')
-      setNav('fr-FR')
-      expect(mk().getState().lang).toBe('es')
-    } finally {
-      if (orig) Object.defineProperty(globalThis, 'navigator', orig)
-    }
+  it('defaults to English; Spanish only if the browser language starts with «es»', () => {
+    const setNav = (language: string) => vi.stubGlobal('navigator', { language })
+    setNav('en-US')
+    expect(mk().getState().lang).toBe('en')
+    setNav('es-MX')
+    expect(mk().getState().lang).toBe('es')
+    setNav('es')
+    expect(mk().getState().lang).toBe('es')
+    setNav('fr-FR')
+    expect(mk().getState().lang).toBe('en')
+    setNav('')
+    expect(mk().getState().lang).toBe('en')
   })
 
-  it('pasa el idioma a analyze y knowledge, y al cambiarlo reanaliza y recarga el conocimiento', async () => {
+  it('the interface messages follow the language', async () => {
+    const s = mk(fakeClient({ apply: async () => { throw new Error('x') } }))
+    s.setState({ files: [F('A')] })
+    await s.getState().applyOps([])
+    expect(s.getState().toasts.at(-1)?.msg).toBe('Could not apply the change: x')
+    await s.getState().setLang('es')
+    await s.getState().applyOps([])
+    expect(s.getState().toasts.at(-1)?.msg).toBe('No se pudo aplicar el cambio: x')
+    expect(s.getState().toasts.at(-1)?.msg).not.toMatch(/vosotros|vuestr/)
+  })
+
+  it('passes the language to analyze and knowledge, and on change re-analyzes and reloads the knowledge', async () => {
     const analyze = vi.fn(async (f: SourceFile[], _lang?: string) => emptyAnalysis(f[0].text))
     const knowledge = vi.fn(async (lang?: string) => kn(lang ?? '?'))
     const s = mk(fakeClient({ analyze, knowledge }))
-    s.setState({ files: [F('x')], lang: 'es' })
+    s.setState({ files: [F('x')], lang: 'en' })
     await s.getState().init()
-    expect(analyze).toHaveBeenLastCalledWith([F('x')], 'es')
-    expect(knowledge).toHaveBeenLastCalledWith('es')
-    await s.getState().setLang('en')
-    expect(s.getState().lang).toBe('en')
     expect(analyze).toHaveBeenLastCalledWith([F('x')], 'en')
     expect(knowledge).toHaveBeenLastCalledWith('en')
-    expect(s.getState().knowledge?.categories.net).toBe('en')
+    await s.getState().setLang('es')
+    expect(s.getState().lang).toBe('es')
+    expect(analyze).toHaveBeenLastCalledWith([F('x')], 'es')
+    expect(knowledge).toHaveBeenLastCalledWith('es')
+    expect(s.getState().knowledge?.categories.net).toBe('es')
     const n = analyze.mock.calls.length
-    await s.getState().setLang('en')
-    expect(analyze.mock.calls.length).toBe(n) // sin cambio no hay llamadas
+    await s.getState().setLang('es')
+    expect(analyze.mock.calls.length).toBe(n) // no change, no calls
   })
 
-  it('persiste el idioma y descarta valores inválidos', () => {
+  it('persists the language and discards invalid values', () => {
     const mem = new Map<string, string>()
     const storage = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => { mem.set(k, v) }, removeItem: (k: string) => { mem.delete(k) } }
     const a = createAppStore(fakeClient(), new ServedStore(fakeClient()), { storage })
-    a.setState({ lang: 'en' })
-    a.getState().setText(0, 'cambio') // fuerza la escritura en el almacenamiento
+    a.setState({ lang: 'es' })
+    a.getState().setText(0, 'change') // forces the write to storage
     const saved = JSON.parse(mem.get('haro.v1')!)
-    expect(saved.state.lang).toBe('en')
-    expect(createAppStore(fakeClient(), new ServedStore(fakeClient()), { storage }).getState().lang).toBe('en')
+    expect(saved.state.lang).toBe('es')
+    expect(createAppStore(fakeClient(), new ServedStore(fakeClient()), { storage }).getState().lang).toBe('es')
     saved.state.lang = 'klingon'
     mem.set('haro.v1', JSON.stringify(saved))
-    expect(['es', 'en']).toContain(createAppStore(fakeClient(), new ServedStore(fakeClient()), { storage }).getState().lang)
+    expect(createAppStore(fakeClient(), new ServedStore(fakeClient()), { storage }).getState().lang).toBe('en') // falls back to the browser language
   })
 })
 
-describe('asistente', () => {
+describe('assistant', () => {
   type Ev = import('../core/types').AssistEvent
   const done: Ev = { type: 'done', done: { stopReason: 'end_turn', refusalCategory: '', inputTokens: 1, outputTokens: 1 } }
   const proposal = (path: string, text: string): Ev => ({ type: 'proposal', proposal: { changes: [{ file: 0, path, text }], issuesAfter: [], unmatched: 0, truncated: false } })
-  // cliente con un asistente guionizado; recuerda las peticiones
+  // client with a scripted assistant; remembers the requests
   const assistant = (script: (req: import('../core/types').AssistRequest, signal?: AbortSignal) => AsyncGenerator<Ev>) => {
     const calls: import('../core/types').AssistRequest[] = []
     return { calls, client: fakeClient({ assist: (req, signal) => { calls.push(req); return script(req, signal) } }) }
   }
 
-  it('recibe la respuesta en streaming y la guarda con el idioma y los archivos', async () => {
-    const { client, calls } = assistant(async function* () { yield { type: 'text', text: 'Ho' }; yield { type: 'text', text: 'la' }; yield done })
+  it('receives the streamed response and stores it with the language and files', async () => {
+    const { client, calls } = assistant(async function* () { yield { type: 'text', text: 'He' }; yield { type: 'text', text: 'llo' }; yield done })
     const s = mk(client)
-    s.setState({ files: [F('uno')], lang: 'en' })
-    await s.getState().sendChat('  pregunta  ')
-    expect(calls[0]).toEqual({ files: [F('uno')], messages: [{ role: 'user', content: 'pregunta' }], lang: 'en' })
+    s.setState({ files: [F('one')], lang: 'en' })
+    await s.getState().sendChat('  question  ')
+    expect(calls[0]).toEqual({ files: [F('one')], messages: [{ role: 'user', content: 'question' }], lang: 'en' })
     const chat = s.getState().chat
-    expect(chat.map(m => [m.role, m.content])).toEqual([['user', 'pregunta'], ['assistant', 'Hola']])
+    expect(chat.map(m => [m.role, m.content])).toEqual([['user', 'question'], ['assistant', 'Hello']])
     expect(chat[1].pending).toBe(false)
     expect(s.getState().chatBusy).toBe(false)
   })
 
-  it('muestra el texto parcial mientras llega y bloquea un segundo envío', async () => {
+  it('shows the partial text while it arrives and blocks a second send', async () => {
     let release!: () => void
     const gate = new Promise<void>(r => { release = r })
-    const { client, calls } = assistant(async function* () { yield { type: 'text', text: 'par' }; await gate; yield { type: 'text', text: 'cial' }; yield done })
+    const { client, calls } = assistant(async function* () { yield { type: 'text', text: 'par' }; await gate; yield { type: 'text', text: 'tial' }; yield done })
     const s = mk(client)
-    const p = s.getState().sendChat('hola')
+    const p = s.getState().sendChat('hi')
     await vi.waitFor(() => expect(s.getState().chat[1]?.content).toBe('par'))
     expect(s.getState().chatBusy).toBe(true)
     expect(s.getState().chat[1].pending).toBe(true)
-    await s.getState().sendChat('otra') // ignorada
+    await s.getState().sendChat('other') // ignored
     expect(calls).toHaveLength(1)
     release()
     await p
-    expect(s.getState().chat[1].content).toBe('parcial')
+    expect(s.getState().chat[1].content).toBe('partial')
   })
 
-  it('detener corta el stream y conserva lo recibido', async () => {
+  it('stopping cuts the stream and keeps what was received', async () => {
     const { client } = assistant(async function* (_r, signal) {
-      yield { type: 'text', text: 'medio' }
-      await new Promise((_, rej) => signal?.addEventListener('abort', () => rej(new Error('abortado'))))
+      yield { type: 'text', text: 'half' }
+      await new Promise((_, rej) => signal?.addEventListener('abort', () => rej(new Error('aborted'))))
     })
     const s = mk(client)
-    const p = s.getState().sendChat('hola')
-    await vi.waitFor(() => expect(s.getState().chat[1]?.content).toBe('medio'))
+    const p = s.getState().sendChat('hi')
+    await vi.waitFor(() => expect(s.getState().chat[1]?.content).toBe('half'))
     s.getState().stopChat()
     await p
     const m = s.getState().chat[1]
-    expect(m).toMatchObject({ content: 'medio', stopped: true, pending: false })
+    expect(m).toMatchObject({ content: 'half', stopped: true, pending: false })
     expect(m.error).toBeUndefined()
     expect(s.getState().chatBusy).toBe(false)
   })
 
-  it('un error queda en el mensaje y se puede reintentar sin repetir la petición del usuario', async () => {
+  it('an error stays in the message and can be retried without repeating the user request', async () => {
     let n = 0
     const { client, calls } = assistant(async function* () {
-      if (++n === 1) throw new Error('la API de Anthropic rechazó las credenciales')
-      yield { type: 'text', text: 'ahora sí' }
+      if (++n === 1) throw new Error('the Anthropic API rejected the credentials')
+      yield { type: 'text', text: 'now it works' }
       yield done
     })
     const s = mk(client)
-    await s.getState().sendChat('hola')
-    expect(s.getState().chat[1].error).toContain('credenciales')
+    await s.getState().sendChat('hi')
+    expect(s.getState().chat[1].error).toContain('credentials')
     await s.getState().retryChat()
-    expect(s.getState().chat.map(m => m.content)).toEqual(['hola', 'ahora sí'])
-    expect(calls[1].messages).toEqual([{ role: 'user', content: 'hola' }])
+    expect(s.getState().chat.map(m => m.content)).toEqual(['hi', 'now it works'])
+    expect(calls[1].messages).toEqual([{ role: 'user', content: 'hi' }])
   })
 
-  it('el historial enviado alterna roles y omite los mensajes fallidos', async () => {
+  it('the history sent alternates roles and omits failed messages', async () => {
     let n = 0
     const { client, calls } = assistant(async function* () {
-      if (++n === 2) throw new Error('límite')
+      if (++n === 2) throw new Error('limit')
       yield { type: 'text', text: `r${n}` }
       yield done
     })
     const s = mk(client)
     await s.getState().sendChat('a')
-    await s.getState().sendChat('b') // falla
+    await s.getState().sendChat('b') // fails
     await s.getState().sendChat('c')
     expect(calls[2].messages).toEqual([{ role: 'user', content: 'a' }, { role: 'assistant', content: 'r1' }, { role: 'user', content: 'b\n\nc' }])
   })
 
-  it('el historial se guarda, sobrevive a la recarga y una respuesta inconclusa queda como interrumpida', async () => {
+  it('the history is saved, survives a reload and an unfinished response is marked as interrupted', async () => {
     const mem = new Map<string, string>()
     const storage = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => { mem.set(k, v) }, removeItem: (k: string) => { mem.delete(k) } }
     const { client } = assistant(async function* () { yield { type: 'text', text: 'resp' }; yield done })
     const a = createAppStore(client, new ServedStore(client), { storage })
-    await a.getState().sendChat('hola')
-    a.setState({ chat: [...a.getState().chat, { role: 'user', content: 'otra', ts: 1 }, { role: 'assistant', content: 'a medias', ts: 2, pending: true }] })
-    a.getState().setText(0, 'x') // fuerza guardar
+    await a.getState().sendChat('hi')
+    a.setState({ chat: [...a.getState().chat, { role: 'user', content: 'other', ts: 1 }, { role: 'assistant', content: 'half way', ts: 2, pending: true }] })
+    a.getState().setText(0, 'x') // forces a save
     const b = createAppStore(client, new ServedStore(client), { storage })
-    expect(b.getState().chat.map(m => m.content)).toEqual(['hola', 'resp', 'otra', 'a medias'])
-    expect(b.getState().chat[3]).toMatchObject({ error: expect.stringContaining('interrumpió') })
+    expect(b.getState().chat.map(m => m.content)).toEqual(['hi', 'resp', 'other', 'half way'])
+    expect(b.getState().chat[3]).toMatchObject({ error: expect.stringContaining('interrupted') })
     expect(b.getState().chat[3].pending).toBeUndefined()
     expect(b.getState().chatBusy).toBe(false)
   })
 
-  it('nueva conversación borra el historial y corta la respuesta en curso', async () => {
+  it('a new conversation clears the history and cuts the response in progress', async () => {
     const { client } = assistant(async function* (_r, signal) {
       yield { type: 'text', text: 'x' }
-      await new Promise((_, rej) => signal?.addEventListener('abort', () => rej(new Error('abortado'))))
+      await new Promise((_, rej) => signal?.addEventListener('abort', () => rej(new Error('aborted'))))
     })
     const s = mk(client)
-    const p = s.getState().sendChat('hola')
+    const p = s.getState().sendChat('hi')
     await vi.waitFor(() => expect(s.getState().chat[1]?.content).toBe('x'))
     s.getState().newChat()
     await p
@@ -330,51 +340,51 @@ describe('asistente', () => {
     expect(s.getState().chatBusy).toBe(false)
   })
 
-  describe('propuesta', () => {
+  describe('proposal', () => {
     const run = async (files: SourceFile[], text: string) => {
       const { client } = assistant(async function* () { yield { type: 'text', text: 'ok' }; yield proposal(files[0].path, text); yield done })
       const s = mk(client)
       s.setState({ files })
-      await s.getState().sendChat('cambia')
+      await s.getState().sendChat('change')
       return s
     }
 
-    it('llega con su estado y el texto base', async () => {
-      const s = await run([F('uno\n')], 'dos')
-      expect(s.getState().chat[1].proposal).toMatchObject({ status: 'pending', base: [F('uno\n')] })
+    it('arrives with its status and the base text', async () => {
+      const s = await run([F('one\n')], 'two')
+      expect(s.getState().chat[1].proposal).toMatchObject({ status: 'pending', base: [F('one\n')] })
     })
 
-    it('aplicar guarda una versión, sustituye los archivos y se deshace de una vez', async () => {
-      const s = await run([F('uno\n'), F('otro\n', 'b.cfg')], 'dos')
+    it('applying saves a version, replaces the files and is undone in one step', async () => {
+      const s = await run([F('one\n'), F('another\n', 'b.cfg')], 'two')
       expect(s.getState().applyProposal(1)).toBe(true)
-      expect(s.getState().files).toEqual([F('dos\n'), F('otro\n', 'b.cfg')]) // conserva el salto de línea final
-      expect(s.getState().versions[0]).toMatchObject({ label: 'Antes de aplicar propuesta del asistente', files: [F('uno\n'), F('otro\n', 'b.cfg')] })
+      expect(s.getState().files).toEqual([F('two\n'), F('another\n', 'b.cfg')]) // keeps the final newline
+      expect(s.getState().versions[0]).toMatchObject({ label: 'Before applying assistant proposal', files: [F('one\n'), F('another\n', 'b.cfg')] })
       expect(s.getState().chat[1].proposal?.status).toBe('applied')
-      expect(s.getState().toasts.at(-1)?.action?.label).toBe('Deshacer')
-      expect(s.getState().applyProposal(1)).toBe(false) // ya aplicada
+      expect(s.getState().toasts.at(-1)?.action?.label).toBe('Undo')
+      expect(s.getState().applyProposal(1)).toBe(false) // already applied
       s.getState().undo()
-      expect(s.getState().files).toEqual([F('uno\n'), F('otro\n', 'b.cfg')])
+      expect(s.getState().files).toEqual([F('one\n'), F('another\n', 'b.cfg')])
     })
 
-    it('descartar no toca los archivos', async () => {
-      const s = await run([F('uno')], 'dos')
+    it('discarding does not touch the files', async () => {
+      const s = await run([F('one')], 'two')
       s.getState().discardProposal(1)
       expect(s.getState().chat[1].proposal?.status).toBe('discarded')
       expect(s.getState().applyProposal(1)).toBe(false)
-      expect(s.getState().files[0].text).toBe('uno')
+      expect(s.getState().files[0].text).toBe('one')
     })
 
-    it('detecta que la configuración cambió desde la petición', async () => {
-      const s = await run([F('uno')], 'dos')
+    it('detects that the configuration changed since the request', async () => {
+      const s = await run([F('one')], 'two')
       const p = () => s.getState().chat[1].proposal!
       expect(proposalStale(p(), s.getState().files)).toBe(false)
-      s.getState().setText(0, 'editado')
+      s.getState().setText(0, 'edited')
       expect(proposalStale(p(), s.getState().files)).toBe(true)
     })
 
-    it('no aplica si el archivo propuesto ya no existe', async () => {
-      const s = await run([F('uno')], 'dos')
-      s.setState({ files: [F('uno', 'otro.cfg')] })
+    it('does not apply if the proposed file no longer exists', async () => {
+      const s = await run([F('one')], 'two')
+      s.setState({ files: [F('one', 'another.cfg')] })
       expect(s.getState().applyProposal(1)).toBe(false)
       expect(s.getState().versions).toHaveLength(0)
       expect(s.getState().toasts.at(-1)?.kind).toBe('warn')
@@ -383,20 +393,20 @@ describe('asistente', () => {
 })
 
 
-// ---------- almacén de configuración inyectado ----------
+// ---------- injected configuration store ----------
 
-/** Almacén en memoria con control de versión, como lo tendría un repositorio. */
+/** In-memory store with version control, like a repository would have. */
 class MemoryStore implements ConfigStore {
-  label = 'memoria'
+  label = 'memory'
   canSave = true
-  storageKey = 'test.memoria'
+  storageKey = 'test.memory'
   version = 1
   loads = 0
   saved: SourceFile[][] = []
   constructor(public files: SourceFile[], private loadedVersion = 1) {}
   async load() { this.loads++; this.loadedVersion = this.version; return this.files }
   async save(files: SourceFile[]): Promise<SaveResult> {
-    if (this.loadedVersion !== this.version) return { saved: false, conflict: true, error: 'La versión remota cambió desde que se cargó' }
+    if (this.loadedVersion !== this.version) return { saved: false, conflict: true, error: 'The remote version changed since it was loaded' }
     this.saved.push(files)
     this.files = this.files.map(f => files.find(g => g.path === f.path) ?? f)
     this.version++
@@ -405,77 +415,77 @@ class MemoryStore implements ConfigStore {
   }
 }
 
-describe('ConfigStore inyectado', () => {
-  it('init carga los archivos del almacén y los marca como lo de origen', async () => {
-    const store = new MemoryStore([F('uno', 'a.cfg'), F('dos', 'b.cfg')])
+describe('injected ConfigStore', () => {
+  it('init loads the files from the store and marks them as the origin', async () => {
+    const store = new MemoryStore([F('one', 'a.cfg'), F('two', 'b.cfg')])
     const s = mk(fakeClient(), store)
     await s.getState().init()
     expect(store.loads).toBe(1)
-    expect(s.getState().files.map(f => f.text)).toEqual(['uno', 'dos'])
+    expect(s.getState().files.map(f => f.text)).toEqual(['one', 'two'])
     expect(s.getState().dirty()).toEqual([])
     s.getState().setText(1, 'DOS')
     expect(s.getState().dirty()).toEqual([1])
   })
 
-  it('guardar pasa por el almacén y marca los archivos como guardados', async () => {
-    const store = new MemoryStore([F('uno', 'a.cfg'), F('dos', 'b.cfg')])
+  it('saving goes through the store and marks the files as saved', async () => {
+    const store = new MemoryStore([F('one', 'a.cfg'), F('two', 'b.cfg')])
     const s = mk(fakeClient(), store)
     await s.getState().init()
     s.getState().setText(0, 'UNO')
     s.getState().setText(1, 'DOS')
     const res = await s.getState().save(s.getState().dirty())
     expect(res.saved).toBe(true)
-    expect(store.saved).toHaveLength(1) // una sola llamada con todos los archivos
+    expect(store.saved).toHaveLength(1) // a single call with all the files
     expect(store.saved[0].map(f => f.text)).toEqual(['UNO', 'DOS'])
     expect(s.getState().dirty()).toEqual([])
   })
 
-  it('un conflicto de versión no marca nada como guardado y reload() recupera lo remoto', async () => {
-    const store = new MemoryStore([F('uno', 'a.cfg')])
+  it('a version conflict marks nothing as saved and reload() recovers the remote', async () => {
+    const store = new MemoryStore([F('one', 'a.cfg')])
     const s = mk(fakeClient(), store)
     await s.getState().init()
     s.getState().setText(0, 'LOCAL')
-    store.version++ // alguien cambió el origen
-    store.files = [F('REMOTO', 'a.cfg')]
+    store.version++ // somebody changed the origin
+    store.files = [F('REMOTE', 'a.cfg')]
     const res = await s.getState().save([0])
     expect(res.saved).toBe(false)
     expect(res.conflict).toBe(true)
     expect(s.getState().dirty()).toEqual([0])
     expect(await s.getState().reload()).toBe(true)
-    expect(s.getState().files[0].text).toBe('REMOTO')
+    expect(s.getState().files[0].text).toBe('REMOTE')
     expect(s.getState().dirty()).toEqual([])
-    // Antes de recargar se guardó una versión con lo local, para no perderlo.
+    // Before reloading, a version with the local state was saved so it is not lost.
     expect(s.getState().versions.some(v => v.files[0].text === 'LOCAL')).toBe(true)
-    // Tras recargar, guardar funciona de nuevo.
-    s.getState().setText(0, 'NUEVO')
+    // After reloading, saving works again.
+    s.getState().setText(0, 'NEW')
     expect((await s.getState().save([0])).saved).toBe(true)
   })
 
-  it('si load() falla, avisa y la sesión sigue local', async () => {
+  it('if load() fails, it warns and the session stays local', async () => {
     const store = new MemoryStore([])
-    store.load = async () => { throw new Error('sin red') }
+    store.load = async () => { throw new Error('no network') }
     const s = mk(fakeClient(), store)
     await s.getState().init()
-    expect(s.getState().toasts.some(t => t.msg.includes('sin red') && t.msg.includes('memoria'))).toBe(true)
-    expect(s.getState().files.length).toBeGreaterThan(0) // muestra
+    expect(s.getState().toasts.some(t => t.msg.includes('no network') && t.msg.includes('memory'))).toBe(true)
+    expect(s.getState().files.length).toBeGreaterThan(0) // sample
     expect(s.getState().disk).toBeNull()
   })
 
-  it('dos almacenes con distinta storageKey no mezclan sesiones', async () => {
+  it('two stores with different storageKey do not mix sessions', async () => {
     const mem = new Map<string, string>()
     const storage = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => { mem.set(k, v) }, removeItem: (k: string) => { mem.delete(k) } }
     const a = createAppStore(fakeClient(), new MemoryStore([F('A')]), { storage })
-    const other = new MemoryStore([F('B')]); other.storageKey = 'test.otra'
+    const other = new MemoryStore([F('B')]); other.storageKey = 'test.other'
     const b = createAppStore(fakeClient(), other, { storage })
     await a.getState().init(); await b.getState().init()
     a.getState().setText(0, 'A2')
-    expect([...mem.keys()].sort()).toEqual(['test.memoria', 'test.otra'])
+    expect([...mem.keys()].sort()).toEqual(['test.memory', 'test.other'])
     expect(b.getState().files[0].text).toBe('B')
   })
 })
 
 describe('ServedStore', () => {
-  it('carga con getConfig, solo guarda si el servidor lo permite y guarda con putFiles', async () => {
+  it('loads with getConfig, only saves if the server allows it and saves with putFiles', async () => {
     const put = vi.fn(async () => ({ saved: true }))
     const base = fakeClient({ getConfig: async () => [F('x')], putFiles: put, capabilities: async () => ({ ...(await fakeClient().capabilities()), canWrite: false }) })
     const ro = new ServedStore(base)
@@ -489,7 +499,7 @@ describe('ServedStore', () => {
     expect(put).toHaveBeenCalledWith([F('y')])
   })
 
-  it('sin --file la sesión es local', async () => {
+  it('without --file the session is local', async () => {
     const st = new ServedStore(fakeClient({ getConfig: async () => null }))
     expect(await st.load()).toBeNull()
   })

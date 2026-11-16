@@ -1,11 +1,17 @@
-import type { SourceFile } from '../core/types'
+import type { Lang, SourceFile } from '../core/types'
 
-// Configuración de ejemplo para la sesión local (cuando haro serve no recibe
-// --file). Es solo texto: toda la interpretación la hace el núcleo.
-export const SAMPLE_FILES: SourceFile[] = [{
-  path: 'haproxy.cfg',
-  text: `# Configuración de ejemplo de haro
-# Edítala en modo código o en modo visual.
+const INTRO: Record<Lang, string> = {
+  en: '# haro sample configuration\n# Edit it in code mode or in visual mode.',
+  es: '# Configuración de ejemplo de haro\n# Edítala en modo código o en modo visual.',
+}
+
+// Sample configuration for the local session (when haro serve gets no --file).
+// It is just text: all interpretation is done by the core. Only the intro
+// comments depend on the language.
+export function sampleFiles(lang: Lang): SourceFile[] {
+  return [{
+    path: 'haproxy.cfg',
+    text: `${INTRO[lang]}
 
 global
     log /dev/log local0
@@ -36,7 +42,7 @@ frontend http_in
     http-request redirect scheme https code 301
 
 frontend https_in
-    bind *:443 ssl crt /etc/haproxy/certs/sitio.pem alpn h2,http/1.1
+    bind *:443 ssl crt /etc/haproxy/certs/site.pem alpn h2,http/1.1
     http-request set-header X-Forwarded-Proto https
     acl is_api path_beg /api
     acl is_static path_end .css .js .png .jpg .svg
@@ -66,6 +72,7 @@ listen stats
     stats enable
     stats uri /stats
     stats refresh 10s
-    stats auth admin:cambiame
+    stats auth admin:changeme
 `,
-}]
+  }]
+}

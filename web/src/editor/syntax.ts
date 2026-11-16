@@ -1,19 +1,19 @@
 import type { Knowledge } from '../core/types'
 
-// Ayudas de presentación para el editor (resaltado y sangría). La
-// interpretación real de la configuración la hace siempre el núcleo.
+// Presentation helpers for the editor (highlighting and indentation). The real
+// interpretation of the configuration is always done by the core.
 
-// Secciones que HAProxy admite con sangría; el resto de cabeceras solo en columna 0.
+// Sections HAProxy accepts indented; the rest of the headers only in column 0.
 export const INDENTABLE = new Set(['global', 'defaults', 'frontend', 'backend', 'listen'])
 
-// Directivas cuyo segundo token es una subpalabra (solo para colorear).
+// Directives whose second token is a subkeyword (for coloring only).
 export const SUBKEYWORDS = new Set([
   'timeout', 'option', 'no', 'stats', 'http-request', 'http-response', 'http-after-response',
   'tcp-request', 'tcp-response', 'http-check', 'tcp-check', 'balance', 'mode', 'compression',
   'capture', 'stick', 'hash-type', 'http-reuse',
 ])
 
-/** ¿Es `line` una cabecera de sección? Devuelve su tipo. */
+/** Is `line` a section header? Returns its type. */
 export function headerType(line: string, knowledge: Knowledge | null): string | null {
   const m = /^([ \t]*)(\S+)/.exec(line)
   if (!m || !knowledge) return null
@@ -22,7 +22,7 @@ export function headerType(line: string, knowledge: Knowledge | null): string | 
   return !m[1] || INDENTABLE.has(kw) ? kw : null
 }
 
-/** Tipo de la sección a la que pertenece la línea `lineNo` (1-based), buscando hacia arriba. */
+/** Type of the section `lineNo` (1-based) belongs to, searching upwards. */
 export function sectionTypeAt(lines: (n: number) => string, lineNo: number, knowledge: Knowledge | null): string | null {
   for (let n = lineNo; n >= 1; n--) {
     const t = headerType(lines(n), knowledge)

@@ -1,7 +1,7 @@
 import type { Op, Section } from '../core/types'
 
-// Constructores de operaciones para core.Apply. Los índices de sección son
-// los de la vista unificada (analysis.doc.sections).
+// Operation builders for core.Apply. Section indexes are those of the unified
+// view (analysis.doc.sections).
 
 export const opUpdateDirective = (section: number, lineIndex: number, text: string): Op => ({ op: 'update_directive', section, lineIndex, text })
 export const opRemoveDirective = (section: number, lineIndex: number): Op => ({ op: 'remove_directive', section, lineIndex })

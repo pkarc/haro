@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { DiffBlock } from '../components/DiffBlock'
 import { openDialog } from '../components/dialogs'
 import { Modal } from '../components/Modal'
+import { useT } from '../i18n/react'
 import type { RenderResult, TechTemplate, TemplateParam } from '../core/types'
 import { useApp, useCoreClient } from '../store'
 import { initialValues, isVisible, missingRequired, toParams, type FormValues } from './form'
@@ -44,6 +45,7 @@ function Field({ p, value, onChange }: { p: TemplateParam; value: string | boole
 }
 
 export function TemplateDialog({ onClose }: { onClose(): void }) {
+  const t = useT()
   const coreClient = useCoreClient()
   const files = useApp(s => s.files)
   const lang = useApp(s => s.lang)
@@ -52,7 +54,7 @@ export function TemplateDialog({ onClose }: { onClose(): void }) {
   const [loadError, setLoadError] = useState('')
   const [id, setId] = useState('')
   const [values, setValues] = useState<FormValues>({})
-  const [preview, setPreview] = useState<Preview>({ state: 'idle', hint: 'Elige una tecnología.' })
+  const [preview, setPreview] = useState<Preview>({ state: 'idle', hint: t('tpl.chooseHint') })
   const [busy, setBusy] = useState(false)
   const req = useRef(0)
 
@@ -62,21 +64,21 @@ export function TemplateDialog({ onClose }: { onClose(): void }) {
     return () => { live = false }
   }, [coreClient, lang])
 
-  const tpl = list?.find(t => t.id === id)
+  const tpl = list?.find(x => x.id === id)
 
   const choose = (nid: string) => {
     setId(nid)
-    const t = list?.find(x => x.id === nid)
-    setValues(t ? initialValues(t) : {})
+    const chosen = list?.find(x => x.id === nid)
+    setValues(chosen ? initialValues(chosen) : {})
   }
 
-  // Vista previa: cada cambio del formulario vuelve a pedir el resultado al núcleo.
+  // Preview: every change of the form asks the core for the result again.
   useEffect(() => {
-    if (!tpl) { setPreview({ state: 'idle', hint: 'Elige una tecnología.' }); return }
+    if (!tpl) { setPreview({ state: 'idle', hint: t('tpl.chooseHint') }); return }
     const missing = missingRequired(tpl, values)
     if (missing.length) {
       const names = missing.map(k => tpl.params.find(p => p.key === k)?.label ?? k)
-      setPreview({ state: 'idle', hint: `Rellena: ${names.join(', ')}.` })
+      setPreview({ state: 'idle', hint: t('tpl.fill', { names: names.join(', ') }) })
       return
     }
     const mine = ++req.current
@@ -88,7 +90,7 @@ export function TemplateDialog({ onClose }: { onClose(): void }) {
       )
     }, RENDER_DELAY_MS)
     return () => clearTimeout(timer)
-  }, [coreClient, tpl, values, files, lang])
+  }, [coreClient, tpl, values, files, lang, t])
 
   const ready = preview.state === 'ok' && preview.result.changes.length > 0
   const confirm = async () => {
@@ -100,19 +102,19 @@ export function TemplateDialog({ onClose }: { onClose(): void }) {
   }
 
   return (
-    <Modal title="Añadir desde plantilla de tecnología" wide onClose={onClose} footer={<>
-      <button className="btn" onClick={onClose}>Cancelar</button>
-      <button className="btn primary" disabled={!ready || busy} onClick={() => void confirm()}>Añadir a la configuración</button>
+    <Modal title={t('tpl.title')} wide onClose={onClose} footer={<>
+      <button className="btn" onClick={onClose}>{t('common.cancel')}</button>
+      <button className="btn primary" disabled={!ready || busy} onClick={() => void confirm()}>{t('tpl.add')}</button>
     </>}>
-      {loadError && <p className="iss sev-error">No se pudieron cargar las plantillas: {loadError}</p>}
-      {!list && !loadError && <p className="muted">Cargando plantillas…</p>}
+      {loadError && <p className="iss sev-error">{t('tpl.loadFailed', { msg: loadError })}</p>}
+      {!list && !loadError && <p className="muted">{t('tpl.loading')}</p>}
       {list && (
         <div className="tpl">
           <div className="tpl-form">
-            <label className="fld"><span>Tecnología</span>
-              <select aria-label="Tecnología" value={id} onChange={e => choose(e.target.value)}>
-                <option value="">Elige una…</option>
-                {list.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+            <label className="fld"><span>{t('tpl.technology')}</span>
+              <select aria-label={t('tpl.technology')} value={id} onChange={e => choose(e.target.value)}>
+                <option value="">{t('tpl.choose')}</option>
+                {list.map(x => <option key={x.id} value={x.id}>{x.name}</option>)}
               </select>
             </label>
             {tpl && <p className="muted sm tpl-desc">{tpl.description}</p>}
@@ -121,11 +123,11 @@ export function TemplateDialog({ onClose }: { onClose(): void }) {
             ))}
           </div>
           <div className="tpl-preview" data-testid="template-preview">
-            <h4>Cambios</h4>
+            <h4>{t('tpl.changes')}</h4>
             {preview.state === 'idle' && <p className="muted sm">{preview.hint}</p>}
-            {preview.state === 'loading' && <p className="muted sm">Calculando…</p>}
+            {preview.state === 'loading' && <p className="muted sm">{t('tpl.calculating')}</p>}
             {preview.state === 'error' && <p className="iss sev-error" role="alert">{preview.message}</p>}
-            {preview.state === 'ok' && !preview.result.changes.length && <p className="muted sm">La plantilla no cambia ningún archivo.</p>}
+            {preview.state === 'ok' && !preview.result.changes.length && <p className="muted sm">{t('tpl.noChange')}</p>}
             {preview.state === 'ok' && preview.result.changes.map(c => (
               <div key={c.file}>
                 {files.length > 1 && <h5 className="mono">{c.path}</h5>}

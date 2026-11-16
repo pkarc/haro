@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Background, MarkerType, ReactFlow, type Edge, type Node } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import type { Analysis } from '../core/types'
+import { useT } from '../i18n/react'
 import { useApp } from '../store'
 import { backendId, entryId, layoutTopology, missingId, serverId } from './layout'
 import { BackendNode, EntryNode, MissingNode, ServerNode, TipEdge } from './nodes'
@@ -18,33 +19,36 @@ const STYLE = {
 }
 
 export function MapPanel({ analysis }: { analysis: Analysis }) {
+  const tr = useT()
   const open = useApp(s => s.ui.mapOpen)
   const setOpen = useApp(s => s.setMapOpen)
-  const t = analysis.topology
-  const empty = !t.entries.length && !t.backends.length
+  const topo = analysis.topology
+  const empty = !topo.entries.length && !topo.backends.length
   return (
     <details className="map" open={open} onToggle={e => setOpen(e.currentTarget.open)} data-testid="map">
-      <summary><span>Mapa del tráfico</span><span className="muted sm">cómo fluye una petición: entrada → backend → servidor</span></summary>
+      <summary><span>{tr('map.title')}</span><span className="muted sm">{tr('map.subtitle')}</span></summary>
       {open && (empty
-        ? <p className="muted pad">Añade un frontend y un backend para ver el flujo del tráfico.</p>
+        ? <p className="muted pad">{tr('map.empty')}</p>
         : <><MapFlow analysis={analysis} /><Legend /></>)}
     </details>
   )
 }
 
 function Legend() {
+  const t = useT()
   return (
     <div className="legend">
-      <span><i className="lg solid" />backend por defecto</span>
-      <span><i className="lg dash" />regla condicional (la condición, al pasar el ratón)</span>
-      <span><i className="lg srvl" />servidor</span>
-      <span><i className="lg miss" />backend inexistente</span>
-      <span><span className="dot ok" /> con health check</span>
+      <span><i className="lg solid" />{t('map.legend.default')}</span>
+      <span><i className="lg dash" />{t('map.legend.conditional')}</span>
+      <span><i className="lg srvl" />{t('map.legend.server')}</span>
+      <span><i className="lg miss" />{t('map.legend.missing')}</span>
+      <span><span className="dot ok" /> {t('map.legend.check')}</span>
     </div>
   )
 }
 
 function MapFlow({ analysis }: { analysis: Analysis }) {
+  const tr = useT()
   const knowledge = useApp(s => s.knowledge)
   const goto = useApp(s => s.goto)
   const setMode = useApp(s => s.setMode)
@@ -74,7 +78,7 @@ function MapFlow({ analysis }: { analysis: Analysis }) {
     t.edges.forEach((e, k) => {
       const target = e.to < 0 ? missingId(e.toName) : ids.has(backendId(e.to)) ? backendId(e.to) : entryId(e.to)
       const kind = e.to < 0 ? 'missing' : e.default ? 'def' : 'cond'
-      const tip = e.to < 0 ? `El backend «${e.toName}» no existe` : e.default ? 'Backend por defecto' : `Si ${e.condition}`
+      const tip = e.to < 0 ? tr('map.edge.missing', { name: e.toName }) : e.default ? tr('map.edge.default') : tr('map.edge.if', { cond: e.condition })
       edges.push({
         id: `e${k}`, source: entryId(e.from), target, type: 'tip', data: { tip, file: e.file, line: e.line },
         style: STYLE[kind], markerEnd: { type: MarkerType.ArrowClosed, color: STYLE[kind].stroke, width: 16, height: 16 },
@@ -83,12 +87,12 @@ function MapFlow({ analysis }: { analysis: Analysis }) {
     const serverEdges = (section: number, source: string, servers: { backup?: boolean }[]) =>
       servers.forEach((v, i) => {
         if (!ids.has(serverId(section, i))) return
-        edges.push({ id: `sv${section}-${i}`, source, target: serverId(section, i), type: 'tip', style: v.backup ? STYLE.backup : STYLE.srv, data: { tip: v.backup ? 'Servidor de respaldo' : 'Servidor' } })
+        edges.push({ id: `sv${section}-${i}`, source, target: serverId(section, i), type: 'tip', style: v.backup ? STYLE.backup : STYLE.srv, data: { tip: v.backup ? tr('map.edge.backup') : tr('map.edge.server') } })
       })
     t.backends.forEach(b => serverEdges(b.section, backendId(b.section), b.servers))
     t.entries.forEach(e => serverEdges(e.section, entryId(e.section), e.servers ?? []))
     return { nodes, edges, height: Math.min(Math.max(placed.height + 40, 220), 560) }
-  }, [t, knowledge])
+  }, [t, knowledge, tr])
 
   const toSection = (section: number) => {
     const s = analysis.doc.sections[section]

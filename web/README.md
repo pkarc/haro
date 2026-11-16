@@ -1,88 +1,90 @@
+English | [Español](README.es.md)
+
 # haro · web
 
-Interfaz React + Vite + TypeScript de haro. Habla con el núcleo solo a través de `CoreClient`:
+haro's React + Vite + TypeScript interface. It talks to the core only through `CoreClient`:
 
-- `ConnectCoreClient`: `haro serve` (Go nativo, Connect RPC generado con `buf`).
-- `WasmCoreClient`: el mismo núcleo compilado a WebAssembly (`make wasm`, desde la raíz), sin servidor.
+- `ConnectCoreClient`: `haro serve` (native Go, Connect RPC generated with `buf`).
+- `WasmCoreClient`: the same core compiled to WebAssembly (`make wasm`, from the root), no server.
 
-Y guarda y carga los archivos a través de `ConfigStore`:
+It saves and loads files through `ConfigStore`:
 
-- `ServedStore`: los archivos de `haro serve --file` (se guardan con las garantías del servidor: validación completa, atómico, copia `.bak`).
-- `LocalStore`: sin origen; la sesión vive en el navegador (localStorage) y se sale con importar/exportar.
+- `ServedStore`: the files from `haro serve --file` (saved with the server's guarantees: full validation, atomic write, `.bak` copy).
+- `LocalStore`: no origin; the session lives in the browser (localStorage) and you get out of it with import/export.
 
-## Desarrollo
+## Development
 
 ```sh
 cd web && npm install
-npm run dev            # con recarga; las llamadas /haro.v1.* van a `haro serve` en :7468
+npm run dev            # with hot reload; /haro.v1.* calls go to `haro serve` on :7468
 npm test               # Vitest
-npm run build          # web/dist, la que embebe el binario (make web && make build)
-npm run build:wasm     # web sin servidor en web/dist-wasm (VITE_CORE=wasm; antes: make wasm)
-npm run build:consumer # consumidor de ejemplo en web/dist-consumer (ver abajo)
-npx playwright test    # e2e (PW_CHANNEL=chrome para usar el Chrome del sistema)
+npm run build          # web/dist, the one the binary embeds (make web && make build)
+npm run build:wasm     # serverless web in web/dist-wasm (VITE_CORE=wasm; first: make wasm)
+npm run build:consumer # example consumer in web/dist-consumer (see below)
+npx playwright test    # e2e (PW_CHANNEL=chrome to use the system Chrome)
 ```
 
-## Usarla desde otro repo (haro-site)
+## Using it from another repo (haro-site)
 
-La web está pensada para consumirse **como submódulo git** (sin paquete npm): el repo consumidor incluye haro como `haro/`, declara `haro/web` como *workspace* de npm (una sola instalación; React no se duplica) y monta la aplicación con sus propios almacenes y pantallas. Lo suyo vive fuera del submódulo, que no se edita.
+The web app is designed to be consumed **as a git submodule** (no npm package): the consuming repo includes haro as `haro/`, declares `haro/web` as an npm *workspace* (a single install; React is not duplicated) and mounts the application with its own stores and screens. Its own code lives outside the submodule, which is never edited.
 
 ```sh
 git submodule add https://github.com/pkarc/haro haro
 ```
 
 ```jsonc
-// package.json del consumidor
+// consumer's package.json
 { "private": true, "workspaces": ["haro/web"], "dependencies": { "react": "^19", "react-dom": "^19" } }
 ```
 
 ```ts
-// vite.config.ts del consumidor
+// consumer's vite.config.ts
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 export default defineConfig({
   plugins: [react()],
-  publicDir: 'haro/web/public',                 // aquí deja `make -C haro wasm` haro.wasm y wasm_exec.js
-  resolve: { dedupe: ['react', 'react-dom'] },  // una sola copia de React
+  publicDir: 'haro/web/public',                 // `make -C haro wasm` drops haro.wasm and wasm_exec.js here
+  resolve: { dedupe: ['react', 'react-dom'] },  // a single copy of React
 })
 ```
 
 ```tsx
-// src/main.tsx del consumidor
+// consumer's src/main.tsx
 import { mountApp, WasmCoreClient, LocalStore, type ConfigStore } from '../haro/web/src/index'
 import '../haro/web/src/styles.css'
 
-class MiAlmacen implements ConfigStore { /* label, canSave, load(), save(files) */ }
+class MyStore implements ConfigStore { /* label, canSave, load(), save(files) */ }
 
 mountApp({
   client: new WasmCoreClient(),
-  store: new LocalStore(),            // almacén inicial; el gate puede sustituirlo
+  store: new LocalStore(),            // initial store; the gate can replace it
   container: document.getElementById('root')!,
-  header: <MiCabecera />,             // sobre la barra superior
-  actions: <MiBoton />,               // en la barra superior, antes de Ajustes
-  gate: ({ enter }) => <MiLogin onRepo={repo => enter(new MiAlmacen(repo))} />,
+  header: <MyHeader />,               // above the top bar
+  actions: <MyButton />,              // in the top bar, before Settings
+  gate: ({ enter }) => <MyLogin onRepo={repo => enter(new MyStore(repo))} />,
 })
 ```
 
-`examples/consumer/` es un consumidor completo y mínimo (almacén en memoria con control de versión, pantalla previa, cabecera, acción); `e2e/consumer.spec.ts` lo prueba en el navegador y `npm run typecheck:consumer` comprueba que la API pública de `src/index.ts` alcanza para montarlo.
+`examples/consumer/` is a complete, minimal consumer (in-memory store with version control, a pre-screen, header, action); `e2e/consumer.spec.ts` tests it in the browser and `npm run typecheck:consumer` checks that the public API of `src/index.ts` is enough to mount it.
 
-### Contrato de `ConfigStore`
+### The `ConfigStore` contract
 
 | | |
 |---|---|
-| `label` | nombre corto del destino («disco», «owner/repo@main»); sale en la interfaz |
-| `canSave` / `readOnlyHint` | si se puede guardar y, si no, por qué (se enseña al pulsar «Guardar») |
-| `saveHint` | aviso del diálogo de guardado |
-| `storageKey` | clave del localStorage de la sesión; **distinta por origen** para no mezclar archivos |
-| `load()` | archivos en orden de carga, o `null` (sesión local sin origen) |
-| `save(files)` | guarda **todos o ninguno**. Los fallos esperables son un `SaveResult` con `saved: false` (no excepciones); `conflict: true` indica que el origen cambió desde que se cargó: la interfaz ofrece recargar y deja lo local en el historial |
+| `label` | short name of the destination ("disk", "owner/repo@main"); shown in the interface |
+| `canSave` / `readOnlyHint` | whether saving is possible and, if not, why (shown when pressing "Save") |
+| `saveHint` | notice in the save dialog |
+| `storageKey` | localStorage key for the session; **different per origin** so files are not mixed |
+| `load()` | files in load order, or `null` (local session with no origin) |
+| `save(files)` | saves **all or none**. Expected failures are a `SaveResult` with `saved: false` (not exceptions); `conflict: true` means the origin changed since it was loaded: the interface offers to reload and keeps the local version in the history |
 
-### Superficie pública (`src/index.ts`)
+### Public surface (`src/index.ts`)
 
-`mountApp`, `App`, `CoreClient`, `ConnectCoreClient`, `WasmCoreClient`, `ConfigStore`, `SaveResult`, `LocalStore`, `ServedStore`, los tipos del núcleo, y para los huecos de la interfaz: `useApp`, `useAppApi`, `useConfigStore`, `useCoreClient`, `createAppStore`, `Modal` y los diálogos (`confirmBox`, `promptBox`, `openDialog`).
+`mountApp`, `App`, `CoreClient`, `ConnectCoreClient`, `WasmCoreClient`, `ConfigStore`, `SaveResult`, `LocalStore`, `ServedStore`, the core types, and for the interface slots: `useApp`, `useAppApi`, `useConfigStore`, `useCoreClient`, `createAppStore`, `Modal` and the dialogs (`confirmBox`, `promptBox`, `openDialog`).
 
-`mountApp` acepta además `gate` (pantalla previa hasta llamar a `enter(store?)`) y `strict` (StrictMode, por defecto sí). Para cambiar de almacén con la aplicación ya montada, desmóntala o dale otra `key` (el estado se crea una vez por pareja cliente/almacén).
+`mountApp` also accepts `gate` (a pre-screen shown until `enter(store?)` is called) and `strict` (StrictMode, on by default). To switch stores once the application is mounted, unmount it or give it another `key` (state is created once per client/store pair).
 
-## Convenciones
+## Conventions
 
-- Textos de interfaz en español; el núcleo devuelve markdown mínimo (`**negrita**`, `` `código` ``) que se pinta con componentes (nunca `dangerouslySetInnerHTML`).
-- Los tipos de `src/gen` son código generado (`make proto`, desde la raíz); no se editan.
+- The core returns minimal markdown (`**bold**`, `` `code` ``) that is rendered with components (never `dangerouslySetInnerHTML`).
+- The types in `src/gen` are generated code (`make proto`, from the root); do not edit them.

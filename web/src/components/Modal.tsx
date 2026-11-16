@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { useT } from '../i18n/react'
 
 interface Props {
   title: string
@@ -8,9 +9,10 @@ interface Props {
   children: ReactNode
 }
 
-// Diálogo modal mínimo: Escape y clic fuera cierran, el foco entra en el
-// primer campo y vuelve al elemento anterior al cerrar.
+// Minimal modal dialog: Escape and a click outside close it, focus moves to the
+// first field and returns to the previous element on close.
 export function Modal({ title, wide, onClose, footer, children }: Props) {
+  const t = useT()
   const ref = useRef<HTMLDivElement>(null)
   const close = useRef(onClose)
   close.current = onClose
@@ -21,7 +23,7 @@ export function Modal({ title, wide, onClose, footer, children }: Props) {
     first?.focus()
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { e.stopPropagation(); close.current() }
-      if (e.key === 'Tab' && el) { // el foco no sale del diálogo
+      if (e.key === 'Tab' && el) { // focus does not leave the dialog
         const f = [...el.querySelectorAll<HTMLElement>('button,input,textarea,select,[tabindex]:not([tabindex="-1"])')].filter(x => !x.hasAttribute('disabled'))
         if (!f.length) return
         const i = f.indexOf(document.activeElement as HTMLElement)
@@ -35,7 +37,7 @@ export function Modal({ title, wide, onClose, footer, children }: Props) {
   return (
     <div className="modal-bg" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className={`modal${wide ? ' wide' : ''}`} role="dialog" aria-modal="true" aria-label={title} ref={ref}>
-        <header><h3>{title}</h3><button className="icon" aria-label="Cerrar" onClick={onClose}>✕</button></header>
+        <header><h3>{title}</h3><button className="icon" aria-label={t('common.close')} onClick={onClose}>✕</button></header>
         <div className="modal-b">{children}</div>
         {footer && <footer>{footer}</footer>}
       </div>

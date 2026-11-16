@@ -1,8 +1,10 @@
 import { useEffect } from 'react'
+import { useT } from '../i18n/react'
 import { useApp } from '../store'
 import type { Toast } from '../store/store'
 
 function ToastItem({ t }: { t: Toast }) {
+  const tt = useT()
   const dismiss = useApp(s => s.dismissToast)
   useEffect(() => {
     const id = setTimeout(() => dismiss(t.id), t.kind === 'info' ? 4600 : 9000)
@@ -12,7 +14,7 @@ function ToastItem({ t }: { t: Toast }) {
     <div className={`toast ${t.kind}`} role={t.kind === 'info' ? 'status' : 'alert'}>
       <span>{t.msg}</span>
       {t.action && <button className="link" onClick={() => { t.action!.run(); dismiss(t.id) }}>{t.action.label}</button>}
-      <button className="icon" aria-label="Cerrar aviso" onClick={() => dismiss(t.id)}>✕</button>
+      <button className="icon" aria-label={tt('toast.dismiss')} onClick={() => dismiss(t.id)}>✕</button>
     </div>
   )
 }

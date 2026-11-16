@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react'
+import { useT } from '../i18n/react'
 import { Rich } from './mini'
 
-// Markdown de las respuestas del asistente: párrafos, listas, títulos, bloques
-// de código y los inline de mini.tsx (**negrita** y `código`). Se interpreta a
-// mano y se pinta con elementos React: nunca se inserta HTML crudo.
+// Markdown of the assistant's responses: paragraphs, lists, headings, code
+// blocks and the inlines of mini.tsx (**bold** and `code`). It is interpreted by
+// hand and rendered with React elements: raw HTML is never inserted.
 //
-// Los bloques de configuración completa (```haproxy …) NO se pintan en el chat:
-// el servidor los convierte en la propuesta (tarjeta con diff por archivo).
+// Complete configuration blocks (```haproxy …) are NOT rendered in the chat:
+// the server turns them into the proposal (card with a diff per file).
 
 export type ChatBlock =
   | { t: 'p'; v: string }
@@ -15,7 +16,7 @@ export type ChatBlock =
   | { t: 'code'; lang: string; v: string; open: boolean }
   | { t: 'config'; lines: number; open: boolean }
 
-/** Lenguajes de bloque que el núcleo considera configuración (core/assist.go, fenceLangs). */
+/** Block languages the core considers configuration (core/assist.go, fenceLangs). */
 export const CONFIG_LANGS = new Set(['', 'haproxy', 'cfg', 'conf', 'haproxy.cfg'])
 
 const FENCE = /^```(.*)$/
@@ -66,6 +67,7 @@ export function parseChat(src: string): ChatBlock[] {
 }
 
 export function ChatMarkdown({ text, streaming = false }: { text: string; streaming?: boolean }) {
+  const t = useT()
   const nodes: ReactNode[] = parseChat(text).map((b, i) => {
     switch (b.t) {
       case 'p': return <p key={i}><Rich text={b.v} /></p>
@@ -75,7 +77,7 @@ export function ChatMarkdown({ text, streaming = false }: { text: string; stream
       case 'code': return <pre key={i} className="chat-code" data-lang={b.lang || undefined}><code>{b.v}</code></pre>
       case 'config': return (
         <div key={i} className="chat-cfg" data-testid="config-block">
-          {b.open && streaming ? 'Escribiendo la configuración propuesta…' : b.open ? 'Configuración cortada (se descarta)' : `Configuración propuesta (${b.lines} líneas): revísala en la tarjeta «Propuesta»`}
+          {b.open && streaming ? t('chat.cfgWriting') : b.open ? t('chat.cfgCut') : t('chat.cfgBlock', { n: b.lines })}
         </div>
       )
     }

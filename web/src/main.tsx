@@ -4,9 +4,9 @@ import { LocalStore, ServedStore } from './core/configstore'
 import { WasmCoreClient } from './core/wasm'
 import './styles.css'
 
-// Arranque por defecto. `VITE_CORE=wasm npm run build` genera la web sin
-// servidor (núcleo en WebAssembly, sesión local, ver `make wasm`); por defecto
-// habla con `haro serve` y sus archivos (`--file`).
+// Default startup. `VITE_CORE=wasm npm run build` builds the serverless web
+// (core in WebAssembly, local session, see `make wasm`); by default it talks to
+// `haro serve` and its files (`--file`).
 const wasm = import.meta.env.VITE_CORE === 'wasm'
 const client = wasm ? new WasmCoreClient() : new ConnectCoreClient()
 mountApp({ client, store: wasm ? new LocalStore() : new ServedStore(client), container: document.getElementById('root')! })
