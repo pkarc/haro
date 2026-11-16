@@ -30,6 +30,7 @@ func (s *server) mountRPC(mux *http.ServeMux) {
 	opts := []connect.HandlerOption{connect.WithReadMaxBytes(10 << 20)}
 	mux.Handle(harov1connect.NewCoreServiceHandler(coreService{s}, opts...))
 	mux.Handle(harov1connect.NewConfigServiceHandler(configService{s}, opts...))
+	mux.Handle(harov1connect.NewAssistServiceHandler(assistService{s}, opts...))
 }
 
 // toProto copia v (estructura del núcleo) en el mensaje m.
@@ -225,6 +226,7 @@ func (c configService) GetCapabilities(context.Context, *connect.Request[harov1.
 	return connect.NewResponse(&harov1.Capabilities{
 		Version: version, Paths: s.paths, CanRead: len(s.paths) > 0, CanWrite: s.allowWrite,
 		CanCheck: s.haproxyBin != "", HaproxyBin: s.haproxyBin,
+		CanAssist: s.assist != nil, AssistantModel: s.assistModel,
 	}), nil
 }
 

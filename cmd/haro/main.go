@@ -19,6 +19,7 @@ Uso:
   haro diff    <antes> <después> Compara dos configuraciones
   haro template list|show|add   Plantillas completas por tecnología (Nextcloud, PostgreSQL…)
   haro serve   [opciones]       Abre la interfaz web local
+  haro assist  "petición" [rutas...]  Pregunta o pide cambios al asistente (envía la configuración a Anthropic)
   haro mcp     [opciones]       Servidor MCP por stdio (para Claude Code, Claude Desktop…)
   haro version                  Muestra la versión
 
@@ -55,6 +56,8 @@ func main() {
 		err = runTUI(args)
 	case "template":
 		err = runTemplate(args)
+	case "assist":
+		err = runAssistCmd(args)
 	case "mcp":
 		err = runMCP(args)
 	case "serve":

@@ -31,6 +31,8 @@ const _ = connect.IsAtLeastVersion1_13_0
 const (
 	// CoreServiceName is the fully-qualified name of the CoreService service.
 	CoreServiceName = "haro.v1.CoreService"
+	// AssistServiceName is the fully-qualified name of the AssistService service.
+	AssistServiceName = "haro.v1.AssistService"
 	// ConfigServiceName is the fully-qualified name of the ConfigService service.
 	ConfigServiceName = "haro.v1.ConfigService"
 )
@@ -60,6 +62,8 @@ const (
 	// CoreServiceRenderTemplateProcedure is the fully-qualified name of the CoreService's
 	// RenderTemplate RPC.
 	CoreServiceRenderTemplateProcedure = "/haro.v1.CoreService/RenderTemplate"
+	// AssistServiceAssistProcedure is the fully-qualified name of the AssistService's Assist RPC.
+	AssistServiceAssistProcedure = "/haro.v1.AssistService/Assist"
 	// ConfigServiceGetCapabilitiesProcedure is the fully-qualified name of the ConfigService's
 	// GetCapabilities RPC.
 	ConfigServiceGetCapabilitiesProcedure = "/haro.v1.ConfigService/GetCapabilities"
@@ -313,6 +317,80 @@ func (UnimplementedCoreServiceHandler) ListTemplates(context.Context, *connect.R
 
 func (UnimplementedCoreServiceHandler) RenderTemplate(context.Context, *connect.Request[v1.RenderTemplateRequest]) (*connect.Response[v1.RenderTemplateResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("haro.v1.CoreService.RenderTemplate is not implemented"))
+}
+
+// AssistServiceClient is a client for the haro.v1.AssistService service.
+type AssistServiceClient interface {
+	// Conversa sobre la configuración. La respuesta llega en streaming: trozos de
+	// texto, y al final la propuesta de configuración extraída y el cierre.
+	Assist(context.Context, *connect.Request[v1.AssistRequest]) (*connect.ServerStreamForClient[v1.AssistEvent], error)
+}
+
+// NewAssistServiceClient constructs a client for the haro.v1.AssistService service. By default, it
+// uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and sends
+// uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC() or
+// connect.WithGRPCWeb() options.
+//
+// The URL supplied here should be the base URL for the Connect or gRPC server (for example,
+// http://api.acme.com or https://acme.com/grpc).
+func NewAssistServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AssistServiceClient {
+	baseURL = strings.TrimRight(baseURL, "/")
+	assistServiceMethods := v1.File_haro_v1_haro_proto.Services().ByName("AssistService").Methods()
+	return &assistServiceClient{
+		assist: connect.NewClient[v1.AssistRequest, v1.AssistEvent](
+			httpClient,
+			baseURL+AssistServiceAssistProcedure,
+			connect.WithSchema(assistServiceMethods.ByName("Assist")),
+			connect.WithClientOptions(opts...),
+		),
+	}
+}
+
+// assistServiceClient implements AssistServiceClient.
+type assistServiceClient struct {
+	assist *connect.Client[v1.AssistRequest, v1.AssistEvent]
+}
+
+// Assist calls haro.v1.AssistService.Assist.
+func (c *assistServiceClient) Assist(ctx context.Context, req *connect.Request[v1.AssistRequest]) (*connect.ServerStreamForClient[v1.AssistEvent], error) {
+	return c.assist.CallServerStream(ctx, req)
+}
+
+// AssistServiceHandler is an implementation of the haro.v1.AssistService service.
+type AssistServiceHandler interface {
+	// Conversa sobre la configuración. La respuesta llega en streaming: trozos de
+	// texto, y al final la propuesta de configuración extraída y el cierre.
+	Assist(context.Context, *connect.Request[v1.AssistRequest], *connect.ServerStream[v1.AssistEvent]) error
+}
+
+// NewAssistServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
+//
+// By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
+// and JSON codecs. They also support gzip compression.
+func NewAssistServiceHandler(svc AssistServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	assistServiceMethods := v1.File_haro_v1_haro_proto.Services().ByName("AssistService").Methods()
+	assistServiceAssistHandler := connect.NewServerStreamHandler(
+		AssistServiceAssistProcedure,
+		svc.Assist,
+		connect.WithSchema(assistServiceMethods.ByName("Assist")),
+		connect.WithHandlerOptions(opts...),
+	)
+	return "/haro.v1.AssistService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case AssistServiceAssistProcedure:
+			assistServiceAssistHandler.ServeHTTP(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	})
+}
+
+// UnimplementedAssistServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedAssistServiceHandler struct{}
+
+func (UnimplementedAssistServiceHandler) Assist(context.Context, *connect.Request[v1.AssistRequest], *connect.ServerStream[v1.AssistEvent]) error {
+	return connect.NewError(connect.CodeUnimplemented, errors.New("haro.v1.AssistService.Assist is not implemented"))
 }
 
 // ConfigServiceClient is a client for the haro.v1.ConfigService service.

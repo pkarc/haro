@@ -29,6 +29,10 @@ type server struct {
 	paths      []string
 	allowWrite bool
 	haproxyBin string
+	// assist es el asistente con IA; nil si no se inició con --assistant.
+	assist streamer
+	// assistModel es el nombre del modelo, para informar en las capacidades.
+	assistModel string
 }
 
 type multiFlag []string
@@ -43,6 +47,8 @@ func runServe(args []string) error {
 	fls.Var(&files, "file", "archivo o directorio de configuración; repítelo para varios, en el orden de haproxy -f")
 	allowWrite := fls.Bool("allow-write", false, "permite guardar desde la web (siempre valida antes y crea copia .bak)")
 	bin := fls.String("haproxy", "haproxy", "binario de haproxy para validar con -c")
+	assistant := fls.Bool("assistant", false, "activa el asistente con IA: ENVÍA la configuración a la API de Anthropic desde este servidor (clave en ANTHROPIC_API_KEY o `ant auth login`; nunca llega al navegador)")
+	assistModel := fls.String("assistant-model", envOr("HARO_ASSISTANT_MODEL", defaultAssistantModel), "modelo de Anthropic del asistente")
 	fls.Usage = func() {
 		fmt.Fprintln(fls.Output(), "Uso: haro serve [opciones]")
 		fls.PrintDefaults()
@@ -52,6 +58,10 @@ func runServe(args []string) error {
 	s := &server{paths: files, allowWrite: *allowWrite}
 	if p, err := exec.LookPath(*bin); err == nil {
 		s.haproxyBin = p
+	}
+	if *assistant {
+		s.assist, s.assistModel = newAnthropicStreamer(*assistModel), *assistModel
+		log.Printf("⚠ asistente activado: la configuración que le envíes saldrá hacia la API de Anthropic (modelo %s)", *assistModel)
 	}
 	if s.allowWrite && len(s.paths) == 0 {
 		return errors.New("--allow-write requiere al menos un --file")

@@ -33,6 +33,15 @@ service CoreService {
   rpc RenderTemplate(RenderTemplateRequest) returns (RenderTemplateResponse);
 }
 
+// Asistente con IA. Solo existe si `haro serve` se inició con --assistant: la
+// configuración se envía a la API de Anthropic desde el servidor local (la
+// clave nunca llega al navegador). Sin --assistant devuelve UNIMPLEMENTED.
+service AssistService {
+  // Conversa sobre la configuración. La respuesta llega en streaming: trozos de
+  // texto, y al final la propuesta de configuración extraída y el cierre.
+  rpc Assist(AssistRequest) returns (stream AssistEvent);
+}
+
 service ConfigService {
   rpc GetCapabilities(GetCapabilitiesRequest) returns (Capabilities);
   rpc GetConfig(GetConfigRequest) returns (ConfigFile);
@@ -278,6 +287,8 @@ message Capabilities {
   bool can_write = 4;
   bool can_check = 5;
   string haproxy_bin = 6;
+  bool can_assist = 7;         // el asistente está activado (--assistant)
+  string assistant_model = 8;  // modelo que usa el asistente
 }
 
 message GetConfigRequest {}
@@ -363,4 +374,42 @@ message RenderTemplateResponse {
   repeated Op ops = 1;              // para aplicar con Apply
   repeated SourceFile files = 2;    // todos los archivos tras aplicarlas
   repeated FileChange changes = 3;  // solo los que cambiaron
+}
+
+message AssistMessage {
+  string role = 1; // "user" | "assistant"
+  string content = 2;
+}
+
+// La conversación (que debe terminar con un turno del usuario) y la
+// configuración actual: el servidor añade la configuración y sus problemas al
+// último turno, así el modelo siempre ve la versión vigente.
+message AssistRequest {
+  repeated SourceFile files = 1;
+  repeated AssistMessage messages = 2;
+  string lang = 3; // "es" | "en"; vacío = español
+}
+
+message AssistEvent {
+  oneof event {
+    string text = 1;       // trozo de la respuesta
+    Proposal proposal = 2; // configuración propuesta, si la respuesta la trae
+    AssistDone done = 3;   // último evento
+  }
+}
+
+// Archivos que propone el asistente (texto completo, solo los que cambian) y
+// los problemas que tendría la configuración resultante.
+message Proposal {
+  repeated FileChange changes = 1;
+  repeated Issue issues_after = 2;
+  int32 unmatched = 3;  // bloques de configuración que no se pudieron asociar a un archivo
+  bool truncated = 4;   // la respuesta se cortó dentro de un bloque: ese bloque se descartó
+}
+
+message AssistDone {
+  string stop_reason = 1;       // end_turn | max_tokens | refusal …
+  string refusal_category = 2;  // si stop_reason == refusal
+  int32 input_tokens = 3;
+  int32 output_tokens = 4;
 }

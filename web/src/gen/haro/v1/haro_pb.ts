@@ -20,7 +20,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file haro/v1/haro.proto.
  */
 export const file_haro_v1_haro: GenFile = /*@__PURE__*/
-  fileDesc("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bnNFbnRyeRI2CgpkaXJlY3RpdmVzGAMgAygLMiIuaGFyby52MS5Lbm93bGVkZ2UuRGlyZWN0aXZlc0VudHJ5EiwKBXJ1bGVzGAQgAygLMh0uaGFyby52MS5Lbm93bGVkZ2UuUnVsZXNFbnRyeRI0Cgl0ZW1wbGF0ZXMYBSADKAsyIS5oYXJvLnYxLktub3dsZWRnZS5UZW1wbGF0ZXNFbnRyeRoxCg9DYXRlZ29yaWVzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ARpFCg1TZWN0aW9uc0VudHJ5EgsKA2tleRgBIAEoCRIjCgV2YWx1ZRgCIAEoCzIULmhhcm8udjEuU2VjdGlvbkluZm86AjgBGkkKD0RpcmVjdGl2ZXNFbnRyeRILCgNrZXkYASABKAkSJQoFdmFsdWUYAiABKAsyFi5oYXJvLnYxLkRpcmVjdGl2ZUluZm86AjgBGiwKClJ1bGVzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ARpKCg5UZW1wbGF0ZXNFbnRyeRILCgNrZXkYASABKAkSJwoFdmFsdWUYAiABKAsyGC5oYXJvLnYxLlNlY3Rpb25UZW1wbGF0ZToCOAEiLAoLRGlmZlJlcXVlc3QSDgoGYmVmb3JlGAEgASgJEg0KBWFmdGVyGAIgASgJIiIKBkRpZmZPcBIKCgJvcBgBIAEoCRIMCgR0ZXh0GAIgASgJIiwKDERpZmZSZXNwb25zZRIcCgNvcHMYASADKAsyDy5oYXJvLnYxLkRpZmZPcCJACgxDaGVja1JlcXVlc3QSDAoEdGV4dBgBIAEoCRIiCgVmaWxlcxgCIAMoCzITLmhhcm8udjEuU291cmNlRmlsZSI8CgtDaGVja1Jlc3VsdBIRCglhdmFpbGFibGUYASABKAgSCgoCb2sYAiABKAgSDgoGb3V0cHV0GAMgASgJIhgKFkdldENhcGFiaWxpdGllc1JlcXVlc3QiewoMQ2FwYWJpbGl0aWVzEg8KB3ZlcnNpb24YASABKAkSDQoFcGF0aHMYAiADKAkSEAoIY2FuX3JlYWQYAyABKAgSEQoJY2FuX3dyaXRlGAQgASgIEhEKCWNhbl9jaGVjaxgFIAEoCBITCgtoYXByb3h5X2JpbhgGIAEoCSISChBHZXRDb25maWdSZXF1ZXN0IjAKCkNvbmZpZ0ZpbGUSIgoFZmlsZXMYASADKAsyEy5oYXJvLnYxLlNvdXJjZUZpbGUiUgoQUHV0Q29uZmlnUmVxdWVzdBIMCgRwYXRoGAEgASgJEgwKBHRleHQYAiABKAkSIgoFZmlsZXMYAyADKAsyEy5oYXJvLnYxLlNvdXJjZUZpbGUiKQoJU2F2ZWRGaWxlEgwKBHBhdGgYASABKAkSDgoGYmFja3VwGAIgASgJIrYBChFQdXRDb25maWdSZXNwb25zZRINCgVzYXZlZBgBIAEoCBIMCgRwYXRoGAIgASgJEg4KBmJhY2t1cBgDIAEoCRIjCgVjaGVjaxgEIAEoCzIULmhhcm8udjEuQ2hlY2tSZXN1bHQSIQoFZmlsZXMYBSADKAsyEi5oYXJvLnYxLlNhdmVkRmlsZRINCgVlcnJvchgGIAEoCRIdCgVpc3N1ZRgHIAEoCzIOLmhhcm8udjEuSXNzdWUiJAoUTGlzdFRlbXBsYXRlc1JlcXVlc3QSDAoEbGFuZxgBIAEoCSKtAQoNVGVtcGxhdGVQYXJhbRILCgNrZXkYASABKAkSDQoFbGFiZWwYAiABKAkSDAoEaGVscBgDIAEoCRIMCgR0eXBlGAQgASgJEi0KDWRlZmF1bHRfdmFsdWUYBSABKAsyFi5nb29nbGUucHJvdG9idWYuVmFsdWUSEAoIcmVxdWlyZWQYBiABKAgSEgoKZGVwZW5kc19vbhgHIAEoCRIPCgdleGFtcGxlGAggASgJInMKDFRlY2hUZW1wbGF0ZRIKCgJpZBgBIAEoCRIMCgRuYW1lGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEgwKBGtpbmQYBCABKAkSJgoGcGFyYW1zGAUgAygLMhYuaGFyby52MS5UZW1wbGF0ZVBhcmFtIkEKFUxpc3RUZW1wbGF0ZXNSZXNwb25zZRIoCgl0ZW1wbGF0ZXMYASADKAsyFS5oYXJvLnYxLlRlY2hUZW1wbGF0ZSLmAQoVUmVuZGVyVGVtcGxhdGVSZXF1ZXN0EgoKAmlkGAEgASgJEjoKBnBhcmFtcxgCIAMoCzIqLmhhcm8udjEuUmVuZGVyVGVtcGxhdGVSZXF1ZXN0LlBhcmFtc0VudHJ5EgwKBHRleHQYAyABKAkSIgoFZmlsZXMYBCADKAsyEy5oYXJvLnYxLlNvdXJjZUZpbGUSDAoEbGFuZxgFIAEoCRpFCgtQYXJhbXNFbnRyeRILCgNrZXkYASABKAkSJQoFdmFsdWUYAiABKAsyFi5nb29nbGUucHJvdG9idWYuVmFsdWU6AjgBInwKFlJlbmRlclRlbXBsYXRlUmVzcG9uc2USGAoDb3BzGAEgAygLMgsuaGFyby52MS5PcBIiCgVmaWxlcxgCIAMoCzITLmhhcm8udjEuU291cmNlRmlsZRIkCgdjaGFuZ2VzGAMgAygLMhMuaGFyby52MS5GaWxlQ2hhbmdlMswDCgtDb3JlU2VydmljZRI1CgdBbmFseXplEhcuaGFyby52MS5BbmFseXplUmVxdWVzdBoRLmhhcm8udjEuQW5hbHlzaXMSMwoERGlmZhIULmhhcm8udjEuRGlmZlJlcXVlc3QaFS5oYXJvLnYxLkRpZmZSZXNwb25zZRI2CgVBcHBseRIVLmhhcm8udjEuQXBwbHlSZXF1ZXN0GhYuaGFyby52MS5BcHBseVJlc3BvbnNlEkAKDEdldEtub3dsZWRnZRIcLmhhcm8udjEuR2V0S25vd2xlZGdlUmVxdWVzdBoSLmhhcm8udjEuS25vd2xlZGdlEjQKBUNoZWNrEhUuaGFyby52MS5DaGVja1JlcXVlc3QaFC5oYXJvLnYxLkNoZWNrUmVzdWx0Ek4KDUxpc3RUZW1wbGF0ZXMSHS5oYXJvLnYxLkxpc3RUZW1wbGF0ZXNSZXF1ZXN0Gh4uaGFyby52MS5MaXN0VGVtcGxhdGVzUmVzcG9uc2USUQoOUmVuZGVyVGVtcGxhdGUSHi5oYXJvLnYxLlJlbmRlclRlbXBsYXRlUmVxdWVzdBofLmhhcm8udjEuUmVuZGVyVGVtcGxhdGVSZXNwb25zZTLbAQoNQ29uZmlnU2VydmljZRJJCg9HZXRDYXBhYmlsaXRpZXMSHy5oYXJvLnYxLkdldENhcGFiaWxpdGllc1JlcXVlc3QaFS5oYXJvLnYxLkNhcGFiaWxpdGllcxI7CglHZXRDb25maWcSGS5oYXJvLnYxLkdldENvbmZpZ1JlcXVlc3QaEy5oYXJvLnYxLkNvbmZpZ0ZpbGUSQgoJUHV0Q29uZmlnEhkuaGFyby52MS5QdXRDb25maWdSZXF1ZXN0GhouaGFyby52MS5QdXRDb25maWdSZXNwb25zZUIqWihnaXRodWIuY29tL3BrYXJjL2hhcm8vZ2VuL2hhcm8vdjE7aGFyb3YxYgZwcm90bzM", [file_google_protobuf_struct]);
+  fileDesc("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bnNFbnRyeRI2CgpkaXJlY3RpdmVzGAMgAygLMiIuaGFyby52MS5Lbm93bGVkZ2UuRGlyZWN0aXZlc0VudHJ5EiwKBXJ1bGVzGAQgAygLMh0uaGFyby52MS5Lbm93bGVkZ2UuUnVsZXNFbnRyeRI0Cgl0ZW1wbGF0ZXMYBSADKAsyIS5oYXJvLnYxLktub3dsZWRnZS5UZW1wbGF0ZXNFbnRyeRoxCg9DYXRlZ29yaWVzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ARpFCg1TZWN0aW9uc0VudHJ5EgsKA2tleRgBIAEoCRIjCgV2YWx1ZRgCIAEoCzIULmhhcm8udjEuU2VjdGlvbkluZm86AjgBGkkKD0RpcmVjdGl2ZXNFbnRyeRILCgNrZXkYASABKAkSJQoFdmFsdWUYAiABKAsyFi5oYXJvLnYxLkRpcmVjdGl2ZUluZm86AjgBGiwKClJ1bGVzRW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ARpKCg5UZW1wbGF0ZXNFbnRyeRILCgNrZXkYASABKAkSJwoFdmFsdWUYAiABKAsyGC5oYXJvLnYxLlNlY3Rpb25UZW1wbGF0ZToCOAEiLAoLRGlmZlJlcXVlc3QSDgoGYmVmb3JlGAEgASgJEg0KBWFmdGVyGAIgASgJIiIKBkRpZmZPcBIKCgJvcBgBIAEoCRIMCgR0ZXh0GAIgASgJIiwKDERpZmZSZXNwb25zZRIcCgNvcHMYASADKAsyDy5oYXJvLnYxLkRpZmZPcCJACgxDaGVja1JlcXVlc3QSDAoEdGV4dBgBIAEoCRIiCgVmaWxlcxgCIAMoCzITLmhhcm8udjEuU291cmNlRmlsZSI8CgtDaGVja1Jlc3VsdBIRCglhdmFpbGFibGUYASABKAgSCgoCb2sYAiABKAgSDgoGb3V0cHV0GAMgASgJIhgKFkdldENhcGFiaWxpdGllc1JlcXVlc3QiqAEKDENhcGFiaWxpdGllcxIPCgd2ZXJzaW9uGAEgASgJEg0KBXBhdGhzGAIgAygJEhAKCGNhbl9yZWFkGAMgASgIEhEKCWNhbl93cml0ZRgEIAEoCBIRCgljYW5fY2hlY2sYBSABKAgSEwoLaGFwcm94eV9iaW4YBiABKAkSEgoKY2FuX2Fzc2lzdBgHIAEoCBIXCg9hc3Npc3RhbnRfbW9kZWwYCCABKAkiEgoQR2V0Q29uZmlnUmVxdWVzdCIwCgpDb25maWdGaWxlEiIKBWZpbGVzGAEgAygLMhMuaGFyby52MS5Tb3VyY2VGaWxlIlIKEFB1dENvbmZpZ1JlcXVlc3QSDAoEcGF0aBgBIAEoCRIMCgR0ZXh0GAIgASgJEiIKBWZpbGVzGAMgAygLMhMuaGFyby52MS5Tb3VyY2VGaWxlIikKCVNhdmVkRmlsZRIMCgRwYXRoGAEgASgJEg4KBmJhY2t1cBgCIAEoCSK2AQoRUHV0Q29uZmlnUmVzcG9uc2USDQoFc2F2ZWQYASABKAgSDAoEcGF0aBgCIAEoCRIOCgZiYWNrdXAYAyABKAkSIwoFY2hlY2sYBCABKAsyFC5oYXJvLnYxLkNoZWNrUmVzdWx0EiEKBWZpbGVzGAUgAygLMhIuaGFyby52MS5TYXZlZEZpbGUSDQoFZXJyb3IYBiABKAkSHQoFaXNzdWUYByABKAsyDi5oYXJvLnYxLklzc3VlIiQKFExpc3RUZW1wbGF0ZXNSZXF1ZXN0EgwKBGxhbmcYASABKAkirQEKDVRlbXBsYXRlUGFyYW0SCwoDa2V5GAEgASgJEg0KBWxhYmVsGAIgASgJEgwKBGhlbHAYAyABKAkSDAoEdHlwZRgEIAEoCRItCg1kZWZhdWx0X3ZhbHVlGAUgASgLMhYuZ29vZ2xlLnByb3RvYnVmLlZhbHVlEhAKCHJlcXVpcmVkGAYgASgIEhIKCmRlcGVuZHNfb24YByABKAkSDwoHZXhhbXBsZRgIIAEoCSJzCgxUZWNoVGVtcGxhdGUSCgoCaWQYASABKAkSDAoEbmFtZRgCIAEoCRITCgtkZXNjcmlwdGlvbhgDIAEoCRIMCgRraW5kGAQgASgJEiYKBnBhcmFtcxgFIAMoCzIWLmhhcm8udjEuVGVtcGxhdGVQYXJhbSJBChVMaXN0VGVtcGxhdGVzUmVzcG9uc2USKAoJdGVtcGxhdGVzGAEgAygLMhUuaGFyby52MS5UZWNoVGVtcGxhdGUi5gEKFVJlbmRlclRlbXBsYXRlUmVxdWVzdBIKCgJpZBgBIAEoCRI6CgZwYXJhbXMYAiADKAsyKi5oYXJvLnYxLlJlbmRlclRlbXBsYXRlUmVxdWVzdC5QYXJhbXNFbnRyeRIMCgR0ZXh0GAMgASgJEiIKBWZpbGVzGAQgAygLMhMuaGFyby52MS5Tb3VyY2VGaWxlEgwKBGxhbmcYBSABKAkaRQoLUGFyYW1zRW50cnkSCwoDa2V5GAEgASgJEiUKBXZhbHVlGAIgASgLMhYuZ29vZ2xlLnByb3RvYnVmLlZhbHVlOgI4ASJ8ChZSZW5kZXJUZW1wbGF0ZVJlc3BvbnNlEhgKA29wcxgBIAMoCzILLmhhcm8udjEuT3ASIgoFZmlsZXMYAiADKAsyEy5oYXJvLnYxLlNvdXJjZUZpbGUSJAoHY2hhbmdlcxgDIAMoCzITLmhhcm8udjEuRmlsZUNoYW5nZSIuCg1Bc3Npc3RNZXNzYWdlEgwKBHJvbGUYASABKAkSDwoHY29udGVudBgCIAEoCSJrCg1Bc3Npc3RSZXF1ZXN0EiIKBWZpbGVzGAEgAygLMhMuaGFyby52MS5Tb3VyY2VGaWxlEigKCG1lc3NhZ2VzGAIgAygLMhYuaGFyby52MS5Bc3Npc3RNZXNzYWdlEgwKBGxhbmcYAyABKAkicgoLQXNzaXN0RXZlbnQSDgoEdGV4dBgBIAEoCUgAEiUKCHByb3Bvc2FsGAIgASgLMhEuaGFyby52MS5Qcm9wb3NhbEgAEiMKBGRvbmUYAyABKAsyEy5oYXJvLnYxLkFzc2lzdERvbmVIAEIHCgVldmVudCJ8CghQcm9wb3NhbBIkCgdjaGFuZ2VzGAEgAygLMhMuaGFyby52MS5GaWxlQ2hhbmdlEiQKDGlzc3Vlc19hZnRlchgCIAMoCzIOLmhhcm8udjEuSXNzdWUSEQoJdW5tYXRjaGVkGAMgASgFEhEKCXRydW5jYXRlZBgEIAEoCCJoCgpBc3Npc3REb25lEhMKC3N0b3BfcmVhc29uGAEgASgJEhgKEHJlZnVzYWxfY2F0ZWdvcnkYAiABKAkSFAoMaW5wdXRfdG9rZW5zGAMgASgFEhUKDW91dHB1dF90b2tlbnMYBCABKAUyzAMKC0NvcmVTZXJ2aWNlEjUKB0FuYWx5emUSFy5oYXJvLnYxLkFuYWx5emVSZXF1ZXN0GhEuaGFyby52MS5BbmFseXNpcxIzCgREaWZmEhQuaGFyby52MS5EaWZmUmVxdWVzdBoVLmhhcm8udjEuRGlmZlJlc3BvbnNlEjYKBUFwcGx5EhUuaGFyby52MS5BcHBseVJlcXVlc3QaFi5oYXJvLnYxLkFwcGx5UmVzcG9uc2USQAoMR2V0S25vd2xlZGdlEhwuaGFyby52MS5HZXRLbm93bGVkZ2VSZXF1ZXN0GhIuaGFyby52MS5Lbm93bGVkZ2USNAoFQ2hlY2sSFS5oYXJvLnYxLkNoZWNrUmVxdWVzdBoULmhhcm8udjEuQ2hlY2tSZXN1bHQSTgoNTGlzdFRlbXBsYXRlcxIdLmhhcm8udjEuTGlzdFRlbXBsYXRlc1JlcXVlc3QaHi5oYXJvLnYxLkxpc3RUZW1wbGF0ZXNSZXNwb25zZRJRCg5SZW5kZXJUZW1wbGF0ZRIeLmhhcm8udjEuUmVuZGVyVGVtcGxhdGVSZXF1ZXN0Gh8uaGFyby52MS5SZW5kZXJUZW1wbGF0ZVJlc3BvbnNlMkkKDUFzc2lzdFNlcnZpY2USOAoGQXNzaXN0EhYuaGFyby52MS5Bc3Npc3RSZXF1ZXN0GhQuaGFyby52MS5Bc3Npc3RFdmVudDABMtsBCg1Db25maWdTZXJ2aWNlEkkKD0dldENhcGFiaWxpdGllcxIfLmhhcm8udjEuR2V0Q2FwYWJpbGl0aWVzUmVxdWVzdBoVLmhhcm8udjEuQ2FwYWJpbGl0aWVzEjsKCUdldENvbmZpZxIZLmhhcm8udjEuR2V0Q29uZmlnUmVxdWVzdBoTLmhhcm8udjEuQ29uZmlnRmlsZRJCCglQdXRDb25maWcSGS5oYXJvLnYxLlB1dENvbmZpZ1JlcXVlc3QaGi5oYXJvLnYxLlB1dENvbmZpZ1Jlc3BvbnNlQipaKGdpdGh1Yi5jb20vcGthcmMvaGFyby9nZW4vaGFyby92MTtoYXJvdjFiBnByb3RvMw", [file_google_protobuf_struct]);
 
 /**
  * Un único texto (text) o varios archivos (files) en orden de carga, como
@@ -1102,6 +1102,20 @@ export type Capabilities = Message<"haro.v1.Capabilities"> & {
    * @generated from field: string haproxy_bin = 6;
    */
   haproxyBin: string;
+
+  /**
+   * el asistente está activado (--assistant)
+   *
+   * @generated from field: bool can_assist = 7;
+   */
+  canAssist: boolean;
+
+  /**
+   * modelo que usa el asistente
+   *
+   * @generated from field: string assistant_model = 8;
+   */
+  assistantModel: string;
 };
 
 /**
@@ -1469,6 +1483,179 @@ export const RenderTemplateResponseSchema: GenMessage<RenderTemplateResponse> = 
   messageDesc(file_haro_v1_haro, 42);
 
 /**
+ * @generated from message haro.v1.AssistMessage
+ */
+export type AssistMessage = Message<"haro.v1.AssistMessage"> & {
+  /**
+   * "user" | "assistant"
+   *
+   * @generated from field: string role = 1;
+   */
+  role: string;
+
+  /**
+   * @generated from field: string content = 2;
+   */
+  content: string;
+};
+
+/**
+ * Describes the message haro.v1.AssistMessage.
+ * Use `create(AssistMessageSchema)` to create a new message.
+ */
+export const AssistMessageSchema: GenMessage<AssistMessage> = /*@__PURE__*/
+  messageDesc(file_haro_v1_haro, 43);
+
+/**
+ * La conversación (que debe terminar con un turno del usuario) y la
+ * configuración actual: el servidor añade la configuración y sus problemas al
+ * último turno, así el modelo siempre ve la versión vigente.
+ *
+ * @generated from message haro.v1.AssistRequest
+ */
+export type AssistRequest = Message<"haro.v1.AssistRequest"> & {
+  /**
+   * @generated from field: repeated haro.v1.SourceFile files = 1;
+   */
+  files: SourceFile[];
+
+  /**
+   * @generated from field: repeated haro.v1.AssistMessage messages = 2;
+   */
+  messages: AssistMessage[];
+
+  /**
+   * "es" | "en"; vacío = español
+   *
+   * @generated from field: string lang = 3;
+   */
+  lang: string;
+};
+
+/**
+ * Describes the message haro.v1.AssistRequest.
+ * Use `create(AssistRequestSchema)` to create a new message.
+ */
+export const AssistRequestSchema: GenMessage<AssistRequest> = /*@__PURE__*/
+  messageDesc(file_haro_v1_haro, 44);
+
+/**
+ * @generated from message haro.v1.AssistEvent
+ */
+export type AssistEvent = Message<"haro.v1.AssistEvent"> & {
+  /**
+   * @generated from oneof haro.v1.AssistEvent.event
+   */
+  event: {
+    /**
+     * trozo de la respuesta
+     *
+     * @generated from field: string text = 1;
+     */
+    value: string;
+    case: "text";
+  } | {
+    /**
+     * configuración propuesta, si la respuesta la trae
+     *
+     * @generated from field: haro.v1.Proposal proposal = 2;
+     */
+    value: Proposal;
+    case: "proposal";
+  } | {
+    /**
+     * último evento
+     *
+     * @generated from field: haro.v1.AssistDone done = 3;
+     */
+    value: AssistDone;
+    case: "done";
+  } | { case: undefined; value?: undefined };
+};
+
+/**
+ * Describes the message haro.v1.AssistEvent.
+ * Use `create(AssistEventSchema)` to create a new message.
+ */
+export const AssistEventSchema: GenMessage<AssistEvent> = /*@__PURE__*/
+  messageDesc(file_haro_v1_haro, 45);
+
+/**
+ * Archivos que propone el asistente (texto completo, solo los que cambian) y
+ * los problemas que tendría la configuración resultante.
+ *
+ * @generated from message haro.v1.Proposal
+ */
+export type Proposal = Message<"haro.v1.Proposal"> & {
+  /**
+   * @generated from field: repeated haro.v1.FileChange changes = 1;
+   */
+  changes: FileChange[];
+
+  /**
+   * @generated from field: repeated haro.v1.Issue issues_after = 2;
+   */
+  issuesAfter: Issue[];
+
+  /**
+   * bloques de configuración que no se pudieron asociar a un archivo
+   *
+   * @generated from field: int32 unmatched = 3;
+   */
+  unmatched: number;
+
+  /**
+   * la respuesta se cortó dentro de un bloque: ese bloque se descartó
+   *
+   * @generated from field: bool truncated = 4;
+   */
+  truncated: boolean;
+};
+
+/**
+ * Describes the message haro.v1.Proposal.
+ * Use `create(ProposalSchema)` to create a new message.
+ */
+export const ProposalSchema: GenMessage<Proposal> = /*@__PURE__*/
+  messageDesc(file_haro_v1_haro, 46);
+
+/**
+ * @generated from message haro.v1.AssistDone
+ */
+export type AssistDone = Message<"haro.v1.AssistDone"> & {
+  /**
+   * end_turn | max_tokens | refusal …
+   *
+   * @generated from field: string stop_reason = 1;
+   */
+  stopReason: string;
+
+  /**
+   * si stop_reason == refusal
+   *
+   * @generated from field: string refusal_category = 2;
+   */
+  refusalCategory: string;
+
+  /**
+   * @generated from field: int32 input_tokens = 3;
+   */
+  inputTokens: number;
+
+  /**
+   * @generated from field: int32 output_tokens = 4;
+   */
+  outputTokens: number;
+};
+
+/**
+ * Describes the message haro.v1.AssistDone.
+ * Use `create(AssistDoneSchema)` to create a new message.
+ */
+export const AssistDoneSchema: GenMessage<AssistDone> = /*@__PURE__*/
+  messageDesc(file_haro_v1_haro, 47);
+
+/**
  * @generated from service haro.v1.CoreService
  */
 export const CoreService: GenService<{
@@ -1549,6 +1736,28 @@ export const CoreService: GenService<{
   serviceDesc(file_haro_v1_haro, 0);
 
 /**
+ * Asistente con IA. Solo existe si `haro serve` se inició con --assistant: la
+ * configuración se envía a la API de Anthropic desde el servidor local (la
+ * clave nunca llega al navegador). Sin --assistant devuelve UNIMPLEMENTED.
+ *
+ * @generated from service haro.v1.AssistService
+ */
+export const AssistService: GenService<{
+  /**
+   * Conversa sobre la configuración. La respuesta llega en streaming: trozos de
+   * texto, y al final la propuesta de configuración extraída y el cierre.
+   *
+   * @generated from rpc haro.v1.AssistService.Assist
+   */
+  assist: {
+    methodKind: "server_streaming";
+    input: typeof AssistRequestSchema;
+    output: typeof AssistEventSchema;
+  },
+}> = /*@__PURE__*/
+  serviceDesc(file_haro_v1_haro, 1);
+
+/**
  * @generated from service haro.v1.ConfigService
  */
 export const ConfigService: GenService<{
@@ -1579,5 +1788,5 @@ export const ConfigService: GenService<{
     output: typeof PutConfigResponseSchema;
   },
 }> = /*@__PURE__*/
-  serviceDesc(file_haro_v1_haro, 1);
+  serviceDesc(file_haro_v1_haro, 2);
 

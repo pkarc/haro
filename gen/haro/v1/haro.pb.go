@@ -2163,15 +2163,17 @@ func (*GetCapabilitiesRequest) Descriptor() ([]byte, []int) {
 }
 
 type Capabilities struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Version       string                 `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
-	Paths         []string               `protobuf:"bytes,2,rep,name=paths,proto3" json:"paths,omitempty"` // argumentos de --file (archivos o directorios)
-	CanRead       bool                   `protobuf:"varint,3,opt,name=can_read,json=canRead,proto3" json:"can_read,omitempty"`
-	CanWrite      bool                   `protobuf:"varint,4,opt,name=can_write,json=canWrite,proto3" json:"can_write,omitempty"`
-	CanCheck      bool                   `protobuf:"varint,5,opt,name=can_check,json=canCheck,proto3" json:"can_check,omitempty"`
-	HaproxyBin    string                 `protobuf:"bytes,6,opt,name=haproxy_bin,json=haproxyBin,proto3" json:"haproxy_bin,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Version        string                 `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
+	Paths          []string               `protobuf:"bytes,2,rep,name=paths,proto3" json:"paths,omitempty"` // argumentos de --file (archivos o directorios)
+	CanRead        bool                   `protobuf:"varint,3,opt,name=can_read,json=canRead,proto3" json:"can_read,omitempty"`
+	CanWrite       bool                   `protobuf:"varint,4,opt,name=can_write,json=canWrite,proto3" json:"can_write,omitempty"`
+	CanCheck       bool                   `protobuf:"varint,5,opt,name=can_check,json=canCheck,proto3" json:"can_check,omitempty"`
+	HaproxyBin     string                 `protobuf:"bytes,6,opt,name=haproxy_bin,json=haproxyBin,proto3" json:"haproxy_bin,omitempty"`
+	CanAssist      bool                   `protobuf:"varint,7,opt,name=can_assist,json=canAssist,proto3" json:"can_assist,omitempty"`               // el asistente está activado (--assistant)
+	AssistantModel string                 `protobuf:"bytes,8,opt,name=assistant_model,json=assistantModel,proto3" json:"assistant_model,omitempty"` // modelo que usa el asistente
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Capabilities) Reset() {
@@ -2242,6 +2244,20 @@ func (x *Capabilities) GetCanCheck() bool {
 func (x *Capabilities) GetHaproxyBin() string {
 	if x != nil {
 		return x.HaproxyBin
+	}
+	return ""
+}
+
+func (x *Capabilities) GetCanAssist() bool {
+	if x != nil {
+		return x.CanAssist
+	}
+	return false
+}
+
+func (x *Capabilities) GetAssistantModel() string {
+	if x != nil {
+		return x.AssistantModel
 	}
 	return ""
 }
@@ -2947,6 +2963,357 @@ func (x *RenderTemplateResponse) GetChanges() []*FileChange {
 	return nil
 }
 
+type AssistMessage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Role          string                 `protobuf:"bytes,1,opt,name=role,proto3" json:"role,omitempty"` // "user" | "assistant"
+	Content       string                 `protobuf:"bytes,2,opt,name=content,proto3" json:"content,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AssistMessage) Reset() {
+	*x = AssistMessage{}
+	mi := &file_haro_v1_haro_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AssistMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AssistMessage) ProtoMessage() {}
+
+func (x *AssistMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_haro_v1_haro_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AssistMessage.ProtoReflect.Descriptor instead.
+func (*AssistMessage) Descriptor() ([]byte, []int) {
+	return file_haro_v1_haro_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *AssistMessage) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *AssistMessage) GetContent() string {
+	if x != nil {
+		return x.Content
+	}
+	return ""
+}
+
+// La conversación (que debe terminar con un turno del usuario) y la
+// configuración actual: el servidor añade la configuración y sus problemas al
+// último turno, así el modelo siempre ve la versión vigente.
+type AssistRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Files         []*SourceFile          `protobuf:"bytes,1,rep,name=files,proto3" json:"files,omitempty"`
+	Messages      []*AssistMessage       `protobuf:"bytes,2,rep,name=messages,proto3" json:"messages,omitempty"`
+	Lang          string                 `protobuf:"bytes,3,opt,name=lang,proto3" json:"lang,omitempty"` // "es" | "en"; vacío = español
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AssistRequest) Reset() {
+	*x = AssistRequest{}
+	mi := &file_haro_v1_haro_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AssistRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AssistRequest) ProtoMessage() {}
+
+func (x *AssistRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_haro_v1_haro_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AssistRequest.ProtoReflect.Descriptor instead.
+func (*AssistRequest) Descriptor() ([]byte, []int) {
+	return file_haro_v1_haro_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *AssistRequest) GetFiles() []*SourceFile {
+	if x != nil {
+		return x.Files
+	}
+	return nil
+}
+
+func (x *AssistRequest) GetMessages() []*AssistMessage {
+	if x != nil {
+		return x.Messages
+	}
+	return nil
+}
+
+func (x *AssistRequest) GetLang() string {
+	if x != nil {
+		return x.Lang
+	}
+	return ""
+}
+
+type AssistEvent struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Event:
+	//
+	//	*AssistEvent_Text
+	//	*AssistEvent_Proposal
+	//	*AssistEvent_Done
+	Event         isAssistEvent_Event `protobuf_oneof:"event"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AssistEvent) Reset() {
+	*x = AssistEvent{}
+	mi := &file_haro_v1_haro_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AssistEvent) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AssistEvent) ProtoMessage() {}
+
+func (x *AssistEvent) ProtoReflect() protoreflect.Message {
+	mi := &file_haro_v1_haro_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AssistEvent.ProtoReflect.Descriptor instead.
+func (*AssistEvent) Descriptor() ([]byte, []int) {
+	return file_haro_v1_haro_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *AssistEvent) GetEvent() isAssistEvent_Event {
+	if x != nil {
+		return x.Event
+	}
+	return nil
+}
+
+func (x *AssistEvent) GetText() string {
+	if x != nil {
+		if x, ok := x.Event.(*AssistEvent_Text); ok {
+			return x.Text
+		}
+	}
+	return ""
+}
+
+func (x *AssistEvent) GetProposal() *Proposal {
+	if x != nil {
+		if x, ok := x.Event.(*AssistEvent_Proposal); ok {
+			return x.Proposal
+		}
+	}
+	return nil
+}
+
+func (x *AssistEvent) GetDone() *AssistDone {
+	if x != nil {
+		if x, ok := x.Event.(*AssistEvent_Done); ok {
+			return x.Done
+		}
+	}
+	return nil
+}
+
+type isAssistEvent_Event interface {
+	isAssistEvent_Event()
+}
+
+type AssistEvent_Text struct {
+	Text string `protobuf:"bytes,1,opt,name=text,proto3,oneof"` // trozo de la respuesta
+}
+
+type AssistEvent_Proposal struct {
+	Proposal *Proposal `protobuf:"bytes,2,opt,name=proposal,proto3,oneof"` // configuración propuesta, si la respuesta la trae
+}
+
+type AssistEvent_Done struct {
+	Done *AssistDone `protobuf:"bytes,3,opt,name=done,proto3,oneof"` // último evento
+}
+
+func (*AssistEvent_Text) isAssistEvent_Event() {}
+
+func (*AssistEvent_Proposal) isAssistEvent_Event() {}
+
+func (*AssistEvent_Done) isAssistEvent_Event() {}
+
+// Archivos que propone el asistente (texto completo, solo los que cambian) y
+// los problemas que tendría la configuración resultante.
+type Proposal struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Changes       []*FileChange          `protobuf:"bytes,1,rep,name=changes,proto3" json:"changes,omitempty"`
+	IssuesAfter   []*Issue               `protobuf:"bytes,2,rep,name=issues_after,json=issuesAfter,proto3" json:"issues_after,omitempty"`
+	Unmatched     int32                  `protobuf:"varint,3,opt,name=unmatched,proto3" json:"unmatched,omitempty"` // bloques de configuración que no se pudieron asociar a un archivo
+	Truncated     bool                   `protobuf:"varint,4,opt,name=truncated,proto3" json:"truncated,omitempty"` // la respuesta se cortó dentro de un bloque: ese bloque se descartó
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Proposal) Reset() {
+	*x = Proposal{}
+	mi := &file_haro_v1_haro_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Proposal) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Proposal) ProtoMessage() {}
+
+func (x *Proposal) ProtoReflect() protoreflect.Message {
+	mi := &file_haro_v1_haro_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Proposal.ProtoReflect.Descriptor instead.
+func (*Proposal) Descriptor() ([]byte, []int) {
+	return file_haro_v1_haro_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *Proposal) GetChanges() []*FileChange {
+	if x != nil {
+		return x.Changes
+	}
+	return nil
+}
+
+func (x *Proposal) GetIssuesAfter() []*Issue {
+	if x != nil {
+		return x.IssuesAfter
+	}
+	return nil
+}
+
+func (x *Proposal) GetUnmatched() int32 {
+	if x != nil {
+		return x.Unmatched
+	}
+	return 0
+}
+
+func (x *Proposal) GetTruncated() bool {
+	if x != nil {
+		return x.Truncated
+	}
+	return false
+}
+
+type AssistDone struct {
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	StopReason      string                 `protobuf:"bytes,1,opt,name=stop_reason,json=stopReason,proto3" json:"stop_reason,omitempty"`                // end_turn | max_tokens | refusal …
+	RefusalCategory string                 `protobuf:"bytes,2,opt,name=refusal_category,json=refusalCategory,proto3" json:"refusal_category,omitempty"` // si stop_reason == refusal
+	InputTokens     int32                  `protobuf:"varint,3,opt,name=input_tokens,json=inputTokens,proto3" json:"input_tokens,omitempty"`
+	OutputTokens    int32                  `protobuf:"varint,4,opt,name=output_tokens,json=outputTokens,proto3" json:"output_tokens,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
+}
+
+func (x *AssistDone) Reset() {
+	*x = AssistDone{}
+	mi := &file_haro_v1_haro_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AssistDone) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AssistDone) ProtoMessage() {}
+
+func (x *AssistDone) ProtoReflect() protoreflect.Message {
+	mi := &file_haro_v1_haro_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AssistDone.ProtoReflect.Descriptor instead.
+func (*AssistDone) Descriptor() ([]byte, []int) {
+	return file_haro_v1_haro_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *AssistDone) GetStopReason() string {
+	if x != nil {
+		return x.StopReason
+	}
+	return ""
+}
+
+func (x *AssistDone) GetRefusalCategory() string {
+	if x != nil {
+		return x.RefusalCategory
+	}
+	return ""
+}
+
+func (x *AssistDone) GetInputTokens() int32 {
+	if x != nil {
+		return x.InputTokens
+	}
+	return 0
+}
+
+func (x *AssistDone) GetOutputTokens() int32 {
+	if x != nil {
+		return x.OutputTokens
+	}
+	return 0
+}
+
 var File_haro_v1_haro_proto protoreflect.FileDescriptor
 
 const file_haro_v1_haro_proto_rawDesc = "" +
@@ -3139,7 +3506,7 @@ const file_haro_v1_haro_proto_rawDesc = "" +
 	"\tavailable\x18\x01 \x01(\bR\tavailable\x12\x0e\n" +
 	"\x02ok\x18\x02 \x01(\bR\x02ok\x12\x16\n" +
 	"\x06output\x18\x03 \x01(\tR\x06output\"\x18\n" +
-	"\x16GetCapabilitiesRequest\"\xb4\x01\n" +
+	"\x16GetCapabilitiesRequest\"\xfc\x01\n" +
 	"\fCapabilities\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12\x14\n" +
 	"\x05paths\x18\x02 \x03(\tR\x05paths\x12\x19\n" +
@@ -3147,7 +3514,10 @@ const file_haro_v1_haro_proto_rawDesc = "" +
 	"\tcan_write\x18\x04 \x01(\bR\bcanWrite\x12\x1b\n" +
 	"\tcan_check\x18\x05 \x01(\bR\bcanCheck\x12\x1f\n" +
 	"\vhaproxy_bin\x18\x06 \x01(\tR\n" +
-	"haproxyBin\"\x12\n" +
+	"haproxyBin\x12\x1d\n" +
+	"\n" +
+	"can_assist\x18\a \x01(\bR\tcanAssist\x12'\n" +
+	"\x0fassistant_model\x18\b \x01(\tR\x0eassistantModel\"\x12\n" +
 	"\x10GetConfigRequest\"7\n" +
 	"\n" +
 	"ConfigFile\x12)\n" +
@@ -3199,7 +3569,31 @@ const file_haro_v1_haro_proto_rawDesc = "" +
 	"\x16RenderTemplateResponse\x12\x1d\n" +
 	"\x03ops\x18\x01 \x03(\v2\v.haro.v1.OpR\x03ops\x12)\n" +
 	"\x05files\x18\x02 \x03(\v2\x13.haro.v1.SourceFileR\x05files\x12-\n" +
-	"\achanges\x18\x03 \x03(\v2\x13.haro.v1.FileChangeR\achanges2\xcc\x03\n" +
+	"\achanges\x18\x03 \x03(\v2\x13.haro.v1.FileChangeR\achanges\"=\n" +
+	"\rAssistMessage\x12\x12\n" +
+	"\x04role\x18\x01 \x01(\tR\x04role\x12\x18\n" +
+	"\acontent\x18\x02 \x01(\tR\acontent\"\x82\x01\n" +
+	"\rAssistRequest\x12)\n" +
+	"\x05files\x18\x01 \x03(\v2\x13.haro.v1.SourceFileR\x05files\x122\n" +
+	"\bmessages\x18\x02 \x03(\v2\x16.haro.v1.AssistMessageR\bmessages\x12\x12\n" +
+	"\x04lang\x18\x03 \x01(\tR\x04lang\"\x88\x01\n" +
+	"\vAssistEvent\x12\x14\n" +
+	"\x04text\x18\x01 \x01(\tH\x00R\x04text\x12/\n" +
+	"\bproposal\x18\x02 \x01(\v2\x11.haro.v1.ProposalH\x00R\bproposal\x12)\n" +
+	"\x04done\x18\x03 \x01(\v2\x13.haro.v1.AssistDoneH\x00R\x04doneB\a\n" +
+	"\x05event\"\xa8\x01\n" +
+	"\bProposal\x12-\n" +
+	"\achanges\x18\x01 \x03(\v2\x13.haro.v1.FileChangeR\achanges\x121\n" +
+	"\fissues_after\x18\x02 \x03(\v2\x0e.haro.v1.IssueR\vissuesAfter\x12\x1c\n" +
+	"\tunmatched\x18\x03 \x01(\x05R\tunmatched\x12\x1c\n" +
+	"\ttruncated\x18\x04 \x01(\bR\ttruncated\"\xa0\x01\n" +
+	"\n" +
+	"AssistDone\x12\x1f\n" +
+	"\vstop_reason\x18\x01 \x01(\tR\n" +
+	"stopReason\x12)\n" +
+	"\x10refusal_category\x18\x02 \x01(\tR\x0frefusalCategory\x12!\n" +
+	"\finput_tokens\x18\x03 \x01(\x05R\vinputTokens\x12#\n" +
+	"\routput_tokens\x18\x04 \x01(\x05R\foutputTokens2\xcc\x03\n" +
 	"\vCoreService\x125\n" +
 	"\aAnalyze\x12\x17.haro.v1.AnalyzeRequest\x1a\x11.haro.v1.Analysis\x123\n" +
 	"\x04Diff\x12\x14.haro.v1.DiffRequest\x1a\x15.haro.v1.DiffResponse\x126\n" +
@@ -3207,7 +3601,9 @@ const file_haro_v1_haro_proto_rawDesc = "" +
 	"\fGetKnowledge\x12\x1c.haro.v1.GetKnowledgeRequest\x1a\x12.haro.v1.Knowledge\x124\n" +
 	"\x05Check\x12\x15.haro.v1.CheckRequest\x1a\x14.haro.v1.CheckResult\x12N\n" +
 	"\rListTemplates\x12\x1d.haro.v1.ListTemplatesRequest\x1a\x1e.haro.v1.ListTemplatesResponse\x12Q\n" +
-	"\x0eRenderTemplate\x12\x1e.haro.v1.RenderTemplateRequest\x1a\x1f.haro.v1.RenderTemplateResponse2\xdb\x01\n" +
+	"\x0eRenderTemplate\x12\x1e.haro.v1.RenderTemplateRequest\x1a\x1f.haro.v1.RenderTemplateResponse2I\n" +
+	"\rAssistService\x128\n" +
+	"\x06Assist\x12\x16.haro.v1.AssistRequest\x1a\x14.haro.v1.AssistEvent0\x012\xdb\x01\n" +
 	"\rConfigService\x12I\n" +
 	"\x0fGetCapabilities\x12\x1f.haro.v1.GetCapabilitiesRequest\x1a\x15.haro.v1.Capabilities\x12;\n" +
 	"\tGetConfig\x12\x19.haro.v1.GetConfigRequest\x1a\x13.haro.v1.ConfigFile\x12B\n" +
@@ -3225,7 +3621,7 @@ func file_haro_v1_haro_proto_rawDescGZIP() []byte {
 	return file_haro_v1_haro_proto_rawDescData
 }
 
-var file_haro_v1_haro_proto_msgTypes = make([]protoimpl.MessageInfo, 50)
+var file_haro_v1_haro_proto_msgTypes = make([]protoimpl.MessageInfo, 55)
 var file_haro_v1_haro_proto_goTypes = []any{
 	(*AnalyzeRequest)(nil),         // 0: haro.v1.AnalyzeRequest
 	(*SourceFile)(nil),             // 1: haro.v1.SourceFile
@@ -3270,14 +3666,19 @@ var file_haro_v1_haro_proto_goTypes = []any{
 	(*ListTemplatesResponse)(nil),  // 40: haro.v1.ListTemplatesResponse
 	(*RenderTemplateRequest)(nil),  // 41: haro.v1.RenderTemplateRequest
 	(*RenderTemplateResponse)(nil), // 42: haro.v1.RenderTemplateResponse
-	nil,                            // 43: haro.v1.Effective.TimeoutsEntry
-	nil,                            // 44: haro.v1.Knowledge.CategoriesEntry
-	nil,                            // 45: haro.v1.Knowledge.SectionsEntry
-	nil,                            // 46: haro.v1.Knowledge.DirectivesEntry
-	nil,                            // 47: haro.v1.Knowledge.RulesEntry
-	nil,                            // 48: haro.v1.Knowledge.TemplatesEntry
-	nil,                            // 49: haro.v1.RenderTemplateRequest.ParamsEntry
-	(*structpb.Value)(nil),         // 50: google.protobuf.Value
+	(*AssistMessage)(nil),          // 43: haro.v1.AssistMessage
+	(*AssistRequest)(nil),          // 44: haro.v1.AssistRequest
+	(*AssistEvent)(nil),            // 45: haro.v1.AssistEvent
+	(*Proposal)(nil),               // 46: haro.v1.Proposal
+	(*AssistDone)(nil),             // 47: haro.v1.AssistDone
+	nil,                            // 48: haro.v1.Effective.TimeoutsEntry
+	nil,                            // 49: haro.v1.Knowledge.CategoriesEntry
+	nil,                            // 50: haro.v1.Knowledge.SectionsEntry
+	nil,                            // 51: haro.v1.Knowledge.DirectivesEntry
+	nil,                            // 52: haro.v1.Knowledge.RulesEntry
+	nil,                            // 53: haro.v1.Knowledge.TemplatesEntry
+	nil,                            // 54: haro.v1.RenderTemplateRequest.ParamsEntry
+	(*structpb.Value)(nil),         // 55: google.protobuf.Value
 }
 var file_haro_v1_haro_proto_depIdxs = []int32{
 	1,  // 0: haro.v1.AnalyzeRequest.files:type_name -> haro.v1.SourceFile
@@ -3290,7 +3691,7 @@ var file_haro_v1_haro_proto_depIdxs = []int32{
 	4,  // 7: haro.v1.Doc.sections:type_name -> haro.v1.Section
 	5,  // 8: haro.v1.Section.lines:type_name -> haro.v1.Line
 	7,  // 9: haro.v1.LineExplanation.explanation:type_name -> haro.v1.Explanation
-	43, // 10: haro.v1.Effective.timeouts:type_name -> haro.v1.Effective.TimeoutsEntry
+	48, // 10: haro.v1.Effective.timeouts:type_name -> haro.v1.Effective.TimeoutsEntry
 	13, // 11: haro.v1.Topology.entries:type_name -> haro.v1.EntryNode
 	14, // 12: haro.v1.Topology.backends:type_name -> haro.v1.BackendNode
 	15, // 13: haro.v1.Topology.edges:type_name -> haro.v1.Edge
@@ -3301,11 +3702,11 @@ var file_haro_v1_haro_proto_depIdxs = []int32{
 	16, // 18: haro.v1.ApplyRequest.ops:type_name -> haro.v1.Op
 	1,  // 19: haro.v1.ApplyResponse.files:type_name -> haro.v1.SourceFile
 	18, // 20: haro.v1.ApplyResponse.changes:type_name -> haro.v1.FileChange
-	44, // 21: haro.v1.Knowledge.categories:type_name -> haro.v1.Knowledge.CategoriesEntry
-	45, // 22: haro.v1.Knowledge.sections:type_name -> haro.v1.Knowledge.SectionsEntry
-	46, // 23: haro.v1.Knowledge.directives:type_name -> haro.v1.Knowledge.DirectivesEntry
-	47, // 24: haro.v1.Knowledge.rules:type_name -> haro.v1.Knowledge.RulesEntry
-	48, // 25: haro.v1.Knowledge.templates:type_name -> haro.v1.Knowledge.TemplatesEntry
+	49, // 21: haro.v1.Knowledge.categories:type_name -> haro.v1.Knowledge.CategoriesEntry
+	50, // 22: haro.v1.Knowledge.sections:type_name -> haro.v1.Knowledge.SectionsEntry
+	51, // 23: haro.v1.Knowledge.directives:type_name -> haro.v1.Knowledge.DirectivesEntry
+	52, // 24: haro.v1.Knowledge.rules:type_name -> haro.v1.Knowledge.RulesEntry
+	53, // 25: haro.v1.Knowledge.templates:type_name -> haro.v1.Knowledge.TemplatesEntry
 	26, // 26: haro.v1.DiffResponse.ops:type_name -> haro.v1.DiffOp
 	1,  // 27: haro.v1.CheckRequest.files:type_name -> haro.v1.SourceFile
 	1,  // 28: haro.v1.ConfigFile.files:type_name -> haro.v1.SourceFile
@@ -3313,43 +3714,51 @@ var file_haro_v1_haro_proto_depIdxs = []int32{
 	29, // 30: haro.v1.PutConfigResponse.check:type_name -> haro.v1.CheckResult
 	35, // 31: haro.v1.PutConfigResponse.files:type_name -> haro.v1.SavedFile
 	6,  // 32: haro.v1.PutConfigResponse.issue:type_name -> haro.v1.Issue
-	50, // 33: haro.v1.TemplateParam.default_value:type_name -> google.protobuf.Value
+	55, // 33: haro.v1.TemplateParam.default_value:type_name -> google.protobuf.Value
 	38, // 34: haro.v1.TechTemplate.params:type_name -> haro.v1.TemplateParam
 	39, // 35: haro.v1.ListTemplatesResponse.templates:type_name -> haro.v1.TechTemplate
-	49, // 36: haro.v1.RenderTemplateRequest.params:type_name -> haro.v1.RenderTemplateRequest.ParamsEntry
+	54, // 36: haro.v1.RenderTemplateRequest.params:type_name -> haro.v1.RenderTemplateRequest.ParamsEntry
 	1,  // 37: haro.v1.RenderTemplateRequest.files:type_name -> haro.v1.SourceFile
 	16, // 38: haro.v1.RenderTemplateResponse.ops:type_name -> haro.v1.Op
 	1,  // 39: haro.v1.RenderTemplateResponse.files:type_name -> haro.v1.SourceFile
 	18, // 40: haro.v1.RenderTemplateResponse.changes:type_name -> haro.v1.FileChange
-	21, // 41: haro.v1.Knowledge.SectionsEntry.value:type_name -> haro.v1.SectionInfo
-	22, // 42: haro.v1.Knowledge.DirectivesEntry.value:type_name -> haro.v1.DirectiveInfo
-	23, // 43: haro.v1.Knowledge.TemplatesEntry.value:type_name -> haro.v1.SectionTemplate
-	50, // 44: haro.v1.RenderTemplateRequest.ParamsEntry.value:type_name -> google.protobuf.Value
-	0,  // 45: haro.v1.CoreService.Analyze:input_type -> haro.v1.AnalyzeRequest
-	25, // 46: haro.v1.CoreService.Diff:input_type -> haro.v1.DiffRequest
-	17, // 47: haro.v1.CoreService.Apply:input_type -> haro.v1.ApplyRequest
-	20, // 48: haro.v1.CoreService.GetKnowledge:input_type -> haro.v1.GetKnowledgeRequest
-	28, // 49: haro.v1.CoreService.Check:input_type -> haro.v1.CheckRequest
-	37, // 50: haro.v1.CoreService.ListTemplates:input_type -> haro.v1.ListTemplatesRequest
-	41, // 51: haro.v1.CoreService.RenderTemplate:input_type -> haro.v1.RenderTemplateRequest
-	30, // 52: haro.v1.ConfigService.GetCapabilities:input_type -> haro.v1.GetCapabilitiesRequest
-	32, // 53: haro.v1.ConfigService.GetConfig:input_type -> haro.v1.GetConfigRequest
-	34, // 54: haro.v1.ConfigService.PutConfig:input_type -> haro.v1.PutConfigRequest
-	2,  // 55: haro.v1.CoreService.Analyze:output_type -> haro.v1.Analysis
-	27, // 56: haro.v1.CoreService.Diff:output_type -> haro.v1.DiffResponse
-	19, // 57: haro.v1.CoreService.Apply:output_type -> haro.v1.ApplyResponse
-	24, // 58: haro.v1.CoreService.GetKnowledge:output_type -> haro.v1.Knowledge
-	29, // 59: haro.v1.CoreService.Check:output_type -> haro.v1.CheckResult
-	40, // 60: haro.v1.CoreService.ListTemplates:output_type -> haro.v1.ListTemplatesResponse
-	42, // 61: haro.v1.CoreService.RenderTemplate:output_type -> haro.v1.RenderTemplateResponse
-	31, // 62: haro.v1.ConfigService.GetCapabilities:output_type -> haro.v1.Capabilities
-	33, // 63: haro.v1.ConfigService.GetConfig:output_type -> haro.v1.ConfigFile
-	36, // 64: haro.v1.ConfigService.PutConfig:output_type -> haro.v1.PutConfigResponse
-	55, // [55:65] is the sub-list for method output_type
-	45, // [45:55] is the sub-list for method input_type
-	45, // [45:45] is the sub-list for extension type_name
-	45, // [45:45] is the sub-list for extension extendee
-	0,  // [0:45] is the sub-list for field type_name
+	1,  // 41: haro.v1.AssistRequest.files:type_name -> haro.v1.SourceFile
+	43, // 42: haro.v1.AssistRequest.messages:type_name -> haro.v1.AssistMessage
+	46, // 43: haro.v1.AssistEvent.proposal:type_name -> haro.v1.Proposal
+	47, // 44: haro.v1.AssistEvent.done:type_name -> haro.v1.AssistDone
+	18, // 45: haro.v1.Proposal.changes:type_name -> haro.v1.FileChange
+	6,  // 46: haro.v1.Proposal.issues_after:type_name -> haro.v1.Issue
+	21, // 47: haro.v1.Knowledge.SectionsEntry.value:type_name -> haro.v1.SectionInfo
+	22, // 48: haro.v1.Knowledge.DirectivesEntry.value:type_name -> haro.v1.DirectiveInfo
+	23, // 49: haro.v1.Knowledge.TemplatesEntry.value:type_name -> haro.v1.SectionTemplate
+	55, // 50: haro.v1.RenderTemplateRequest.ParamsEntry.value:type_name -> google.protobuf.Value
+	0,  // 51: haro.v1.CoreService.Analyze:input_type -> haro.v1.AnalyzeRequest
+	25, // 52: haro.v1.CoreService.Diff:input_type -> haro.v1.DiffRequest
+	17, // 53: haro.v1.CoreService.Apply:input_type -> haro.v1.ApplyRequest
+	20, // 54: haro.v1.CoreService.GetKnowledge:input_type -> haro.v1.GetKnowledgeRequest
+	28, // 55: haro.v1.CoreService.Check:input_type -> haro.v1.CheckRequest
+	37, // 56: haro.v1.CoreService.ListTemplates:input_type -> haro.v1.ListTemplatesRequest
+	41, // 57: haro.v1.CoreService.RenderTemplate:input_type -> haro.v1.RenderTemplateRequest
+	44, // 58: haro.v1.AssistService.Assist:input_type -> haro.v1.AssistRequest
+	30, // 59: haro.v1.ConfigService.GetCapabilities:input_type -> haro.v1.GetCapabilitiesRequest
+	32, // 60: haro.v1.ConfigService.GetConfig:input_type -> haro.v1.GetConfigRequest
+	34, // 61: haro.v1.ConfigService.PutConfig:input_type -> haro.v1.PutConfigRequest
+	2,  // 62: haro.v1.CoreService.Analyze:output_type -> haro.v1.Analysis
+	27, // 63: haro.v1.CoreService.Diff:output_type -> haro.v1.DiffResponse
+	19, // 64: haro.v1.CoreService.Apply:output_type -> haro.v1.ApplyResponse
+	24, // 65: haro.v1.CoreService.GetKnowledge:output_type -> haro.v1.Knowledge
+	29, // 66: haro.v1.CoreService.Check:output_type -> haro.v1.CheckResult
+	40, // 67: haro.v1.CoreService.ListTemplates:output_type -> haro.v1.ListTemplatesResponse
+	42, // 68: haro.v1.CoreService.RenderTemplate:output_type -> haro.v1.RenderTemplateResponse
+	45, // 69: haro.v1.AssistService.Assist:output_type -> haro.v1.AssistEvent
+	31, // 70: haro.v1.ConfigService.GetCapabilities:output_type -> haro.v1.Capabilities
+	33, // 71: haro.v1.ConfigService.GetConfig:output_type -> haro.v1.ConfigFile
+	36, // 72: haro.v1.ConfigService.PutConfig:output_type -> haro.v1.PutConfigResponse
+	62, // [62:73] is the sub-list for method output_type
+	51, // [51:62] is the sub-list for method input_type
+	51, // [51:51] is the sub-list for extension type_name
+	51, // [51:51] is the sub-list for extension extendee
+	0,  // [0:51] is the sub-list for field type_name
 }
 
 func init() { file_haro_v1_haro_proto_init() }
@@ -3358,15 +3767,20 @@ func file_haro_v1_haro_proto_init() {
 		return
 	}
 	file_haro_v1_haro_proto_msgTypes[16].OneofWrappers = []any{}
+	file_haro_v1_haro_proto_msgTypes[45].OneofWrappers = []any{
+		(*AssistEvent_Text)(nil),
+		(*AssistEvent_Proposal)(nil),
+		(*AssistEvent_Done)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_haro_v1_haro_proto_rawDesc), len(file_haro_v1_haro_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   50,
+			NumMessages:   55,
 			NumExtensions: 0,
-			NumServices:   2,
+			NumServices:   3,
 		},
 		GoTypes:           file_haro_v1_haro_proto_goTypes,
 		DependencyIndexes: file_haro_v1_haro_proto_depIdxs,
