@@ -189,6 +189,11 @@ func ExtractProposal(response string, current []Source) Proposal {
 		if Normalize(text) == Normalize(current[k].Text) {
 			continue
 		}
+		// El bloque de código llega sin el salto de línea final: se iguala al del
+		// archivo actual para no introducir un cambio falso al guardar.
+		if strings.HasSuffix(current[k].Text, "\n") && !strings.HasSuffix(text, "\n") {
+			text += "\n"
+		}
 		p.Changes = append(p.Changes, FileChange{File: k, Path: current[k].Path, Text: text})
 	}
 	p.Explanation = strings.TrimSpace(strings.Join(prose, "\n"))

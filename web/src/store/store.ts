@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware'
 import type { CoreClient } from '../core/client'
 import { browserLang, type Analysis, type Capabilities, type Knowledge, type Lang, type Op, type PutResult, type SourceFile } from '../core/types'
+import { applyProposalToFiles, buildMessages, persistableChat, sanitizeChat, snapshotFor, type ChatMessage } from './chat'
 import { applyChanges, dirtyIndexes, sameFiles } from './files'
 import { SAMPLE_FILES } from './sample'
 
@@ -19,6 +20,8 @@ export interface UiPrefs {
   /** Secciones plegadas, por clave `archivo:tipo:nombre`. */
   collapsed: Record<string, boolean>
   mapOpen: boolean
+  /** Escritorio: panel del asistente abierto. */
+  chatOpen: boolean
 }
 
 export interface AppState {
@@ -36,8 +39,13 @@ export interface AppState {
   capabilities: Capabilities | null
   ready: boolean
   mode: Mode
-  /** Solo móvil: pestaña «Asistente» (marcador de posición). */
+  /** Solo móvil: pestaña «Asistente». */
   showAssistant: boolean
+  /** Conversación con el asistente (se guarda con el resto del estado). */
+  chat: ChatMessage[]
+  chatBusy: boolean
+  /** El usuario ya confirmó en esta sesión que la configuración se envía a Anthropic (no se guarda). */
+  chatAck: boolean
   undoStack: SourceFile[][]
   redoStack: SourceFile[][]
   versions: Version[]
@@ -59,6 +67,18 @@ export interface AppState {
   setLang(l: Lang): Promise<void>
   setMode(m: Mode): void
   setShowAssistant(v: boolean): void
+  setChatOpen(v: boolean): void
+  ackChat(): void
+  /** Envía una petición al asistente y va pintando la respuesta. */
+  sendChat(text: string): Promise<void>
+  /** Reenvía la última petición tras un error. */
+  retryChat(): Promise<void>
+  /** Corta la respuesta en curso (conserva lo recibido). */
+  stopChat(): void
+  newChat(): void
+  /** Aplica la propuesta del mensaje `mi` (guarda antes una versión; un solo paso de deshacer). */
+  applyProposal(mi: number): boolean
+  discardProposal(mi: number): void
   saveVersion(label: string): void
   restoreVersion(i: number): void
   deleteVersion(i: number): void
@@ -110,6 +130,9 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
   // Última edición de texto, para fusionar pulsaciones seguidas en un solo paso de deshacer.
   let lastTyping: { at: number; file: number } | null = null
   let applyQueue: Promise<unknown> = Promise.resolve()
+  // Conversación en curso: la época invalida las escrituras de una respuesta cuando se empieza otra conversación.
+  let chatEpoch = 0
+  let chatCtl: AbortController | null = null
   const delay = opts.analyzeDelay ?? ANALYZE_DELAY_MS
 
   return create<AppState>()(persist((set, get) => {
@@ -131,6 +154,43 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
       get().refreshAnalysis()
     }
 
+    const setProposalStatus = (chat: ChatMessage[], mi: number, status: 'applied' | 'discarded') =>
+      chat.map((m, i) => i === mi && m.proposal ? { ...m, proposal: { ...m.proposal, status } } : m)
+
+    // Un turno del asistente: envía la conversación con la configuración actual
+    // y va completando el último mensaje con lo que llega por el stream.
+    const runChat = async () => {
+      const s = get()
+      const messages = buildMessages(s.chat)
+      if (!messages.length) return
+      const files = s.files
+      const epoch = chatEpoch
+      const ctl = new AbortController()
+      chatCtl = ctl
+      const idx = s.chat.length
+      set({ chat: [...s.chat, { role: 'assistant', content: '', ts: Date.now(), pending: true }], chatBusy: true })
+      const patch = (fn: (m: ChatMessage) => ChatMessage) => {
+        if (epoch !== chatEpoch) return
+        set(st => ({ chat: st.chat.map((m, i) => i === idx ? fn(m) : m) }))
+      }
+      try {
+        for await (const ev of client.assist({ files, messages, lang: get().lang }, ctl.signal)) {
+          if (ctl.signal.aborted) break
+          if (ev.type === 'text') patch(m => ({ ...m, content: m.content + ev.text }))
+          else if (ev.type === 'proposal') {
+            const p = ev.proposal
+            patch(m => ({ ...m, proposal: { ...p, status: 'pending', base: snapshotFor(files, p.changes) } }))
+          } else patch(m => ({ ...m, done: { stopReason: ev.done.stopReason, refusalCategory: ev.done.refusalCategory } }))
+        }
+        patch(m => ctl.signal.aborted ? { ...m, pending: false, stopped: true } : { ...m, pending: false })
+      } catch (e) {
+        if (ctl.signal.aborted) patch(m => ({ ...m, pending: false, stopped: true }))
+        else patch(m => ({ ...m, pending: false, error: (e as Error).message || 'Error desconocido' }))
+      } finally {
+        if (epoch === chatEpoch) { set({ chatBusy: false }); chatCtl = null }
+      }
+    }
+
     return {
       files: SAMPLE_FILES,
       active: 0,
@@ -144,10 +204,13 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
       ready: false,
       mode: 'visual',
       showAssistant: false,
+      chat: [],
+      chatBusy: false,
+      chatAck: false,
       undoStack: [],
       redoStack: [],
       versions: [],
-      ui: { collapsed: {}, mapOpen: true },
+      ui: { collapsed: {}, mapOpen: true, chatOpen: false },
       focus: null,
       toasts: [],
       rev: 0,
@@ -252,6 +315,49 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
 
       setMode(m) { set({ mode: m, showAssistant: false }) },
       setShowAssistant(v) { set({ showAssistant: v }) },
+      setChatOpen(v) { set(s => ({ ui: { ...s.ui, chatOpen: v } })) },
+      ackChat() { set({ chatAck: true }) },
+
+      async sendChat(text) {
+        const t = text.trim()
+        if (!t || get().chatBusy) return
+        set(s => ({ chat: [...s.chat, { role: 'user', content: t, ts: Date.now() }] }))
+        await runChat()
+      },
+
+      async retryChat() {
+        const s = get()
+        if (s.chatBusy) return
+        const last = s.chat[s.chat.length - 1]
+        if (last?.role === 'assistant' && last.error) set({ chat: s.chat.slice(0, -1) })
+        await runChat()
+      },
+
+      stopChat() { chatCtl?.abort() },
+
+      newChat() {
+        chatCtl?.abort()
+        chatEpoch++
+        chatCtl = null
+        set({ chat: [], chatBusy: false })
+      },
+
+      applyProposal(mi) {
+        const m = get().chat[mi]
+        if (!m?.proposal || m.proposal.status !== 'pending') return false
+        let files: SourceFile[]
+        try { files = applyProposalToFiles(get().files, m.proposal.changes) } catch (e) {
+          get().toast((e as Error).message, 'warn')
+          return false
+        }
+        get().saveVersion('Antes de aplicar propuesta del asistente')
+        commit(files)
+        set(st => ({ chat: setProposalStatus(st.chat, mi, 'applied') }))
+        get().toast('Propuesta del asistente aplicada', 'info', { label: 'Deshacer', run: () => get().undo() })
+        return true
+      },
+
+      discardProposal(mi) { set(st => ({ chat: setProposalStatus(st.chat, mi, 'discarded') })) },
 
       saveVersion(label) {
         const s = get()
@@ -339,10 +445,12 @@ export function createAppStore(client: CoreClient, opts: StoreOptions = {}) {
     name: opts.storageKey ?? 'haro.v1',
     version: 1,
     storage: createJSONStorage(() => opts.storage ?? browserStorage()),
-    partialize: s => ({ lang: s.lang, files: s.files, active: s.active, disk: s.disk, mode: s.mode, versions: s.versions, ui: s.ui }),
+    partialize: s => ({ lang: s.lang, chat: persistableChat(s.chat).slice(-100), files: s.files, active: s.active, disk: s.disk, mode: s.mode, versions: s.versions, ui: s.ui }),
     // Validar lo guardado: un localStorage corrupto no debe romper la app.
-    merge: (persisted, current) => {
+    merge: (persisted, base) => {
+      let current = base
       const p = persisted as Partial<AppState> | undefined
+      if (p && Array.isArray(p.chat)) current = { ...current, chat: sanitizeChat(p.chat) }
       if (!p || !Array.isArray(p.files) || !p.files.length || !p.files.every(f => typeof f?.path === 'string' && typeof f?.text === 'string')) return current
       return {
         ...current,

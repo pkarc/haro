@@ -2,7 +2,7 @@ import { fromJson, toJson, type DescMessage, type MessageShape } from '@bufbuild
 import { ValueSchema } from '@bufbuild/protobuf/wkt'
 import { AnalysisSchema, ApplyResponseSchema, DiffResponseSchema, KnowledgeSchema, ListTemplatesResponseSchema, RenderTemplateResponseSchema } from '../gen/haro/v1/haro_pb'
 import type { CoreClient } from './client'
-import type { Analysis, ApplyResult, Capabilities, CheckResult, DiffOp, Knowledge, Lang, Op, ParamValue, PutResult, RenderResult, SourceFile, TechTemplate } from './types'
+import type { Analysis, ApplyResult, AssistEvent, AssistRequest, Capabilities, CheckResult, DiffOp, Knowledge, Lang, Op, ParamValue, PutResult, RenderResult, SourceFile, TechTemplate } from './types'
 
 // WasmCoreClient: el mismo núcleo de Go compilado a WebAssembly (ver wasm/ y
 // `make wasm`). Para la web pública sin servidor: la configuración nunca sale
@@ -59,7 +59,7 @@ export class WasmCoreClient implements CoreClient {
   }
 
   async capabilities(): Promise<Capabilities> {
-    return { version: 'wasm', paths: [], canRead: false, canWrite: false, canCheck: false, haproxyBin: '' }
+    return { version: 'wasm', paths: [], canRead: false, canWrite: false, canCheck: false, haproxyBin: '', canAssist: false, assistantModel: '' }
   }
 
   async analyze(files: SourceFile[], lang: Lang = 'es') { return (await this.call('analyze', { files, lang }, AnalysisSchema)) as unknown as Analysis }
@@ -77,6 +77,11 @@ export class WasmCoreClient implements CoreClient {
 
   async renderTemplate(files: SourceFile[], id: string, params: Record<string, ParamValue>, lang: Lang = 'es') {
     return (await this.call('renderTemplate', { files, id, params, lang }, RenderTemplateResponseSchema)) as unknown as RenderResult
+  }
+
+  // El asistente necesita el servidor local (la clave de la API nunca debe estar en el navegador).
+  async *assist(_req: AssistRequest, _signal?: AbortSignal): AsyncGenerator<AssistEvent> {
+    throw new Error('El asistente no está disponible en la versión sin servidor: inicia haro serve --assistant')
   }
 
   // Sin haproxy ni disco en el navegador.

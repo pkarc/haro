@@ -9,7 +9,7 @@ make test      # go test ./...
 make build     # binario en bin/haro
 ```
 
-Para la web hace falta Node: `make web`.
+Para la web hace falta Node: `make web`. Los e2e (`cd web && PW_CHANNEL=chrome npx playwright test`, tras `make web && make build` y `npm run build:wasm`) incluyen el asistente contra una API de Anthropic falsa (`web/e2e/fake-anthropic.mjs`): nunca llames a la API real en pruebas.
 
 ## Añadir o mejorar explicaciones
 

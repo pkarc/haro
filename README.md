@@ -54,6 +54,9 @@ haro template add nextcloud --param domain=cloud.example.com --param servers=10.
 haro serve --file /etc/haproxy/haproxy.cfg               # solo lectura
 haro serve --file /etc/haproxy/haproxy.cfg --allow-write # permite guardar
 haro serve --file haproxy.cfg --file conf.d/             # varios archivos
+haro serve --file haproxy.cfg --assistant                # con el asistente con IA (ver más abajo)
+haro tui --assistant haproxy.cfg                         # TUI con el asistente (tecla a)
+haro assist "Revisa mi configuración" haproxy.cfg        # una petición desde la línea de comandos
 ```
 
 ### Sin servidor: el núcleo en WebAssembly
@@ -122,6 +125,19 @@ haro template add postgresql --param bind=10.0.0.5:5432 --param servers=10.0.0.1
 ```
 
 `add` imprime el diff unificado y **no escribe**; con `--write` guarda con las mismas garantías que `haro serve` (valida la configuración completa con `haproxy -c`, escritura atómica y copia `.bak`). Las listas aceptan varios `--param` con la misma clave o valores separados por comas. La plantilla reutiliza el `global` y el `defaults` que ya existan (y solo añade los que falten), elige nombres sin colisiones (`nextcloud_2`…) y, si ya hay un frontend con TLS en el 443, se une a él con una ACL por dominio en vez de abrir otro `bind` en el mismo puerto. En la web, el botón «Añadir desde plantilla de tecnología» del modo visual abre un formulario con el diff antes de aceptar. Para Claude, `haro_template_list` y `haro_template_render` (simulan y devuelven el diff y las ops, que se aplican con `haro_apply`). En la API: `CoreService.ListTemplates` y `RenderTemplate` (los parámetros son un mapa de `google.protobuf.Value`).
+
+### Asistente con IA
+
+Chatea sobre tu configuración en lenguaje natural («añade un backend con tres servidores», «limita a 20 peticiones por segundo por IP», «qué mejorarías»). El asistente conoce la configuración vigente y sus problemas, responde en streaming y, si propone cambios, los muestra como **diff por archivo antes de aplicar nada**, con los errores y avisos que quedarían tras aplicarlos.
+
+- **Es opt-in.** Sin `--assistant` no se llama a ningún servicio externo y no aparece nada en la interfaz (en la web, la pestaña móvil «Asistente» solo explica cómo activarlo).
+- **Qué se envía.** La configuración completa (con sus contraseñas, direcciones y certificados referenciados por ruta) y la conversación se envían a la **API de Anthropic** desde el proceso local. La web y la TUI lo avisan de forma visible; la web pide confirmación la primera vez que se usa en cada sesión.
+- **La clave** la lee el SDK de Anthropic en el servidor local: `ANTHROPIC_API_KEY` o un perfil de `ant auth login`. Nunca llega al navegador ni al historial del chat. `ANTHROPIC_BASE_URL` redirige las llamadas (útil para pruebas con una API falsa).
+- **Modelo.** Por defecto `claude-opus-5-5`; cámbialo con `--assistant-model` o `HARO_ASSISTANT_MODEL`.
+- **Web.** Con `haro serve --assistant`, el botón «✦ Asistente» abre el chat a un lado (en móvil, la pestaña inferior). El historial se guarda en el navegador junto al resto del estado; «Nueva conversación» lo borra. **Aplicar** guarda antes una versión en el historial («Antes de aplicar propuesta del asistente») y sustituye el texto de esos archivos como una única acción que se deshace con «Deshacer»; si la configuración cambió desde que se hizo la propuesta, pide confirmación. **Detener** corta la respuesta. Guardar en disco sigue siendo aparte y requiere `--allow-write`.
+- **TUI.** Con `haro tui --assistant`, la tecla `a` abre una línea de petición; la respuesta llega en streaming, `Esc` la cancela (o vuelve a las secciones), y al terminar muestra el diff y «¿Aplicar y guardar? [y/N]». Con `y` guarda con las mismas garantías que `haro serve --allow-write` (valida la configuración completa, escritura atómica y copia `.bak`); si la validación rechaza la propuesta, muestra el motivo. La conversación dura lo que la sesión. Sin `--assistant`, `a` avisa de que está desactivado.
+- **CLI.** `haro assist "petición" [archivos]` imprime la respuesta y el diff propuesto; con `--write` guarda (pide confirmación salvo `--yes`).
+- **Límites.** Hasta 40 mensajes y 200 KB por conversación (la web envía los 20 últimos); respuestas de hasta 32 000 tokens (si se corta, lo indica); si la respuesta trae un bloque de configuración cortado o no asignable a un archivo, se descarta y se avisa. El asistente puede equivocarse: revisa el diff y valida con `haproxy -c`. Cada petición consume tu cuota de la API de Anthropic. La versión sin servidor (WebAssembly) no incluye el asistente, para que la clave nunca esté en el navegador.
 
 ### Configuraciones en varios archivos
 
@@ -206,11 +222,11 @@ El plan detallado está en [`docs/PLAN.md`](docs/PLAN.md).
 - [x] Plantillas por tecnología (Proxmox, Nextcloud, PostgreSQL, Redis, Elasticsearch, Kubernetes…)
 - [x] Servidor y cliente Connect generados desde `proto/` con buf (`make proto`)
 - [x] Web: modo código (CodeMirror 6), modo visual, mapa (React Flow) y panel de problemas
-- [ ] Web: asistente
+- [x] Web y TUI: asistente con IA (`--assistant`)
 - [x] Interfaz de terminal con Bubble Tea (`haro` sin argumentos)
 - [x] Operaciones de edición en el núcleo (`apply`)
 - [x] Servidor MCP (`haro mcp`)
-- [ ] Asistente: construcción de contexto en el núcleo, llamada a la API en cada cliente
+- [x] Asistente: contexto y propuesta en el núcleo, llamada a la API en el servidor local
 - [x] Núcleo en WebAssembly (`make wasm`, `WasmCoreClient`)
 - [ ] Web pública (repo aparte)
 

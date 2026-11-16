@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { AssistantDisabled, ChatPanel } from './assistant/ChatPanel'
 import { DialogHost } from './components/dialogs'
 import { Toasts } from './components/Toasts'
 import { TopBar } from './components/TopBar'
@@ -13,6 +14,9 @@ export function App() {
   const mode = useApp(s => s.mode)
   const setMode = useApp(s => s.setMode)
   const showAssistant = useApp(s => s.showAssistant)
+  const canAssist = useApp(s => !!s.capabilities?.canAssist)
+  const chatOpen = useApp(s => s.ui.chatOpen)
+  const setChatOpen = useApp(s => s.setChatOpen)
   const setShowAssistant = useApp(s => s.setShowAssistant)
   const error = useApp(s => s.analysisError)
   const mobile = useMediaQuery('(max-width: 899px)')
@@ -41,7 +45,7 @@ export function App() {
     <div id="app" className={mobile ? 'mobile' : ''}>
       <TopBar />
       {error && <div className="iss sev-error net-error" role="alert"><span>Núcleo</span> {error}</div>}
-      <main className="layout">
+      <main className={`layout${canAssist && !mobile && chatOpen ? ' with-chat' : ''}`}>
         {!assistantVisible && (
           <section className="pane main-pane">
             <div className="pane-head">
@@ -50,15 +54,21 @@ export function App() {
                 <button role="tab" aria-selected={mode === 'visual'} className={mode === 'visual' ? 'on' : ''} onClick={() => setMode('visual')}>Visual</button>
               </div>
               <ProblemsButton open={problems} onToggle={() => setProblems(p => !p)} />
+              {canAssist && !mobile && (
+                <button className={`tbtn assist-toggle${chatOpen ? ' on' : ''}`} aria-pressed={chatOpen} data-testid="assistant-toggle" onClick={() => setChatOpen(!chatOpen)}>✦ Asistente</button>
+              )}
             </div>
             {problems && <ProblemsPanel />}
             <div className="pane-body">{mode === 'code' ? <CodeView /> : <VisualView />}</div>
           </section>
         )}
         {assistantVisible && (
-          <section className="pane assistant-pane" data-testid="assistant-placeholder">
-            <div className="empty"><div className="spark">✦</div><h3>Asistente</h3><p className="muted">Próximamente.</p></div>
+          <section className="pane assistant-pane" data-testid="assistant-pane">
+            {canAssist ? <ChatPanel /> : <AssistantDisabled />}
           </section>
+        )}
+        {canAssist && !mobile && chatOpen && (
+          <section className="pane assistant-pane side" data-testid="assistant-pane" aria-label="Asistente"><ChatPanel /></section>
         )}
       </main>
       {mobile && (

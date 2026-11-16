@@ -91,3 +91,15 @@ export type TemplateParam = Omit<Plain<pb.TemplateParam>, 'type' | 'defaultValue
 export type TechTemplate = Omit<Plain<pb.TechTemplate>, 'kind' | 'params'> & { kind: 'web' | 'tcp'; params: TemplateParam[] }
 /** Resultado de renderizar una plantilla: las operaciones y el efecto de aplicarlas (como ApplyResult). */
 export type RenderResult = Omit<Plain<pb.RenderTemplateResponse>, 'ops'> & { ops: Op[] }
+
+/** Capacidades relevantes para el asistente ya vienen en Capabilities (canAssist, assistantModel). */
+export interface AssistMessage { role: 'user' | 'assistant'; content: string }
+export interface AssistRequest { files: SourceFile[]; messages: AssistMessage[]; lang: Lang }
+/** Propuesta del asistente: texto completo de cada archivo que cambia y problemas de la configuración resultante. */
+export interface AssistProposal { changes: FileChange[]; issuesAfter: Issue[]; unmatched: number; truncated: boolean }
+export interface AssistDone { stopReason: string; refusalCategory: string; inputTokens: number; outputTokens: number }
+/** Eventos del stream del asistente: trozos de texto, la propuesta (si la hay) y el cierre. */
+export type AssistEvent =
+  | { type: 'text'; text: string }
+  | { type: 'proposal'; proposal: AssistProposal }
+  | { type: 'done'; done: AssistDone }

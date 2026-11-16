@@ -15,11 +15,21 @@ test('móvil: pestañas inferiores Código / Visual / Asistente', async ({ page 
   await expect(page.locator('.cm-content')).toContainText('frontend http_in')
 
   await tabs.getByRole('tab', { name: /Asistente/ }).click()
-  await expect(page.getByTestId('assistant-placeholder')).toContainText('Próximamente')
+  await expect(page.getByTestId('assistant-disabled')).toContainText('haro serve --assistant')
+  await expect(page.getByTestId('assistant-disabled')).toContainText('API de Anthropic')
   await expect(page.locator('.cm-editor')).toHaveCount(0)
 
   await tabs.getByRole('tab', { name: /Visual/ }).click()
   await expect(page.getByTestId('section').first()).toBeVisible()
   // sin desbordamiento horizontal
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+})
+
+test('móvil con --assistant: la pestaña Asistente abre el chat sin desbordar', async ({ page }) => {
+  await page.goto('http://127.0.0.1:7474/')
+  await page.getByRole('tablist', { name: 'Secciones' }).getByRole('tab', { name: /Asistente/ }).click()
+  await expect(page.getByTestId('chat-panel')).toBeVisible()
+  await expect(page.getByLabel('Mensaje para el asistente')).toBeVisible()
+  await expect(page.getByTestId('assistant-disabled')).toHaveCount(0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })

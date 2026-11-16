@@ -300,17 +300,32 @@ func finishAssistCLI(out assistOutcome, srcs []core.Source, paths []string, writ
 			return nil
 		}
 	}
-	files := make([]core.Source, len(p.Changes))
-	for i, ch := range p.Changes {
+	res, err := saveProposal(context.Background(), paths, p.Changes)
+	if err != nil {
+		return err
+	}
+	for _, sv := range res.Saved {
+		fmt.Printf("Guardado %s (copia en %s)\n", sv.Path, sv.Backup)
+	}
+	return nil
+}
+
+// saveProposal guarda los archivos de una propuesta con las mismas garantías
+// que `haro serve --allow-write`: valida la configuración completa (haproxy -c
+// o el detector), escribe de forma atómica y deja copia .bak. Si la validación
+// la rechaza, el error explica el motivo y no se escribe nada.
+func saveProposal(ctx context.Context, paths []string, changes []core.FileChange) (putOutcome, error) {
+	files := make([]core.Source, len(changes))
+	for i, ch := range changes {
 		files[i] = core.Source{Path: ch.Path, Text: ch.Text}
 	}
 	s := &server{paths: paths, allowWrite: true}
 	if bin, err := exec.LookPath("haproxy"); err == nil {
 		s.haproxyBin = bin
 	}
-	res, err := s.put(context.Background(), files)
+	res, err := s.put(ctx, files)
 	if err != nil {
-		return err
+		return res, err
 	}
 	if res.Err != "" {
 		msg := res.Err
@@ -320,12 +335,9 @@ func finishAssistCLI(out assistOutcome, srcs []core.Source, paths []string, writ
 		if res.Issue != nil {
 			msg += fmt.Sprintf("\n%s:%d: %s", res.Path, res.Issue.Line, res.Issue.Message)
 		}
-		return errors.New("no se guardó: " + msg)
+		return res, errors.New("no se guardó: " + msg)
 	}
-	for _, sv := range res.Saved {
-		fmt.Printf("Guardado %s (copia en %s)\n", sv.Path, sv.Backup)
-	}
-	return nil
+	return res, nil
 }
 
 func envOr(key, def string) string {

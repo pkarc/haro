@@ -88,3 +88,15 @@ func TestExtractProposalTruncatedAndCRLF(t *testing.T) {
 		t.Errorf("sin bloques: %+v", p)
 	}
 }
+
+func TestExtractProposalKeepsFinalNewline(t *testing.T) {
+	cur := []Source{{Path: "a.cfg", Text: assistCfg}} // termina en salto de línea
+	p := ExtractProposal("```haproxy\nglobal\n    maxconn 10\n```", cur)
+	if len(p.Changes) != 1 || !strings.HasSuffix(p.Changes[0].Text, "\n") {
+		t.Errorf("debe conservar el salto de línea final del archivo: %q", p.Changes)
+	}
+	noNL := []Source{{Path: "a.cfg", Text: "global"}}
+	if p := ExtractProposal("```haproxy\nglobal\n    maxconn 10\n```", noNL); strings.HasSuffix(p.Changes[0].Text, "\n") {
+		t.Errorf("no debe añadir salto si el archivo no lo tenía: %q", p.Changes[0].Text)
+	}
+}

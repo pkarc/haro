@@ -2,8 +2,8 @@ import { fromJson, toJson } from '@bufbuild/protobuf'
 import { ValueSchema } from '@bufbuild/protobuf/wkt'
 import { Code, ConnectError, createClient } from '@connectrpc/connect'
 import { createConnectTransport } from '@connectrpc/connect-web'
-import { ConfigService, CoreService } from '../gen/haro/v1/haro_pb'
-import type { Analysis, ApplyResult, Capabilities, CheckResult, DiffOp, Knowledge, Lang, Op, ParamValue, PutResult, RenderResult, SourceFile, TechTemplate } from './types'
+import { AssistService, ConfigService, CoreService } from '../gen/haro/v1/haro_pb'
+import type { Analysis, ApplyResult, AssistDone, AssistEvent, AssistProposal, AssistRequest, Capabilities, CheckResult, DiffOp, Knowledge, Lang, Op, ParamValue, PutResult, RenderResult, SourceFile, TechTemplate } from './types'
 
 // La interfaz no sabe con qué núcleo habla:
 //  - ConnectCoreClient: `haro serve` local (Go nativo), con el cliente
@@ -31,6 +31,12 @@ export interface CoreClient {
    * con el mensaje del núcleo en el idioma pedido.
    */
   renderTemplate(files: SourceFile[], id: string, params: Record<string, ParamValue>, lang?: Lang): Promise<RenderResult>
+  /**
+   * Conversa con el asistente (solo con `haro serve --assistant`; ver
+   * capabilities().canAssist). La respuesta llega en streaming; cancelar con
+   * `signal` corta la petición. Los errores son Error con el mensaje del servidor.
+   */
+  assist(req: AssistRequest, signal?: AbortSignal): AsyncIterable<AssistEvent>
 }
 
 // Los errores de RPC llegan como Error con el mensaje del servidor (sin el
@@ -51,12 +57,26 @@ const plain = <T>(m: unknown) => m as T
 export class ConnectCoreClient implements CoreClient {
   private core: ReturnType<typeof createClient<typeof CoreService>>
   private config: ReturnType<typeof createClient<typeof ConfigService>>
+  private assistant: ReturnType<typeof createClient<typeof AssistService>>
 
   constructor(baseUrl = '') {
     // JSON, no binario: mismo formato que los mensajes del contrato y fácil de depurar.
     const transport = createConnectTransport({ baseUrl, useBinaryFormat: false })
     this.core = createClient(CoreService, transport)
     this.config = createClient(ConfigService, transport)
+    this.assistant = createClient(AssistService, transport)
+  }
+
+  async *assist(req: AssistRequest, signal?: AbortSignal): AsyncGenerator<AssistEvent> {
+    try {
+      for await (const ev of this.assistant.assist(req, { signal })) {
+        switch (ev.event.case) {
+          case 'text': yield { type: 'text', text: ev.event.value }; break
+          case 'proposal': yield { type: 'proposal', proposal: plain<AssistProposal>(ev.event.value) }; break
+          case 'done': yield { type: 'done', done: plain<AssistDone>(ev.event.value) }; break
+        }
+      }
+    } catch (e) { fail(e) }
   }
 
   async capabilities() { return plain<Capabilities>(await rpc(this.config.getCapabilities({}))) }

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -34,6 +35,16 @@ type Options struct {
 	NoColor bool
 	// NoWatch desactiva la recarga automática.
 	NoWatch bool
+	// Assist es el asistente con IA; nil si la TUI se abrió sin --assistant. Se
+	// llama en segundo plano, entrega la respuesta por trozos con onText y debe
+	// terminar cuando ctx se cancele. Enviar la configuración a la API de
+	// Anthropic es cosa de quien lo implementa (cmd/haro), no de este paquete.
+	Assist func(ctx context.Context, msgs []core.AssistMessage, lang core.Lang, onText func(string)) (AssistOutcome, error)
+	// AssistModel es el modelo del asistente, solo para mostrarlo.
+	AssistModel string
+	// Save guarda los archivos propuestos (valida la configuración completa,
+	// escritura atómica y copia .bak); devuelve el motivo si se rechaza.
+	Save func([]core.FileChange) error
 }
 
 type view int
@@ -42,6 +53,7 @@ const (
 	viewSections view = iota
 	viewProblems
 	viewMap
+	viewAssist
 )
 
 // focus indica qué panel recibe las teclas de desplazamiento en la vista de secciones.
@@ -53,7 +65,7 @@ const (
 )
 
 type keyMap struct {
-	Up, Down, Top, Bottom, Tab, Problems, Map, Edit, Filter, Enter, Back, Help, Quit, Reload key.Binding
+	Up, Down, Top, Bottom, Tab, Problems, Map, Edit, Filter, Enter, Back, Help, Quit, Reload, Assist key.Binding
 }
 
 func newKeys() keyMap {
@@ -72,18 +84,19 @@ func newKeys() keyMap {
 		Help:     key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "ayuda")),
 		Quit:     key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "salir")),
 		Reload:   key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "recargar")),
+		Assist:   key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "asistente")),
 	}
 }
 
 func (k keyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Tab, k.Problems, k.Map, k.Edit, k.Help, k.Quit}
+	return []key.Binding{k.Tab, k.Problems, k.Map, k.Edit, k.Assist, k.Help, k.Quit}
 }
 
 func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.Up, k.Down, k.Top, k.Bottom, k.Tab},
 		{k.Problems, k.Filter, k.Enter, k.Map, k.Back},
-		{k.Edit, k.Reload, k.Help, k.Quit},
+		{k.Edit, k.Assist, k.Reload, k.Help, k.Quit},
 	}
 }
 
@@ -125,6 +138,8 @@ type Model struct {
 
 	mapView viewport.Model
 
+	assist assistState
+
 	status string
 	w      *watcher
 }
@@ -136,7 +151,7 @@ func New(opts Options) Model {
 		opts.Editor = defaultEditor()
 	}
 	h := help.New()
-	return Model{opts: opts, st: newStyles(), keys: newKeys(), help: h, detail: viewport.New(0, 0), mapView: viewport.New(0, 0)}
+	return Model{opts: opts, st: newStyles(), keys: newKeys(), help: h, detail: viewport.New(0, 0), mapView: viewport.New(0, 0), assist: newAssistState()}
 }
 
 type loadedMsg struct {
@@ -201,6 +216,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.status = "El editor terminó con error: " + msg.err.Error()
 		}
 		return m, m.load
+
+	case assistTextMsg:
+		return m.updateAssistText(msg)
+	case assistDoneMsg:
+		return m.updateAssistDone(msg)
+	case assistSavedMsg:
+		return m.updateAssistSaved(msg)
 
 	case tea.KeyMsg:
 		return m.updateKey(msg)
@@ -339,6 +361,9 @@ func (m Model) filteredIssues() []core.Issue {
 
 func (m Model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	k := m.keys
+	if m.view == viewAssist && !m.showHelp {
+		return m.keyAssist(msg)
+	}
 	if key.Matches(msg, k.Quit) {
 		if m.w != nil {
 			m.w.Close()
@@ -376,6 +401,8 @@ func (m Model) updateKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case key.Matches(msg, k.Edit):
 		return m.edit()
+	case key.Matches(msg, k.Assist):
+		return m.openAssist()
 	}
 
 	switch m.view {
@@ -501,6 +528,7 @@ func (m *Model) layout() {
 	m.detail.Height = h
 	m.mapView.Width = max(10, m.width-4)
 	m.mapView.Height = h
+	m.layoutAssist()
 	m.help.Width = m.width
 	m.syncScroll()
 	m.refreshDetail()
@@ -544,6 +572,8 @@ func (m Model) View() string {
 	switch m.view {
 	case viewProblems:
 		body = m.viewProblems(h)
+	case viewAssist:
+		body = m.viewAssist(h)
 	case viewMap:
 		body = m.st.pane.Width(m.width - 2).Height(h + 1).Render(m.titled("Mapa del tráfico", m.mapView.View()))
 	default:
@@ -659,6 +689,9 @@ func (m Model) statusBar() string {
 		summary = m.st.ok.Render(summary)
 	}
 	keys := m.help.ShortHelpView(m.keys.ShortHelp())
+	if m.view == viewAssist && m.status == "" {
+		return summary + "   " + m.assistStatus()
+	}
 	if m.status != "" {
 		return summary + "   " + m.status
 	}

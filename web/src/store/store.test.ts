@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CoreClient } from '../core/client'
 import type { Analysis, SourceFile } from '../core/types'
+import { proposalStale } from './chat'
 import { applyChanges, dirtyIndexes } from './files'
 import { createAppStore, COALESCE_MS } from './store'
 
@@ -11,7 +12,7 @@ const emptyAnalysis = (tag: string): Analysis => ({
 
 function fakeClient(over: Partial<CoreClient> = {}): CoreClient {
   return {
-    capabilities: async () => ({ version: 't', canRead: false, canWrite: false, canCheck: false, paths: [], haproxyBin: '' }),
+    capabilities: async () => ({ version: 't', canRead: false, canWrite: false, canCheck: false, paths: [], haproxyBin: '', canAssist: false, assistantModel: '' }),
     analyze: async f => emptyAnalysis(f[0].text),
     apply: async files => ({ files, changes: [] }),
     diff: async () => [],
@@ -22,6 +23,7 @@ function fakeClient(over: Partial<CoreClient> = {}): CoreClient {
     knowledge: async () => ({ categories: {}, sections: {}, directives: {}, rules: {}, templates: {} }),
     templates: async () => [],
     renderTemplate: async files => ({ ops: [], files, changes: [] }),
+    assist: async function* () { /* sin asistente */ },
     ...over,
   }
 }
@@ -212,5 +214,169 @@ describe('idioma', () => {
     saved.state.lang = 'klingon'
     mem.set('haro.v1', JSON.stringify(saved))
     expect(['es', 'en']).toContain(createAppStore(fakeClient(), { storage }).getState().lang)
+  })
+})
+
+describe('asistente', () => {
+  type Ev = import('../core/types').AssistEvent
+  const done: Ev = { type: 'done', done: { stopReason: 'end_turn', refusalCategory: '', inputTokens: 1, outputTokens: 1 } }
+  const proposal = (path: string, text: string): Ev => ({ type: 'proposal', proposal: { changes: [{ file: 0, path, text }], issuesAfter: [], unmatched: 0, truncated: false } })
+  // cliente con un asistente guionizado; recuerda las peticiones
+  const assistant = (script: (req: import('../core/types').AssistRequest, signal?: AbortSignal) => AsyncGenerator<Ev>) => {
+    const calls: import('../core/types').AssistRequest[] = []
+    return { calls, client: fakeClient({ assist: (req, signal) => { calls.push(req); return script(req, signal) } }) }
+  }
+
+  it('recibe la respuesta en streaming y la guarda con el idioma y los archivos', async () => {
+    const { client, calls } = assistant(async function* () { yield { type: 'text', text: 'Ho' }; yield { type: 'text', text: 'la' }; yield done })
+    const s = mk(client)
+    s.setState({ files: [F('uno')], lang: 'en' })
+    await s.getState().sendChat('  pregunta  ')
+    expect(calls[0]).toEqual({ files: [F('uno')], messages: [{ role: 'user', content: 'pregunta' }], lang: 'en' })
+    const chat = s.getState().chat
+    expect(chat.map(m => [m.role, m.content])).toEqual([['user', 'pregunta'], ['assistant', 'Hola']])
+    expect(chat[1].pending).toBe(false)
+    expect(s.getState().chatBusy).toBe(false)
+  })
+
+  it('muestra el texto parcial mientras llega y bloquea un segundo envío', async () => {
+    let release!: () => void
+    const gate = new Promise<void>(r => { release = r })
+    const { client, calls } = assistant(async function* () { yield { type: 'text', text: 'par' }; await gate; yield { type: 'text', text: 'cial' }; yield done })
+    const s = mk(client)
+    const p = s.getState().sendChat('hola')
+    await vi.waitFor(() => expect(s.getState().chat[1]?.content).toBe('par'))
+    expect(s.getState().chatBusy).toBe(true)
+    expect(s.getState().chat[1].pending).toBe(true)
+    await s.getState().sendChat('otra') // ignorada
+    expect(calls).toHaveLength(1)
+    release()
+    await p
+    expect(s.getState().chat[1].content).toBe('parcial')
+  })
+
+  it('detener corta el stream y conserva lo recibido', async () => {
+    const { client } = assistant(async function* (_r, signal) {
+      yield { type: 'text', text: 'medio' }
+      await new Promise((_, rej) => signal?.addEventListener('abort', () => rej(new Error('abortado'))))
+    })
+    const s = mk(client)
+    const p = s.getState().sendChat('hola')
+    await vi.waitFor(() => expect(s.getState().chat[1]?.content).toBe('medio'))
+    s.getState().stopChat()
+    await p
+    const m = s.getState().chat[1]
+    expect(m).toMatchObject({ content: 'medio', stopped: true, pending: false })
+    expect(m.error).toBeUndefined()
+    expect(s.getState().chatBusy).toBe(false)
+  })
+
+  it('un error queda en el mensaje y se puede reintentar sin repetir la petición del usuario', async () => {
+    let n = 0
+    const { client, calls } = assistant(async function* () {
+      if (++n === 1) throw new Error('la API de Anthropic rechazó las credenciales')
+      yield { type: 'text', text: 'ahora sí' }
+      yield done
+    })
+    const s = mk(client)
+    await s.getState().sendChat('hola')
+    expect(s.getState().chat[1].error).toContain('credenciales')
+    await s.getState().retryChat()
+    expect(s.getState().chat.map(m => m.content)).toEqual(['hola', 'ahora sí'])
+    expect(calls[1].messages).toEqual([{ role: 'user', content: 'hola' }])
+  })
+
+  it('el historial enviado alterna roles y omite los mensajes fallidos', async () => {
+    let n = 0
+    const { client, calls } = assistant(async function* () {
+      if (++n === 2) throw new Error('límite')
+      yield { type: 'text', text: `r${n}` }
+      yield done
+    })
+    const s = mk(client)
+    await s.getState().sendChat('a')
+    await s.getState().sendChat('b') // falla
+    await s.getState().sendChat('c')
+    expect(calls[2].messages).toEqual([{ role: 'user', content: 'a' }, { role: 'assistant', content: 'r1' }, { role: 'user', content: 'b\n\nc' }])
+  })
+
+  it('el historial se guarda, sobrevive a la recarga y una respuesta inconclusa queda como interrumpida', async () => {
+    const mem = new Map<string, string>()
+    const storage = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => { mem.set(k, v) }, removeItem: (k: string) => { mem.delete(k) } }
+    const { client } = assistant(async function* () { yield { type: 'text', text: 'resp' }; yield done })
+    const a = createAppStore(client, { storage })
+    await a.getState().sendChat('hola')
+    a.setState({ chat: [...a.getState().chat, { role: 'user', content: 'otra', ts: 1 }, { role: 'assistant', content: 'a medias', ts: 2, pending: true }] })
+    a.getState().setText(0, 'x') // fuerza guardar
+    const b = createAppStore(client, { storage })
+    expect(b.getState().chat.map(m => m.content)).toEqual(['hola', 'resp', 'otra', 'a medias'])
+    expect(b.getState().chat[3]).toMatchObject({ error: expect.stringContaining('interrumpió') })
+    expect(b.getState().chat[3].pending).toBeUndefined()
+    expect(b.getState().chatBusy).toBe(false)
+  })
+
+  it('nueva conversación borra el historial y corta la respuesta en curso', async () => {
+    const { client } = assistant(async function* (_r, signal) {
+      yield { type: 'text', text: 'x' }
+      await new Promise((_, rej) => signal?.addEventListener('abort', () => rej(new Error('abortado'))))
+    })
+    const s = mk(client)
+    const p = s.getState().sendChat('hola')
+    await vi.waitFor(() => expect(s.getState().chat[1]?.content).toBe('x'))
+    s.getState().newChat()
+    await p
+    expect(s.getState().chat).toEqual([])
+    expect(s.getState().chatBusy).toBe(false)
+  })
+
+  describe('propuesta', () => {
+    const run = async (files: SourceFile[], text: string) => {
+      const { client } = assistant(async function* () { yield { type: 'text', text: 'ok' }; yield proposal(files[0].path, text); yield done })
+      const s = mk(client)
+      s.setState({ files })
+      await s.getState().sendChat('cambia')
+      return s
+    }
+
+    it('llega con su estado y el texto base', async () => {
+      const s = await run([F('uno\n')], 'dos')
+      expect(s.getState().chat[1].proposal).toMatchObject({ status: 'pending', base: [F('uno\n')] })
+    })
+
+    it('aplicar guarda una versión, sustituye los archivos y se deshace de una vez', async () => {
+      const s = await run([F('uno\n'), F('otro\n', 'b.cfg')], 'dos')
+      expect(s.getState().applyProposal(1)).toBe(true)
+      expect(s.getState().files).toEqual([F('dos\n'), F('otro\n', 'b.cfg')]) // conserva el salto de línea final
+      expect(s.getState().versions[0]).toMatchObject({ label: 'Antes de aplicar propuesta del asistente', files: [F('uno\n'), F('otro\n', 'b.cfg')] })
+      expect(s.getState().chat[1].proposal?.status).toBe('applied')
+      expect(s.getState().toasts.at(-1)?.action?.label).toBe('Deshacer')
+      expect(s.getState().applyProposal(1)).toBe(false) // ya aplicada
+      s.getState().undo()
+      expect(s.getState().files).toEqual([F('uno\n'), F('otro\n', 'b.cfg')])
+    })
+
+    it('descartar no toca los archivos', async () => {
+      const s = await run([F('uno')], 'dos')
+      s.getState().discardProposal(1)
+      expect(s.getState().chat[1].proposal?.status).toBe('discarded')
+      expect(s.getState().applyProposal(1)).toBe(false)
+      expect(s.getState().files[0].text).toBe('uno')
+    })
+
+    it('detecta que la configuración cambió desde la petición', async () => {
+      const s = await run([F('uno')], 'dos')
+      const p = () => s.getState().chat[1].proposal!
+      expect(proposalStale(p(), s.getState().files)).toBe(false)
+      s.getState().setText(0, 'editado')
+      expect(proposalStale(p(), s.getState().files)).toBe(true)
+    })
+
+    it('no aplica si el archivo propuesto ya no existe', async () => {
+      const s = await run([F('uno')], 'dos')
+      s.setState({ files: [F('uno', 'otro.cfg')] })
+      expect(s.getState().applyProposal(1)).toBe(false)
+      expect(s.getState().versions).toHaveLength(0)
+      expect(s.getState().toasts.at(-1)?.kind).toBe('warn')
+    })
   })
 })

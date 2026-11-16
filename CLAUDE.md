@@ -24,9 +24,9 @@ core/testdata/        *.cfg + *.golden.json (es) y *.golden.en.json (en); cada s
 cmd/haro/             main, cli (lint/explain/diff), files (expansión de rutas), serve + rpc (API Connect), tui (arranque)
 internal/mcp/         servidor MCP por stdio (JSON-RPC a mano, dos eras del protocolo); las herramientas están en cmd/haro/mcp.go
 skills/haro/          skill de Claude para usar las herramientas MCP
-internal/tui/         interfaz de terminal (Bubble Tea); solo presenta, la lógica es de core
+internal/tui/         interfaz de terminal (Bubble Tea); solo presenta, la lógica es de core (assist.go: panel del asistente)
 proto/haro/v1/        contrato del API
-web/                  React + Vite + TS (esqueleto); web/placeholder.html se sirve si no hay build
+web/                  React + Vite + TS; web/src/assistant/ es el chat del asistente; web/placeholder.html se sirve si no hay build
 docs/prototype/       prototipo completo de la interfaz en un solo HTML (referencia para portar)
 scripts/              fetch-corpus.sh (corpus de HariSekhon/HAProxy-configs, MIT)
 ```
