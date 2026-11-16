@@ -1,226 +1,228 @@
-# Plan de trabajo de haro
+English | [Español](PLAN.es.md)
 
-> **Estado:** fases 0 a 8 hechas, salvo la web pública (8.4). Resumen y gaps en [`IMPLEMENTACION.md`](IMPLEMENTACION.md).
+# haro work plan
 
-Plan detallado para continuar el proyecto en un entorno con red (Claude Code en la máquina del autor). Cada fase tiene objetivo, tareas, notas de diseño y criterios de aceptación. Las fases están en el orden recomendado; dentro de cada una, el orden de las tareas también importa.
+> **Status:** phases 0 to 8 done, except the public web (8.4). Summary and gaps in [`IMPLEMENTATION.md`](IMPLEMENTATION.md).
 
-Reglas generales para todas las fases:
+Detailed plan to continue the project in an environment with network access (Claude Code on the author's machine). Each phase has an objective, tasks, design notes and acceptance criteria. The phases are in the recommended order; within each one, the order of the tasks also matters.
 
-- Lee `CLAUDE.md` antes de empezar: recoge las decisiones ya tomadas.
-- Cada fase termina con `make test` en verde, el binario compilado (`make build`) y la funcionalidad probada de verdad (ejecutándola, no solo compilándola).
-- Un commit por tarea o grupo pequeño de tareas, con mensajes en español.
-- Si una tarea obliga a cambiar una decisión de `CLAUDE.md`, pregunta antes.
+General rules for all phases:
 
----
-
-## Fase 0 · Puesta a punto del repositorio
-
-**Objetivo:** dejar el repo listo para publicarse y para recibir contribuciones.
-
-Tareas:
-
-1. ~~Licencia~~: hecho, MIT con `LICENSE` (Ivan Jaramillo).
-2. ~~Ruta del módulo~~: hecho, `github.com/pkarc/haro` en `go.mod`, imports y `proto` (`go_package`).
-3. **CI en GitHub Actions** (`.github/workflows/ci.yml`):
-   - `go vet ./...`, `go test ./...` y `gofmt -l .` (falla si hay archivos sin formatear) en Linux y macOS.
-   - Job opcional que ejecuta `scripts/fetch-corpus.sh` y `go test ./core -run TestCorpus -v`, y publica la cobertura en el resumen del job.
-   - Job de la web (`npm ci && npm run build`) en cuanto exista la fase 2.
-4. **Validación real con HAProxy en CI**: instalar `haproxy` (paquete de Ubuntu o imagen `haproxy:lts`) y añadir un test de integración que pase cada `core/testdata/*.cfg` sin errores esperados por `haproxy -c`, para comprobar que los casos «válidos» lo son de verdad.
-5. `CONTRIBUTING.md` breve: cómo añadir explicaciones (knowledge.json + caso en testdata + `make golden`) y reglas del detector.
-
-Aceptación: CI en verde en un push; `LICENSE` presente; `go install <ruta>/cmd/haro@latest` funciona desde un repo de prueba.
+- Read `CLAUDE.md` before starting: it records the decisions already made.
+- Each phase ends with `make test` green, the binary built (`make build`) and the feature actually tried out (by running it, not just compiling it).
+- One commit per task or small group of tasks.
+- If a task forces a change to a decision in `CLAUDE.md`, ask first.
 
 ---
 
-## Fase 1 · Operaciones de edición en el núcleo (`apply`)
+## Phase 0 · Repository setup
 
-**Objetivo:** que todas las ediciones (modo visual, TUI, MCP, asistente) pasen por el núcleo y produzcan cambios mínimos en el texto.
+**Objective:** leave the repo ready to be published and to receive contributions.
 
-Diseño:
+Tasks:
 
-- Nuevo archivo `core/edit.go` con un tipo `Op` serializable a JSON:
+1. ~~License~~: done, MIT with `LICENSE` (Ivan Jaramillo).
+2. ~~Module path~~: done, `github.com/pkarc/haro` in `go.mod`, imports and `proto` (`go_package`).
+3. **CI in GitHub Actions** (`.github/workflows/ci.yml`):
+   - `go vet ./...`, `go test ./...` and `gofmt -l .` (fails if there are unformatted files) on Linux and macOS.
+   - Optional job that runs `scripts/fetch-corpus.sh` and `go test ./core -run TestCorpus -v`, and publishes coverage in the job summary.
+   - Web job (`npm ci && npm run build`) as soon as phase 2 exists.
+4. **Real HAProxy validation in CI**: install `haproxy` (Ubuntu package or `haproxy:lts` image) and add an integration test that runs every `core/testdata/*.cfg` through `haproxy -c` with no unexpected errors, to check that the "valid" cases really are valid.
+5. Short `CONTRIBUTING.md`: how to add explanations (knowledge.json + testdata case + `make golden`) and detector rules.
+
+Acceptance: CI green on a push; `LICENSE` present; `go install <path>/cmd/haro@latest` works from a test repo.
+
+---
+
+## Phase 1 · Editing operations in the core (`apply`)
+
+**Objective:** have all edits (visual mode, TUI, MCP, assistant) go through the core and produce minimal changes to the text.
+
+Design:
+
+- New file `core/edit.go` with an `Op` type serializable to JSON:
   - `add_section {type, name, at?, template?}`
   - `remove_section {section}`
   - `move_section {section, to}`
-  - `rename_section {section, name, update_refs: bool}` (actualiza `default_backend` / `use_backend` en todos los archivos)
+  - `rename_section {section, name, update_refs: bool}` (updates `default_backend` / `use_backend` in all files)
   - `add_directive {section, text, at?}`
   - `update_directive {section, line_index, text}`
   - `remove_directive {section, line_index}`
-  - `move_directive {section, line_index, delta}` (salta líneas en blanco)
-- `func Apply(cfg *Config, ops ...Op) (*Config, []FileChange, error)`: aplica sobre la vista unificada y devuelve qué archivos cambiaron con su texto nuevo. Debe rechazar una línea que en realidad sea cabecera de sección en `add/update_directive`.
-- Mantener el formato: líneas nuevas con `DefaultIndent`; `EnsureSeparation` solo en los archivos tocados.
-- Plantillas de sección en `core/knowledge/templates.json` (las mismas que usa el prototipo en `TEMPLATES`).
+  - `move_directive {section, line_index, delta}` (skips blank lines)
+- `func Apply(cfg *Config, ops ...Op) (*Config, []FileChange, error)`: applies on the unified view and returns which files changed with their new text. It must reject a line that is actually a section header in `add/update_directive`.
+- Preserve formatting: new lines use `DefaultIndent`; `EnsureSeparation` only on the touched files.
+- Section templates in `core/knowledge/templates.json` (the same ones the prototype uses in `TEMPLATES`).
 
-Tareas:
+Tasks:
 
-1. Implementar `Op` y `Apply` con tests unitarios por operación (texto antes → texto después).
-2. Caso de varios archivos: renombrar un backend definido en `30-api.cfg` actualiza la referencia en `20-web.cfg`.
-3. Exponer `POST /api/v1/apply {files, ops}` en `haro serve` y añadirlo al `proto`.
-4. Añadir `apply` a `CoreClient`.
+1. Implement `Op` and `Apply` with unit tests per operation (text before → text after).
+2. Multi-file case: renaming a backend defined in `30-api.cfg` updates the reference in `20-web.cfg`.
+3. Expose `POST /api/v1/apply {files, ops}` in `haro serve` and add it to the `proto`.
+4. Add `apply` to `CoreClient`.
 
-Aceptación: todos los tests de edición pasan; `Serialize` de un archivo no tocado por la operación sigue idéntico byte a byte.
-
----
-
-## Fase 2 · Interfaz web en React
-
-**Objetivo:** portar `docs/prototype/haro-prototype.html` a `web/`, usando el núcleo en Go a través de `CoreClient` (nada de lógica de HAProxy en la web).
-
-Dependencias sugeridas: `@codemirror/*` 6, `@uiw/react-codemirror` (o integración propia), `@xyflow/react` (React Flow), `zustand` (estado + persistencia en localStorage), Radix UI o shadcn/ui para diálogos y menús.
-
-Tareas, en este orden:
-
-1. **Estado y datos** (`zustand`): archivos (`SourceFile[]`), archivo activo, análisis más reciente, modo (código/visual), historial de deshacer/rehacer, versiones guardadas. Análisis con *debounce* de ~200 ms tras cada cambio.
-2. **Modo código** con CodeMirror 6:
-   - Lenguaje HAProxy propio (`StreamLanguage` o gramática Lezer simple) con los mismos colores que el prototipo (`hlLine` en el prototipo es la referencia).
-   - Linter de CodeMirror alimentado por `analysis.issues` del archivo activo.
-   - Autocompletado de directivas por tipo de sección (los `SUGGEST` del prototipo; mejor generarlos desde `knowledge.json`, expuesto por un endpoint `GET /api/v1/knowledge`).
-   - Barra inferior con la explicación de la línea del cursor.
-   - Pestañas por archivo cuando hay varios.
-3. **Modo visual**: tarjetas por sección (tipo, nombre, título, descripción, modo efectivo y timeouts heredados), directivas con categoría, argumentos y explicación (renderizando el markdown mínimo). Edición en línea, añadir, mover, borrar, renombrar y añadir sección desde plantilla, **todo mediante `apply`** (fase 1).
-4. **Mapa del tráfico** con React Flow: entradas → backends → servidores a partir de `analysis.topology`; aristas por defecto (continuas) y condicionales (discontinuas, con la condición en el tooltip); backend inexistente en rojo; clic en un nodo lleva a su sección.
-5. **Panel de problemas**: lista con archivo:línea, ir a la línea, filtro por gravedad.
-6. **Guardar** (si `capabilities.canWrite`): botón que llama a `putFile` y muestra la salida de `haproxy -c` si falla. Mostrar diff antes de guardar.
-7. **Importar/exportar, historial de versiones y deshacer/rehacer** como en el prototipo.
-8. **Diseño responsive**: pestañas inferiores en móvil (Código / Visual / Asistente) como en el prototipo.
-9. Compilar con `make web` y verificar que `make build` embebe la web (`web/dist`).
-
-Aceptación: `make run` abre la interfaz con el ejemplo; editar en modo visual cambia el texto de forma mínima; los problemas aparecen en el editor y en el panel; con `--file dir/ --allow-write` se pueden editar y guardar archivos distintos y el guardado se rechaza si rompe una referencia entre archivos. Probar en escritorio y en un viewport de móvil (Playwright).
+Acceptance: all editing tests pass; `Serialize` of a file not touched by the operation is still byte-for-byte identical.
 
 ---
 
-## Fase 3 · Connect RPC
+## Phase 2 · React web interface
 
-**Objetivo:** tipos compartidos y generados entre Go y TypeScript.
+**Objective:** port `docs/prototype/haro-prototype.html` to `web/`, using the Go core through `CoreClient` (no HAProxy logic in the web).
 
-Tareas:
+Suggested dependencies: `@codemirror/*` 6, `@uiw/react-codemirror` (or a custom integration), `@xyflow/react` (React Flow), `zustand` (state + localStorage persistence), Radix UI or shadcn/ui for dialogs and menus.
 
-1. `buf.yaml` y `buf.gen.yaml` en la raíz; plugins `protoc-gen-go`, `protoc-gen-connect-go` y `@bufbuild/protoc-gen-es`.
-2. `buf generate` → `gen/haro/v1` (Go) y `web/src/gen` (TS). Añadir `make proto`.
-3. Implementar `CoreService` y `ConfigService` en Go reutilizando la lógica actual de `serve.go`. Mantener temporalmente las rutas JSON `/api/v1/*` si la web aún las usa, y retirarlas al terminar.
-4. Sustituir `web/src/core/types.ts` y `client.ts` por el cliente generado detrás de la misma interfaz `CoreClient`.
-5. Conservar `localOnly`, el límite de tamaño y las reglas de escritura.
+Tasks, in this order:
 
-Aceptación: la web funciona igual usando solo el cliente Connect; los tests de `serve` cubren las rutas Connect.
+1. **State and data** (`zustand`): files (`SourceFile[]`), active file, latest analysis, mode (code/visual), undo/redo history, saved versions. Analysis *debounced* by ~200 ms after each change.
+2. **Code mode** with CodeMirror 6:
+   - A custom HAProxy language (`StreamLanguage` or a simple Lezer grammar) with the same colors as the prototype (`hlLine` in the prototype is the reference).
+   - CodeMirror linter fed by the active file's `analysis.issues`.
+   - Directive autocompletion by section type (the prototype's `SUGGEST`; better generated from `knowledge.json`, exposed through a `GET /api/v1/knowledge` endpoint).
+   - Bottom bar with the explanation of the line under the cursor.
+   - One tab per file when there are several.
+3. **Visual mode**: cards per section (type, name, title, description, effective mode and inherited timeouts), directives with category, arguments and explanation (rendering the minimal markdown). Inline editing, add, move, delete, rename and add section from a template, **all through `apply`** (phase 1).
+4. **Traffic map** with React Flow: entries → backends → servers from `analysis.topology`; default edges (solid) and conditional edges (dashed, with the condition in the tooltip); missing backend in red; clicking a node jumps to its section.
+5. **Problems panel**: list with file:line, go to line, filter by severity.
+6. **Save** (if `capabilities.canWrite`): a button that calls `putFile` and shows the `haproxy -c` output if it fails. Show the diff before saving.
+7. **Import/export, version history and undo/redo** as in the prototype.
+8. **Responsive design**: bottom tabs on mobile (Code / Visual / Assistant) as in the prototype.
+9. Build with `make web` and verify that `make build` embeds the web (`web/dist`).
 
-Nota: la conversión de structs del núcleo a mensajes proto debe hacerse en `cmd/haro` (o un paquete `internal/rpc`), nunca dentro de `core`, para no añadirle dependencias.
+Acceptance: `make run` opens the interface with the example; editing in visual mode changes the text minimally; problems appear in the editor and in the panel; with `--file dir/ --allow-write` different files can be edited and saved, and saving is rejected if it breaks a cross-file reference. Test on desktop and on a mobile viewport (Playwright).
 
 ---
 
-## Fase 4 · Interfaz de terminal con Bubble Tea
+## Phase 3 · Connect RPC
 
-**Objetivo:** `haro` sin argumentos (o `haro tui [rutas]`) abre una interfaz interactiva.
+**Objective:** shared, generated types between Go and TypeScript.
 
-Dependencias: `charmbracelet/bubbletea`, `lipgloss`, `bubbles` (list, viewport, help, key), `fsnotify` para recarga.
+Tasks:
 
-Diseño de pantalla:
+1. `buf.yaml` and `buf.gen.yaml` at the root; plugins `protoc-gen-go`, `protoc-gen-connect-go` and `@bufbuild/protoc-gen-es`.
+2. `buf generate` → `gen/haro/v1` (Go) and `web/src/gen` (TS). Add `make proto`.
+3. Implement `CoreService` and `ConfigService` in Go reusing the current logic of `serve.go`. Temporarily keep the JSON routes `/api/v1/*` if the web still uses them, and remove them when finished.
+4. Replace `web/src/core/types.ts` and `client.ts` with the generated client behind the same `CoreClient` interface.
+5. Keep `localOnly`, the size limit and the write rules.
+
+Acceptance: the web works the same using only the Connect client; the `serve` tests cover the Connect routes.
+
+Note: converting core structs to proto messages must be done in `cmd/haro` (or an `internal/rpc` package), never inside `core`, to avoid adding dependencies to it.
+
+---
+
+## Phase 4 · Terminal interface with Bubble Tea
+
+**Objective:** `haro` with no arguments (or `haro tui [paths]`) opens an interactive interface.
+
+Dependencies: `charmbracelet/bubbletea`, `lipgloss`, `bubbles` (list, viewport, help, key), `fsnotify` for reload.
+
+Screen design:
 
 ```
-┌ Secciones ───────────┬ Detalle ─────────────────────────────────────┐
-│ global               │ backend api_servers  Grupo de servidores     │
-│ defaults             │ modo http (heredado de defaults)             │
+┌ Sections ────────────┬ Detail ──────────────────────────────────────┐
+│ global               │ backend api_servers  Server group            │
+│ defaults             │ mode http (inherited from defaults)          │
 │ frontend http_in   ! │                                              │
 │ frontend https_in    │  49 balance leastconn                        │
-│ backend web_servers  │     [Servidores] Reparto: menos conexiones   │
+│ backend web_servers  │     [Servers] Balancing: fewest connections  │
 │ backend api_servers  │  50 server api1 10.0.0.21:9000 check …       │
-│ …                    │     [Servidores] Servidor api1 en …          │
+│ …                    │     [Servers] Server api1 at …               │
 ├──────────────────────┴──────────────────────────────────────────────┤
-│ 2 errores · 3 avisos   [tab] panel  [m] mapa  [e] editar  [?] ayuda │
+│ 2 errors · 3 warnings  [tab] panel  [m] map  [e] edit  [?] help     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
-Tareas:
+Tasks:
 
-1. Modelo con lista de secciones (agrupadas por archivo si hay varios) y panel de detalle con explicaciones (reutilizar el render de markdown mínimo de `cli.go`).
-2. Vista de problemas (`p`): lista navegable; Enter salta a la sección y resalta la línea.
-3. Vista de mapa (`m`): árbol de texto `frontend ──si cond──▶ backend ──▶ servidores`.
-4. `e`: abre `$EDITOR` en el archivo y línea seleccionados (`+N` para vim/nano/emacs; `-g archivo:N` para VS Code) y reanaliza al volver.
-5. Recarga automática con `fsnotify` cuando cambian los archivos.
-6. Ayuda (`?`), colores adaptados a terminal clara u oscura (`lipgloss.AdaptiveColor`), soporte de `NO_COLOR`.
-7. `haro` sin argumentos y sin terminal interactiva (por ejemplo, en un pipe) sigue mostrando la ayuda.
+1. Model with a list of sections (grouped by file if there are several) and a detail panel with explanations (reuse the minimal markdown renderer from `cli.go`).
+2. Problems view (`p`): navigable list; Enter jumps to the section and highlights the line.
+3. Map view (`m`): text tree `frontend ──if cond──▶ backend ──▶ servers`.
+4. `e`: opens `$EDITOR` on the selected file and line (`+N` for vim/nano/emacs; `-g file:N` for VS Code) and re-analyzes on return.
+5. Automatic reload with `fsnotify` when the files change.
+6. Help (`?`), colors adapted to light or dark terminals (`lipgloss.AdaptiveColor`), `NO_COLOR` support.
+7. `haro` with no arguments and no interactive terminal (for example, in a pipe) still shows the help.
 
-Aceptación: probado manualmente con el ejemplo, con `core/testdata/multi/` y con archivos del corpus; tests del modelo con `teatest` para la navegación básica.
+Acceptance: tested manually with the example, with `core/testdata/multi/` and with corpus files; model tests with `teatest` for basic navigation.
 
 ---
 
-## Fase 5 · Servidor MCP (`haro mcp`)
+## Phase 5 · MCP server (`haro mcp`)
 
-**Objetivo:** que Claude Code, Claude Desktop y otros clientes MCP usen el análisis determinista de haro.
+**Objective:** have Claude Code, Claude Desktop and other MCP clients use haro's deterministic analysis.
 
-Diseño:
+Design:
 
-- Transporte stdio con JSON-RPC 2.0. Se puede implementar con la biblioteca estándar o con el SDK oficial de Go para MCP (`github.com/modelcontextprotocol/go-sdk`), si su API es estable en ese momento; consultar la especificación vigente antes de empezar.
-- Herramientas:
-  - `haro_lint {paths?: string[], text?: string, disable?: string[]}` → problemas con archivo y línea.
-  - `haro_explain {paths?: string[], text?: string, section?: string}` → explicaciones por sección.
-  - `haro_analyze {paths?|text?}` → análisis completo (JSON).
+- stdio transport with JSON-RPC 2.0. It can be implemented with the standard library or with the official Go SDK for MCP (`github.com/modelcontextprotocol/go-sdk`), if its API is stable at the time; check the current specification before starting.
+- Tools:
+  - `haro_lint {paths?: string[], text?: string, disable?: string[]}` → problems with file and line.
+  - `haro_explain {paths?: string[], text?: string, section?: string}` → explanations per section.
+  - `haro_analyze {paths?|text?}` → full analysis (JSON).
   - `haro_diff {before, after}`.
-  - `haro_check {paths?|text?}` → `haproxy -c` si está disponible.
-  - `haro_apply {paths, ops, write?: bool}` (tras la fase 1): solo escribe si el servidor se lanzó con `--allow-write`, con las mismas garantías que `serve`.
-- Recursos opcionales: `haro://knowledge` (base de conocimiento) y `haro://rules` (reglas del detector).
-- Rutas: aceptar las que reciba, pero permitir restringirlas con `--root dir` (repetible).
+  - `haro_check {paths?|text?}` → `haproxy -c` if available.
+  - `haro_apply {paths, ops, write?: bool}` (after phase 1): only writes if the server was launched with `--allow-write`, with the same guarantees as `serve`.
+- Optional resources: `haro://knowledge` (knowledge base) and `haro://rules` (detector rules).
+- Paths: accept whatever it receives, but allow restricting them with `--root dir` (repeatable).
 
-Tareas:
+Tasks:
 
-1. Implementar `haro mcp` con las herramientas de solo lectura.
-2. Tests: sesión JSON-RPC simulada por stdin/stdout (initialize, tools/list, tools/call).
-3. Documentar en el README cómo registrarlo en Claude Code (`claude mcp add haro -- haro mcp`) y en Claude Desktop (bloque de configuración).
-4. Opcional: una skill de Claude con buenas prácticas de HAProxy que use estas herramientas antes de proponer una configuración.
+1. Implement `haro mcp` with the read-only tools.
+2. Tests: simulated JSON-RPC session over stdin/stdout (initialize, tools/list, tools/call).
+3. Document in the README how to register it in Claude Code (`claude mcp add haro -- haro mcp`) and in Claude Desktop (configuration block).
+4. Optional: a Claude skill with HAProxy best practices that uses these tools before proposing a configuration.
 
-Aceptación: registrado en Claude Code, una petición como «revisa /etc/haproxy/haproxy.cfg» llama a `haro_lint` y `haro_explain` y la respuesta cita archivo y línea.
-
----
-
-## Fase 6 · Distribución e integraciones
-
-**Objetivo:** que instalar y usar haro sea trivial.
-
-Tareas:
-
-1. **GoReleaser** (`.goreleaser.yaml`): Linux, macOS (y Windows si no cuesta) en amd64 y arm64; checksums; `-ldflags "-X main.version=…"`; changelog desde los commits. Workflow que publica al crear una etiqueta `v*`.
-2. **Homebrew tap** (`pkarc/homebrew-tap`) generado por GoReleaser.
-3. **Imagen Docker** mínima (`FROM scratch` o `distroless`) con el binario; ejemplo `docker run -v /etc/haproxy:/cfg:ro haro lint /cfg`.
-4. **GitHub Action** (`pkarc/haro` (`action.yml`) o `action.yml` en el repo): ejecuta `haro lint --format sarif` y sube el resultado; comenta en el PR.
-5. **Salida SARIF** en `haro lint --format sarif` (reglas con `Rules` como descripción).
-6. **Hook de pre-commit** (`.pre-commit-hooks.yaml`).
-7. Paquetes `.deb`/`.rpm` con nfpm (opcional).
-
-Aceptación: `brew install pkarc/tap/haro`, `docker run …` y la Action funcionan en un repo de prueba.
+Acceptance: registered in Claude Code, a request like "review /etc/haproxy/haproxy.cfg" calls `haro_lint` and `haro_explain` and the response cites file and line.
 
 ---
 
-## Fase 7 · Base de conocimiento e idiomas
+## Phase 6 · Distribution and integrations
 
-**Objetivo:** explicar casi todas las directivas reales, en inglés y español.
+**Objective:** make installing and using haro trivial.
 
-Tareas:
+Tasks:
 
-1. Ejecutar el corpus y priorizar las directivas sin explicación por frecuencia.
-2. Usar el catálogo de directivas de `haproxytech/client-native` (Apache-2.0) para completar `sections` y categorías; citar el origen en `knowledge.json` o en `NOTICE`.
-3. **Idiomas**: pasar los textos de `knowledge.json` y de `describe.go` a claves con traducciones (`es`, `en`); `--lang` en el CLI, `LANG` por defecto, selector en la web. Las frases con argumentos de `describe.go` necesitan plantillas por idioma.
-4. Versiones de HAProxy: campo `since` en las directivas y aviso si se usa algo más nuevo que la versión indicada con `--haproxy-version`.
-5. Nuevas reglas del detector sugeridas por el corpus: exposición pública sin ACL de IPs, contraseña de estadísticas `test`, `stats` sin `auth` en un bind público, `option forwardfor` ausente en http, etc. Cada una con identificador, caso y golden.
+1. **GoReleaser** (`.goreleaser.yaml`): Linux, macOS (and Windows if it is not costly) on amd64 and arm64; checksums; `-ldflags "-X main.version=…"`; changelog from the commits. A workflow that publishes when a `v*` tag is created.
+2. **Homebrew tap** (`pkarc/homebrew-tap`) generated by GoReleaser.
+3. Minimal **Docker image** (`FROM scratch` or `distroless`) with the binary; example `docker run -v /etc/haproxy:/cfg:ro haro lint /cfg`.
+4. **GitHub Action** (`pkarc/haro` (`action.yml`) or `action.yml` in the repo): runs `haro lint --format sarif` and uploads the result; comments on the PR.
+5. **SARIF output** in `haro lint --format sarif` (rules with `Rules` as the description).
+6. **Pre-commit hook** (`.pre-commit-hooks.yaml`).
+7. `.deb`/`.rpm` packages with nfpm (optional).
 
-Aceptación: cobertura del corpus por encima del 95 %; golden en inglés y español.
-
----
-
-## Fase 8 · Plantillas, asistente, WASM y web pública
-
-1. **Plantillas por tecnología** (`core/knowledge/templates/`) — **hecho (8.1)**: Proxmox VE, Home Assistant, Nextcloud, Jellyfin, Gitea, Grafana, Vaultwarden, PostgreSQL, Redis, Elasticsearch y Kubernetes API, con TLS y redirección las web. Un JSON por tecnología interpretado por `core.RenderTechTemplate` (devuelve operaciones para `Apply`); `CoreService.ListTemplates`/`RenderTemplate`, `haro template list|show|add`, herramientas MCP `haro_template_list`/`haro_template_render` y diálogo en el modo visual de la web. Validadas con `haproxy -c -dW` (LTS 3.4 y 2.8). Pendiente: los defaults del usuario con directivas solo-HTTP (`option forwardfor`) hacen que HAProxy avise en las secciones TCP que los heredan (habría que usar `defaults` con nombre y `from`).
-2. **Asistente** — **hecho (8.2)**: núcleo (`core/assist.go`: contexto y extracción de la propuesta), servidor (`AssistService.Assist` en streaming, `haro serve --assistant`, `haro assist`), chat en la web (`web/src/assistant/`, tarjeta de propuesta con diff, aplicar con versión previa y deshacer, e2e con API falsa) y panel en la TUI (tecla `a`, `haro tui --assistant`). Solo `haro serve`/CLI/TUI llaman a la API de Anthropic; la web sin servidor no. Detalle original:
-   - Construcción del contexto en el núcleo (`core.BuildPrompt(cfg, issues, request)`) y extracción de la configuración propuesta de la respuesta.
-   - Llamada a la API de Anthropic en `haro serve` (clave en `ANTHROPIC_API_KEY`, nunca en el navegador) y en la TUI.
-   - En la web: chat con streaming, diff antes de aplicar y versión guardada antes de aplicar (como en el prototipo). El prompt del prototipo (`SYSTEM_PROMPT`) es un buen punto de partida.
-3. **WASM**: `wasm/main.go` con `syscall/js` exponiendo `analyze`, `apply`, `diff`; probar con Go estándar y con TinyGo y medir tamaño; `WasmCoreClient` en la web.
-4. **Web pública** (repo aparte): la misma web con `WasmCoreClient`, sesión en localStorage, asistente con clave propia del usuario o con un intermediario con límites.
+Acceptance: `brew install pkarc/tap/haro`, `docker run …` and the Action work in a test repo.
 
 ---
 
-## Referencias
+## Phase 7 · Knowledge base and languages
 
-- Prototipo: `docs/prototype/haro-prototype.html` (interfaz completa, lógica en JS como referencia de comportamiento).
-- Política de marca de HAProxy: usar «HAProxy» solo de forma descriptiva y con aviso de no afiliación.
-- Carga de varios archivos: documentación de `haproxy -f` (orden de argumentos; directorios con `.cfg` en orden lexicográfico, sin ocultos ni subdirectorios).
+**Objective:** explain almost all real-world directives, in English and Spanish.
+
+Tasks:
+
+1. Run the corpus and prioritize the directives without an explanation by frequency.
+2. Use the directive catalog of `haproxytech/client-native` (Apache-2.0) to complete `sections` and categories; cite the origin in `knowledge.json` or in `NOTICE`.
+3. **Languages**: move the texts of `knowledge.json` and `describe.go` to keys with translations (`es`, `en`); `--lang` in the CLI, `LANG` by default, selector in the web. The phrases with arguments in `describe.go` need per-language templates.
+4. HAProxy versions: `since` field on directives and a warning if something newer than the version given with `--haproxy-version` is used.
+5. New detector rules suggested by the corpus: public exposure without an IP ACL, stats password `test`, `stats` without `auth` on a public bind, missing `option forwardfor` in http, etc. Each with an identifier, case and golden.
+
+Acceptance: corpus coverage above 95%; golden files in English and Spanish.
+
+---
+
+## Phase 8 · Templates, assistant, WASM and public web
+
+1. **Technology templates** (`core/knowledge/templates/`) — **done (8.1)**: Proxmox VE, Home Assistant, Nextcloud, Jellyfin, Gitea, Grafana, Vaultwarden, PostgreSQL, Redis, Elasticsearch and Kubernetes API, with TLS and redirection for the web ones. One JSON per technology interpreted by `core.RenderTechTemplate` (returns operations for `Apply`); `CoreService.ListTemplates`/`RenderTemplate`, `haro template list|show|add`, MCP tools `haro_template_list`/`haro_template_render` and a dialog in the web's visual mode. Validated with `haproxy -c -dW` (LTS 3.4 and 2.8). Pending: user defaults with HTTP-only directives (`option forwardfor`) make HAProxy warn on the TCP sections that inherit them (a named `defaults` with `from` would be needed).
+2. **Assistant** — **done (8.2)**: core (`core/assist.go`: context and proposal extraction), server (streaming `AssistService.Assist`, `haro serve --assistant`, `haro assist`), chat in the web (`web/src/assistant/`, proposal card with diff, apply with a prior version and undo, e2e with a fake API) and a TUI panel (key `a`, `haro tui --assistant`). Only `haro serve`/CLI/TUI call the Anthropic API; the serverless web does not. Original detail:
+   - Context building in the core (`core.BuildPrompt(cfg, issues, request)`) and extraction of the proposed configuration from the response.
+   - Anthropic API call in `haro serve` (key in `ANTHROPIC_API_KEY`, never in the browser) and in the TUI.
+   - In the web: chat with streaming, diff before applying and a version saved before applying (as in the prototype). The prototype's prompt (`SYSTEM_PROMPT`) is a good starting point.
+3. **WASM**: `wasm/main.go` with `syscall/js` exposing `analyze`, `apply`, `diff`; try with standard Go and with TinyGo and measure size; `WasmCoreClient` in the web.
+4. **Public web** (separate repo): the same web with `WasmCoreClient`, session in localStorage, assistant with the user's own key or with an intermediary with limits.
+
+---
+
+## References
+
+- Prototype: `docs/prototype/haro-prototype.html` (full interface, logic in JS as a behavior reference).
+- HAProxy brand policy: use "HAProxy" only descriptively and with a non-affiliation notice.
+- Loading multiple files: `haproxy -f` documentation (argument order; directories with `.cfg` in lexicographic order, no hidden files or subdirectories).
 - Corpus: https://github.com/HariSekhon/HAProxy-configs (MIT).
 - client-native: https://github.com/haproxytech/client-native (Apache-2.0).

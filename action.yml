@@ -1,5 +1,5 @@
 name: haro lint
-description: Analiza configuraciones de HAProxy con haro, sube el resultado a code scanning (SARIF) y comenta en el pull request.
+description: Analyzes HAProxy configurations with haro, uploads the result to code scanning (SARIF) and comments on the pull request.
 author: Ivan Jaramillo
 branding:
   icon: shield
@@ -7,33 +7,33 @@ branding:
 
 inputs:
   paths:
-    description: Archivos o directorios de configuración, separados por espacios (como haproxy -f).
+    description: Configuration files or directories, separated by spaces (like haproxy -f).
     default: "."
   version:
-    description: Versión de haro (por ejemplo v0.1.0). Vacío = la última.
+    description: haro version (for example v0.1.0). Empty = the latest.
     default: ""
   fail-on:
-    description: "Cuándo falla el paso: error (por defecto), warning o never."
+    description: "When the step fails: error (default), warning or never."
     default: error
   disable:
-    description: Reglas a ignorar, separadas por comas (ver «haro lint --rules»).
+    description: Rules to ignore, separated by commas (see "haro lint --rules").
     default: ""
   sarif:
-    description: Sube el informe SARIF a GitHub code scanning (necesita permiso security-events write).
+    description: Uploads the SARIF report to GitHub code scanning (requires security-events write permission).
     default: "true"
   comment:
-    description: En pull requests, comenta (y actualiza) un resumen (necesita permiso pull-requests write).
+    description: On pull requests, posts (and updates) a summary comment (requires pull-requests write permission).
     default: "true"
   token:
-    description: Token para descargar haro y comentar.
+    description: Token used to download haro and to comment.
     default: ${{ github.token }}
 
 outputs:
   exit-code:
-    description: Código de salida de haro lint.
+    description: Exit code of haro lint.
     value: ${{ steps.lint.outputs.exit-code }}
   sarif-file:
-    description: Ruta del informe SARIF generado.
+    description: Path of the generated SARIF report.
     value: ${{ steps.lint.outputs.sarif-file }}
 
 runs:

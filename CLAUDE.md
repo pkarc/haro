@@ -1,61 +1,64 @@
-# haro — contexto para Claude Code
+English | [Español](CLAUDE.es.md)
 
-haro (*HAProxy readout*) es una herramienta open source para leer, explicar, validar y editar configuraciones de HAProxy. Público: comunidad DevOps, homelab y usuarios de Claude. El proyecto no está afiliado a HAProxy Technologies; no uses «HAProxy» como parte del nombre del producto (solo de forma descriptiva).
+# haro — context for Claude Code
 
-## Decisiones tomadas (no reabrir sin preguntar)
+haro (*HAProxy readout*) is an open source tool to read, explain, validate and edit HAProxy configurations. Audience: the DevOps community, homelab users and Claude users. The project is not affiliated with HAProxy Technologies; do not use "HAProxy" as part of the product name (only descriptively).
 
-- **Núcleo en Go** (`core/`), sin dependencias externas. Es la única implementación de la lógica de HAProxy; la web y la TUI solo presentan.
-- **Parser propio y sin pérdidas**: `Serialize(Parse(x)) == x` salvo espacios finales y `\r`. Se descartó usar `haproxytech/config-parser` (archivado, movido a client-native) porque regenera el archivo con su propio formato y trae muchas dependencias. Su catálogo de directivas (Apache-2.0) sí puede usarse como referencia para ampliar `core/knowledge/knowledge.json`.
-- **Varios archivos**: se cargan como `haproxy -f` (orden dado; de cada directorio, los `.cfg` no ocultos en orden lexicográfico, sin subdirectorios). Cada archivo empieza fuera de sección; herencia de `defaults`, referencias y nombres cruzan archivos.
-- **Explicaciones en markdown mínimo**: `**negrita**` y `` `código` ``. La web y la terminal lo pintan cada una a su manera. No metas HTML en el núcleo.
-- **Binario único**: `haro` = CLI + `haro serve` (servidor local con la web embebida con `go:embed`). Sin nube.
-- **API local**: Connect RPC (`/haro.v1.CoreService/*`, `/haro.v1.ConfigService/*`), generado con `buf` (`make proto`) desde `proto/haro/v1/haro.proto`. El código generado (`gen/`, `web/src/gen`) se commitea. La conversión núcleo↔proto vive en `cmd/haro/rpc.go`, nunca en `core`.
-- **Web**: React + Vite + TypeScript. La web solo habla con el núcleo a través de `CoreClient` (`web/src/core/client.ts`), para poder añadir después un `WasmCoreClient` (web pública sin servidor).
-- **TUI**: Bubble Tea (`haro` sin argumentos), con lipgloss y bubbles.
-- **Web pública** (repo aparte, abierto y gratuito: `haro-site`): incluye este repo como **submódulo git** (`haro/`) y declara `haro/web` como workspace de npm (una sola instalación; `resolve.dedupe` de react). La misma web con el núcleo en WASM; su código propio (`GitHubStore`, inicio de sesión, Worker de Cloudflare solo para el intercambio OAuth, GitHub App con permiso *Contents* en los repos que el usuario instale) vive allí, nunca dentro del submódulo. Por eso `web/` expone puntos de extensión (`ConfigStore`, `mountApp`). No se publica paquete npm.
-- **Seguridad de `haro serve`**: solo `127.0.0.1` por defecto, rechaza `Host` externos (DNS rebinding), escritura solo con `--allow-write`, valida la configuración completa con `haproxy -c` (o con el detector si no hay binario) antes de guardar, escritura atómica y copia `.bak`. No relajes esto.
+## Decisions already made (do not reopen without asking)
 
-## Estructura
+- **Core in Go** (`core/`), with no external dependencies. It is the only implementation of the HAProxy logic; the web UI and the TUI only present.
+- **Own lossless parser**: `Serialize(Parse(x)) == x` except for trailing whitespace and `\r`. Using `haproxytech/config-parser` was ruled out (archived, moved to client-native) because it regenerates the file with its own format and brings many dependencies. Its directive catalog (Apache-2.0) can be used as a reference to extend `core/knowledge/knowledge.json`.
+- **Multiple files**: loaded like `haproxy -f` (order as given; for each directory, the non-hidden `.cfg` files in lexicographic order, no subdirectories). Each file starts outside any section; `defaults` inheritance, references and names cross files.
+- **Explanations in minimal markdown**: `**bold**` and `` `code` ``. The web UI and the terminal each render it their own way. Do not put HTML in the core.
+- **Single binary**: `haro` = CLI + `haro serve` (local server with the web UI embedded via `go:embed`). No cloud.
+- **Local API**: Connect RPC (`/haro.v1.CoreService/*`, `/haro.v1.ConfigService/*`), generated with `buf` (`make proto`) from `proto/haro/v1/haro.proto`. The generated code (`gen/`, `web/src/gen`) is committed. The core↔proto conversion lives in `cmd/haro/rpc.go`, never in `core`.
+- **Web**: React + Vite + TypeScript. The web UI only talks to the core through `CoreClient` (`web/src/core/client.ts`), so that a `WasmCoreClient` can be added later (public web UI without a server).
+- **TUI**: Bubble Tea (`haro` with no arguments), with lipgloss and bubbles.
+- **Public web UI** (separate repo, open and free: `haro-site`): includes this repo as a **git submodule** (`haro/`) and declares `haro/web` as an npm workspace (a single install; `resolve.dedupe` for react). The same web UI with the core in WASM; its own code (`GitHubStore`, sign-in, a Cloudflare Worker only for the OAuth exchange, a GitHub App with *Contents* permission on the repos the user installs it on) lives there, never inside the submodule. That is why `web/` exposes extension points (`ConfigStore`, `mountApp`). No npm package is published.
+- **`haro serve` security**: only `127.0.0.1` by default, rejects external `Host` headers (DNS rebinding), writing only with `--allow-write`, validates the complete configuration with `haproxy -c` (or with the detector if there is no binary) before saving, atomic write and `.bak` copy. Do not relax this.
+
+## Structure
 
 ```
-core/                 parser, serializer, knowledge, describe, lint, model (herencia, topología), diff, config (varios archivos), edit (Op/Apply)
-core/knowledge/       knowledge.json (estructura) y text.es.json / text.en.json (textos): secciones, directivas, opciones, fetches… (datos, no código)
-core/testdata/        *.cfg + *.golden.json (es) y *.golden.en.json (en); cada subdirectorio es un caso de varios archivos
-cmd/haro/             main, cli (lint/explain/diff), files (expansión de rutas), serve + rpc (API Connect), tui (arranque)
-internal/mcp/         servidor MCP por stdio (JSON-RPC a mano, dos eras del protocolo); las herramientas están en cmd/haro/mcp.go
-skills/haro/          skill de Claude para usar las herramientas MCP
-internal/tui/         interfaz de terminal (Bubble Tea); solo presenta, la lógica es de core (assist.go: panel del asistente)
-proto/haro/v1/        contrato del API
-web/                  React + Vite + TS; web/src/assistant/ es el chat del asistente; web/placeholder.html se sirve si no hay build
-docs/prototype/       prototipo completo de la interfaz en un solo HTML (referencia para portar)
-scripts/              fetch-corpus.sh (corpus de HariSekhon/HAProxy-configs, MIT)
+core/                 parser, serializer, knowledge, describe, lint, model (inheritance, topology), diff, config (multiple files), edit (Op/Apply)
+core/knowledge/       knowledge.json (structure) and text.es.json / text.en.json (texts): sections, directives, options, fetches… (data, not code)
+core/testdata/        *.cfg + *.golden.json (en) and *.golden.es.json (es); each subdirectory is a multi-file case
+cmd/haro/             main, cli (lint/explain/diff), files (path expansion), serve + rpc (Connect API), tui (startup)
+internal/mcp/         MCP server over stdio (hand-written JSON-RPC, two protocol eras); the tools are in cmd/haro/mcp.go
+skills/haro/          Claude skill to use the MCP tools (English only: skills load a single SKILL.md)
+internal/tui/         terminal interface (Bubble Tea); only presents, the logic lives in core (assist.go: assistant panel)
+proto/haro/v1/        API contract
+web/                  React + Vite + TS; web/src/assistant/ is the assistant chat; web/placeholder.html is served if there is no build
+docs/prototype/       complete interface prototype in a single HTML file (reference for porting)
+scripts/              fetch-corpus.sh (corpus from HariSekhon/HAProxy-configs, MIT)
 ```
 
-## Comandos
+## Commands
 
 ```sh
 make test                         # go test ./...
-make golden                       # regenera .golden.json tras un cambio intencionado (revisa el diff)
-make build && make run            # binario y serve con el ejemplo
-scripts/fetch-corpus.sh && go test ./core -run TestCorpus -v   # no-regresión con configs reales
-cd web && npm install && npm run dev                           # web con recarga; /api va a haro serve :7468
+make golden                       # regenerates .golden.json after an intentional change (review the diff)
+make build && make run            # binary and serve with the example
+scripts/fetch-corpus.sh && go test ./core -run TestCorpus -v   # non-regression with real configs
+cd web && npm install && npm run dev                           # web UI with reload; /api goes to haro serve :7468
 ```
 
-## Convenciones
+## Conventions
 
-- Idioma: código y nombres en inglés; comentarios, mensajes, explicaciones y documentación en español. Está previsto soportar varios idiomas en `knowledge.json` (inglés y español).
-- Todo cambio en explicaciones o reglas del detector lleva su caso en `core/testdata/` y `make golden` con el diff revisado.
-- Las reglas del detector tienen identificador estable (`core.Rules`); no los renombres.
-- El detector es orientativo: la validación definitiva es `haproxy -c`.
-- Mantén el núcleo sin dependencias externas (debe compilar a WASM).
+- Language: code, names, comments, messages and documentation in English by default; Spanish is the alternative language (`core/knowledge/text.es.json`, documentation in `.es.md` files, e.g. `README.es.md`; Spanish text in neutral Latin American Spanish). The product's default language is English. `knowledge.json` supports English and Spanish.
+- Documentation: the English file keeps the plain name (`README.md`, `docs/PLAN.md`, `docs/IMPLEMENTATION.md`) and the Spanish one uses the `.es.md` suffix (`docs/IMPLEMENTACION.es.md`); each carries a cross-link at the top. Keep both in sync.
+- Every change to explanations or detector rules comes with its case in `core/testdata/` and `make golden` with the diff reviewed.
+- Detector rules have a stable identifier (`core.Rules`); do not rename them.
+- The detector is advisory: the definitive validation is `haproxy -c`.
+- Keep the core free of external dependencies (it must compile to WASM).
 
-## Estado y próximos pasos
+## Status and next steps
 
-Hechas las fases 0 a 8 de `docs/PLAN.md`, salvo la web pública (repo aparte, pendiente de decisiones: GitHub App, Worker de OAuth, `ConfigStore`). El resumen de cada fase, con los gaps encontrados y cómo se resolvieron, está en `docs/IMPLEMENTACION.md`.
+Phases 0 to 8 of `docs/PLAN.md` are done, except the public web UI (separate repo, pending decisions: GitHub App, OAuth Worker, `ConfigStore`). The summary of each phase, with the gaps found and how they were resolved, is in `docs/IMPLEMENTATION.md`.
 
-Pendiente de hacer push/publicar: crear `pkarc/homebrew-tap` y el secreto `HOMEBREW_TAP_GITHUB_TOKEN`, la primera etiqueta `v*`, probar el asistente con una clave real y la GitHub Action en un repo.
+Pending push/publication: create `pkarc/homebrew-tap` and the `HOMEBREW_TAP_GITHUB_TOKEN` secret, the first `v*` tag, test the assistant with a real key and the GitHub Action in a repo.
 
-## Licencia y módulo
+## License and module
 
-- Licencia **MIT** (titular: Ivan Jaramillo). Si se usa el catálogo de `client-native` (Apache-2.0) como referencia, citar el origen en un `NOTICE`.
-- Ruta del módulo: `github.com/pkarc/haro`.
+- **MIT** license (holder: Ivan Jaramillo). If the `client-native` catalog (Apache-2.0) is used as a reference, cite the origin in a `NOTICE`.
+- Module path: `github.com/pkarc/haro`.

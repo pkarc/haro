@@ -1,21 +1,22 @@
 haro
-Copyright (c) 2026 Ivan Jaramillo. Licencia MIT (ver LICENSE).
+Copyright (c) 2026 Ivan Jaramillo. MIT License (see LICENSE).
+Spanish version: NOTICE.es
 
-Este proyecto no está afiliado ni respaldado por HAProxy Technologies.
-HAProxy® es una marca registrada de HAProxy Technologies.
+This project is not affiliated with or endorsed by HAProxy Technologies.
+HAProxy® is a registered trademark of HAProxy Technologies.
 
-Materiales de terceros
-----------------------
+Third-party materials
+---------------------
 
-* Catálogo de directivas. La lista de nombres de directivas de HAProxy y de las
-  secciones en las que son válidas, usada para ampliar core/knowledge/knowledge.json,
-  se derivó del catálogo de haproxytech/config-parser (Apache License 2.0,
+* Directive catalog. The list of HAProxy directive names and the sections in
+  which they are valid, used to extend core/knowledge/knowledge.json, was
+  derived from the haproxytech/config-parser catalog (Apache License 2.0,
   Copyright 2019 HAProxy Technologies):
   https://github.com/haproxytech/config-parser
-  Solo se usaron los nombres y las secciones; los textos de las explicaciones
-  (español e inglés) son propios de haro.
-  Licencia Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
+  Only the names and sections were used; the explanation texts (English and
+  Spanish) are haro's own.
+  Apache 2.0 license: http://www.apache.org/licenses/LICENSE-2.0
 
-* Corpus de pruebas (opcional, no incluido en el repositorio). scripts/fetch-corpus.sh
-  descarga HariSekhon/HAProxy-configs (licencia MIT) para las pruebas de
-  no-regresión: https://github.com/HariSekhon/HAProxy-configs
+* Test corpus (optional, not included in the repository). scripts/fetch-corpus.sh
+  downloads HariSekhon/HAProxy-configs (MIT license) for regression tests:
+  https://github.com/HariSekhon/HAProxy-configs

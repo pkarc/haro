@@ -1,6 +1,8 @@
+[English](IMPLEMENTATION.md) | Español
+
 # Resumen de implementación
 
-Estado de cada fase de [`PLAN.md`](PLAN.md): qué se hizo, qué huecos (gaps) se encontraron al revisarla y cómo se resolvieron, y lo que sigue pendiente. Todo está verificado con tests; lo que no pudo probarse en esta máquina se dice expresamente.
+Estado de cada fase de [`PLAN.es.md`](PLAN.es.md): qué se hizo, qué huecos (gaps) se encontraron al revisarla y cómo se resolvieron, y lo que sigue pendiente. Todo está verificado con tests; lo que no pudo probarse en esta máquina se dice expresamente.
 
 ## Fase 0 · Puesta a punto
 **Hecho:** licencia MIT, módulo `github.com/pkarc/haro`, CI (Go en Linux/macOS, `haproxy -c`, corpus, web, e2e, WASM, buf, Docker), `CONTRIBUTING.md`, tests de integración contra `haproxy -c` real.
@@ -81,7 +83,7 @@ Estado de cada fase de [`PLAN.md`](PLAN.md): qué se hizo, qué huecos (gaps) se
 | Textos en inglés heredaron defectos del español («1 days», «the path is greater than 100», `tcp-request` sin fase) | Corregidos en los dos idiomas con tests |
 | El agente de la segunda mitad se detuvo a mitad de trabajo | Se revisó lo hecho y se terminó a mano (`NOTICE`, docs, verificación) |
 | Cobertura de `since` | Solo 31 directivas, las seguras; el resto sin `since` a propósito |
-| Pendiente | Errores de `Apply`, mensajes de rechazo al guardar y textos de interfaz (web, TUI, CLI) siguen en español |
+| Hecho después | El inglés pasó a ser el idioma por defecto (núcleo, CLI, RPC, MCP, wasm, web, TUI y documentación); los errores de `Apply` y los textos de interfaz están traducidos (`es` es español latinoamericano neutro). Golden: inglés `x.golden.json`, español `x.golden.es.json` |
 
 ## Fase 8 · Plantillas, asistente, WASM
 **Hecho:**

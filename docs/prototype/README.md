@@ -1,5 +1,7 @@
-# Prototipo
+English | [Español](README.es.md)
 
-`haro-prototype.html` es el prototipo inicial de la interfaz (un solo archivo HTML, sin dependencias): modo código, modo visual, mapa del tráfico, detector de problemas y asistente. Sirve de referencia para portar la interfaz a `web/`.
+# Prototype
 
-Ábrelo directamente en el navegador. Fuera de claude.ai, el asistente necesita una clave de la API de Anthropic, que se configura en ⚙ Ajustes.
+`haro-prototype.html` is the initial prototype of the interface (a single HTML file with no dependencies): code mode, visual mode, traffic map, problem detector and assistant. It serves as a reference for porting the interface to `web/`.
+
+Open it directly in the browser. Outside claude.ai, the assistant needs an Anthropic API key, which is set in ⚙ Settings.

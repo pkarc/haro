@@ -1,69 +1,71 @@
+English | [Español](README.es.md)
+
 # haro
 
-**haro** (*HAProxy readout*) lee, explica y valida configuraciones de HAProxy.
+**haro** (*HAProxy readout*) reads, explains and validates HAProxy configurations.
 
 ```
 $ haro explain --section api_servers
-backend api_servers  Grupo de servidores
-  modo http (heredado de defaults)
+backend api_servers  Server group
+  mode http (inherited from defaults)
 
     49 balance leastconn
-       [Servidores] Reparto de carga: al servidor con menos conexiones activas (ideal para sesiones largas)
+       [Servers] Load balancing: to the server with the fewest active connections (ideal for long sessions)
     50 server api1 10.0.0.21:9000 check inter 2s fall 3 rise 2
-       [Servidores] Servidor api1 en 10.0.0.21:9000 · health checks activos · check cada 2 s · …
+       [Servers] Server api1 at 10.0.0.21:9000 · active health checks · check every 2 s · …
 ```
 
-> haro es un proyecto independiente. No está afiliado ni respaldado por HAProxy Technologies. HAProxy® es una marca registrada de HAProxy Technologies.
+> haro is an independent project. It is not affiliated with or endorsed by HAProxy Technologies. HAProxy® is a registered trademark of HAProxy Technologies.
 
-## Qué hace
+## What it does
 
-- **`haro explain`**: explica cada sección y directiva en lenguaje humano, incluida la herencia de `defaults`.
-- **`haro lint`**: detecta problemas (backends inexistentes, ACLs sin definir, timeouts que faltan, modos http/tcp incompatibles…). Devuelve código 1 si hay errores, así que sirve en CI.
-- **`haro diff`**: compara dos configuraciones.
-- **`haro` / `haro tui`**: interfaz de terminal: secciones con sus explicaciones, problemas navegables (`p`), mapa del tráfico (`m`), edición en tu `$EDITOR` en la línea exacta (`e`) y recarga automática al cambiar los archivos. Sin terminal interactivo (un pipe) `haro` muestra la ayuda.
-- **`haro mcp`**: servidor MCP por stdio para Claude Code, Claude Desktop y otros clientes (ver más abajo).
-- **`haro serve`**: abre una interfaz web local con modo código, modo visual y mapa del tráfico.
+- **`haro explain`**: explains every section and directive in plain language, including `defaults` inheritance.
+- **`haro lint`**: detects problems (nonexistent backends, undefined ACLs, missing timeouts, incompatible http/tcp modes…). Exits with code 1 if there are errors, so it works in CI.
+- **`haro diff`**: compares two configurations.
+- **`haro` / `haro tui`**: terminal interface: sections with their explanations, navigable problems (`p`), traffic map (`m`), editing in your `$EDITOR` at the exact line (`e`) and automatic reload when the files change. Without an interactive terminal (a pipe), `haro` shows the help.
+- **`haro mcp`**: MCP server over stdio for Claude Code, Claude Desktop and other clients (see below).
+- **`haro serve`**: opens a local web interface with code mode, visual mode and a traffic map.
 
-## Instalación
+## Installation
 
 ```sh
 go install github.com/pkarc/haro/cmd/haro@latest
 ```
 
-`go install` compila sin la web (la interfaz de `haro serve` se reduce a una página provisional, porque `web/dist` no se versiona). Los binarios de las releases, Homebrew y la imagen de Docker sí la incluyen. Para compilar con la web desde el código: `make web build`.
+`go install` builds without the web UI (the `haro serve` interface is reduced to a placeholder page, because `web/dist` is not versioned). Release binaries, Homebrew and the Docker image do include it. To build with the web UI from source: `make web build`.
 
-## Uso
+## Usage
 
 ```sh
-haro                                    # interfaz de terminal (en un terminal)
-haro tui haproxy.cfg conf.d/            # con rutas, como haproxy -f
-haro lint                               # /etc/haproxy/haproxy.cfg por defecto
-haro lint haproxy.cfg conf.d/           # varios archivos, como haproxy -f
-haro lint --format json mi.cfg          # salida para CI (también sarif y markdown)
-haro lint --disable no-global,tls-no-alpn mi.cfg
-haro lint --haproxy-version 2.8 mi.cfg   # avisa de directivas que requieren una versión posterior (newer-than-target)
-haro lint --rules                       # lista de reglas
-haro explain mi.cfg
-haro explain --lang en mi.cfg           # explicaciones en inglés (también en lint, tui y mcp)
-cat mi.cfg | haro explain -
-haro diff antes.cfg despues.cfg
-haro template list                      # plantillas por tecnología (Nextcloud, PostgreSQL…)
-haro template show nextcloud            # sus parámetros
+haro                                    # terminal interface (in a terminal)
+haro tui haproxy.cfg conf.d/            # with paths, like haproxy -f
+haro lint                               # /etc/haproxy/haproxy.cfg by default
+haro lint haproxy.cfg conf.d/           # several files, like haproxy -f
+haro lint --format json my.cfg          # output for CI (also sarif and markdown)
+haro lint --disable no-global,tls-no-alpn my.cfg
+haro lint --haproxy-version 2.8 my.cfg   # warns about directives that require a later version (newer-than-target)
+haro lint --rules                       # list of rules
+haro explain my.cfg
+haro explain --lang es my.cfg           # explanations in Spanish (also in lint, tui and mcp)
+cat my.cfg | haro explain -
+haro diff before.cfg after.cfg
+haro template list                      # templates per technology (Nextcloud, PostgreSQL…)
+haro template show nextcloud            # its parameters
 haro template add nextcloud --param domain=cloud.example.com --param servers=10.0.0.10:80 \
-    --param cert=/etc/haproxy/certs/cloud.pem haproxy.cfg   # muestra el diff; con --write guarda
-haro serve --file /etc/haproxy/haproxy.cfg               # solo lectura
-haro serve --file /etc/haproxy/haproxy.cfg --allow-write # permite guardar
-haro serve --file haproxy.cfg --file conf.d/             # varios archivos
-haro serve --file haproxy.cfg --assistant                # con el asistente con IA (ver más abajo)
-haro tui --assistant haproxy.cfg                         # TUI con el asistente (tecla a)
-haro assist "Revisa mi configuración" haproxy.cfg        # una petición desde la línea de comandos
+    --param cert=/etc/haproxy/certs/cloud.pem haproxy.cfg   # shows the diff; --write saves
+haro serve --file /etc/haproxy/haproxy.cfg               # read-only
+haro serve --file /etc/haproxy/haproxy.cfg --allow-write # allows saving
+haro serve --file haproxy.cfg --file conf.d/             # several files
+haro serve --file haproxy.cfg --assistant                # with the AI assistant (see below)
+haro tui --assistant haproxy.cfg                         # TUI with the assistant (key a)
+haro assist "Review my configuration" haproxy.cfg        # a single request from the command line
 ```
 
-### Sin servidor: el núcleo en WebAssembly
+### Serverless: the core in WebAssembly
 
-El mismo núcleo compila a WebAssembly (`make wasm` → `web/public/wasm/`) y la web puede usarlo en vez de `haro serve`: `cd web && VITE_CORE=wasm npm run build`. La configuración nunca sale del navegador. No hay disco ni `haproxy -c` en ese modo (solo el detector). El módulo con Go estándar pesa unos 6 MB (1,6 MB con gzip); `make wasm-tiny` usa TinyGo en Docker y lo deja en unos 1,8 MB (620 KB con gzip). `node wasm/smoke.mjs [dir]` comprueba cualquiera de los dos.
+The same core compiles to WebAssembly (`make wasm` → `web/public/wasm/`) and the web UI can use it instead of `haro serve`: `cd web && VITE_CORE=wasm npm run build`. The configuration never leaves the browser. There is no disk access or `haproxy -c` in this mode (only the detector). The module built with standard Go weighs about 6 MB (1.6 MB gzipped); `make wasm-tiny` uses TinyGo in Docker and brings it down to about 1.8 MB (620 KB gzipped). `node wasm/smoke.mjs [dir]` checks either one.
 
-### En CI y en tu repositorio
+### In CI and in your repository
 
 ```yaml
 # .github/workflows/haproxy.yml
@@ -76,10 +78,10 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pkarc/haro@v0.1.0
         with:
-          paths: haproxy/            # archivos o directorios, como haproxy -f
+          paths: haproxy/            # files or directories, like haproxy -f
 ```
 
-La Action instala haro, ejecuta `haro lint`, sube el informe SARIF a *code scanning* y deja (y actualiza) un comentario en el pull request. Salidas de `haro lint`: `--format text|json|sarif|markdown`.
+The Action installs haro, runs `haro lint`, uploads the SARIF report to *code scanning* and leaves (and updates) a comment on the pull request. Output formats of `haro lint`: `--format text|json|sarif|markdown`.
 
 ```yaml
 # .pre-commit-config.yaml
@@ -91,15 +93,15 @@ repos:
 ```
 
 ```sh
-brew install pkarc/tap/haro            # Homebrew (macOS y Linux)
+brew install pkarc/tap/haro            # Homebrew (macOS and Linux)
 docker run --rm -v /etc/haproxy:/cfg:ro ghcr.io/pkarc/haro lint /cfg
 ```
 
-También hay binarios, `.deb` y `.rpm` en las [releases](https://github.com/pkarc/haro/releases). La imagen de Docker es mínima (sin `haproxy`): sirve para `lint`, `explain` y `mcp`; para validar con `haproxy -c` usa el binario junto a HAProxy.
+Binaries, `.deb` and `.rpm` packages are also available on the [releases page](https://github.com/pkarc/haro/releases). The Docker image is minimal (no `haproxy`): it works for `lint`, `explain` and `mcp`; to validate with `haproxy -c`, use the binary next to HAProxy.
 
-### Servidor MCP
+### MCP server
 
-`haro mcp` expone el análisis de haro como herramientas MCP: `haro_lint`, `haro_explain`, `haro_analyze`, `haro_diff`, `haro_check` (`haproxy -c`), `haro_apply` (ediciones estructurales), `haro_template_list` y `haro_template_render` (plantillas por tecnología, solo simulan), más los recursos `haro://knowledge` y `haro://rules`. Habla las dos versiones del protocolo (el handshake `initialize` de 2025-11-25 y anteriores, y la versión sin sesión de 2026-07-28).
+`haro mcp` exposes haro's analysis as MCP tools: `haro_lint`, `haro_explain`, `haro_analyze`, `haro_diff`, `haro_check` (`haproxy -c`), `haro_apply` (structural edits), `haro_template_list` and `haro_template_render` (per-technology templates, dry run only), plus the `haro://knowledge` and `haro://rules` resources. It speaks both protocol versions (the `initialize` handshake of 2025-11-25 and earlier, and the sessionless 2026-07-28 version).
 
 ```sh
 # Claude Code
@@ -111,125 +113,125 @@ claude mcp add haro -- haro mcp --root /etc/haproxy
 { "mcpServers": { "haro": { "command": "haro", "args": ["mcp", "--root", "/etc/haproxy"] } } }
 ```
 
-Seguridad: con `--root` (repetible) solo se leen y escriben rutas dentro de esos directorios (se resuelven los enlaces simbólicos). Sin `--root`, el cliente puede leer cualquier ruta que pueda leer el proceso. `haro_apply` solo escribe con `--allow-write` y `write: true`, con las mismas garantías que `haro serve`: valida la configuración completa, guarda todo o nada y deja copia `.bak`. En [`skills/haro`](skills/haro/SKILL.md) hay una skill de Claude con el flujo recomendado.
+Security: with `--root` (repeatable), only paths inside those directories are read and written (symbolic links are resolved). Without `--root`, the client can read any path the process can read. `haro_apply` only writes with `--allow-write` and `write: true`, with the same guarantees as `haro serve`: it validates the full configuration, saves everything or nothing and leaves a `.bak` copy. [`skills/haro`](skills/haro/SKILL.md) contains a Claude skill with the recommended workflow.
 
-### Plantillas por tecnología
+### Per-technology templates
 
-Cada plantilla añade los frontends y backends necesarios para publicar un servicio detrás de HAProxy, con los ajustes que esa tecnología necesita: **Proxmox VE** (TLS al backend y WebSocket de noVNC), **Home Assistant** (WebSocket, `X-Forwarded-*`), **Nextcloud** (HSTS, `/.well-known/carddav|caldav`, timeout para subidas grandes), **Jellyfin**, **Gitea** (web y, opcional, SSH por TCP), **Grafana**, **Vaultwarden**, **PostgreSQL** (`pgsql-check`), **Redis** (`tcp-check` con PING y, opcional, solo el master), **Elasticsearch** (varios nodos, `http-check` a `/_cluster/health`) y **Kubernetes API** (TCP 6443, varios control planes). Las web llevan el `bind` del 80 con redirección a HTTPS y el del 443 con `ssl crt … alpn h2,http/1.1`.
+Each template adds the frontends and backends needed to publish a service behind HAProxy, with the settings that technology needs: **Proxmox VE** (TLS to the backend and noVNC WebSocket), **Home Assistant** (WebSocket, `X-Forwarded-*`), **Nextcloud** (HSTS, `/.well-known/carddav|caldav`, timeout for large uploads), **Jellyfin**, **Gitea** (web and, optionally, SSH over TCP), **Grafana**, **Vaultwarden**, **PostgreSQL** (`pgsql-check`), **Redis** (`tcp-check` with PING and, optionally, master only), **Elasticsearch** (several nodes, `http-check` against `/_cluster/health`) and **Kubernetes API** (TCP 6443, several control planes). Web templates include the port 80 `bind` with a redirect to HTTPS and the port 443 one with `ssl crt … alpn h2,http/1.1`.
 
 ```sh
-haro template show proxmox              # parámetros, tipos y valores por defecto
+haro template show proxmox              # parameters, types and defaults
 haro template add nextcloud --param domain=cloud.example.com --param servers=10.0.0.10:80 \
     --param cert=/etc/haproxy/certs/cloud.pem /etc/haproxy/haproxy.cfg
 haro template add postgresql --param bind=10.0.0.5:5432 --param servers=10.0.0.10:5432,10.0.0.11:5432 --write haproxy.cfg
 ```
 
-`add` imprime el diff unificado y **no escribe**; con `--write` guarda con las mismas garantías que `haro serve` (valida la configuración completa con `haproxy -c`, escritura atómica y copia `.bak`). Las listas aceptan varios `--param` con la misma clave o valores separados por comas. La plantilla reutiliza el `global` y el `defaults` que ya existan (y solo añade los que falten), elige nombres sin colisiones (`nextcloud_2`…) y, si ya hay un frontend con TLS en el 443, se une a él con una ACL por dominio en vez de abrir otro `bind` en el mismo puerto. En la web, el botón «Añadir desde plantilla de tecnología» del modo visual abre un formulario con el diff antes de aceptar. Para Claude, `haro_template_list` y `haro_template_render` (simulan y devuelven el diff y las ops, que se aplican con `haro_apply`). En la API: `CoreService.ListTemplates` y `RenderTemplate` (los parámetros son un mapa de `google.protobuf.Value`).
+`add` prints the unified diff and **does not write**; with `--write` it saves with the same guarantees as `haro serve` (validates the full configuration with `haproxy -c`, atomic write and `.bak` copy). List parameters accept several `--param` flags with the same key or comma-separated values. The template reuses the `global` and `defaults` that already exist (and only adds the missing ones), picks collision-free names (`nextcloud_2`…) and, if a TLS frontend already exists on 443, joins it with a per-domain ACL instead of opening another `bind` on the same port. In the web UI, the "Add from technology template" button in visual mode opens a form with the diff before you accept. For Claude, `haro_template_list` and `haro_template_render` (they simulate and return the diff and the ops, which are applied with `haro_apply`). In the API: `CoreService.ListTemplates` and `RenderTemplate` (parameters are a map of `google.protobuf.Value`).
 
-### Asistente con IA
+### AI assistant
 
-Chatea sobre tu configuración en lenguaje natural («añade un backend con tres servidores», «limita a 20 peticiones por segundo por IP», «qué mejorarías»). El asistente conoce la configuración vigente y sus problemas, responde en streaming y, si propone cambios, los muestra como **diff por archivo antes de aplicar nada**, con los errores y avisos que quedarían tras aplicarlos.
+Chat about your configuration in natural language ("add a backend with three servers", "limit to 20 requests per second per IP", "what would you improve"). The assistant knows the current configuration and its problems, answers by streaming and, if it proposes changes, shows them as a **per-file diff before applying anything**, with the errors and warnings that would remain after applying them.
 
-- **Es opt-in.** Sin `--assistant` no se llama a ningún servicio externo y no aparece nada en la interfaz (en la web, la pestaña móvil «Asistente» solo explica cómo activarlo).
-- **Qué se envía.** La configuración completa (con sus contraseñas, direcciones y certificados referenciados por ruta) y la conversación se envían a la **API de Anthropic** desde el proceso local. La web y la TUI lo avisan de forma visible; la web pide confirmación la primera vez que se usa en cada sesión.
-- **La clave** la lee el SDK de Anthropic en el servidor local: `ANTHROPIC_API_KEY` o un perfil de `ant auth login`. Nunca llega al navegador ni al historial del chat. `ANTHROPIC_BASE_URL` redirige las llamadas (útil para pruebas con una API falsa).
-- **Modelo.** Por defecto `claude-opus-5-5`; cámbialo con `--assistant-model` o `HARO_ASSISTANT_MODEL`.
-- **Web.** Con `haro serve --assistant`, el botón «✦ Asistente» abre el chat a un lado (en móvil, la pestaña inferior). El historial se guarda en el navegador junto al resto del estado; «Nueva conversación» lo borra. **Aplicar** guarda antes una versión en el historial («Antes de aplicar propuesta del asistente») y sustituye el texto de esos archivos como una única acción que se deshace con «Deshacer»; si la configuración cambió desde que se hizo la propuesta, pide confirmación. **Detener** corta la respuesta. Guardar en disco sigue siendo aparte y requiere `--allow-write`.
-- **TUI.** Con `haro tui --assistant`, la tecla `a` abre una línea de petición; la respuesta llega en streaming, `Esc` la cancela (o vuelve a las secciones), y al terminar muestra el diff y «¿Aplicar y guardar? [y/N]». Con `y` guarda con las mismas garantías que `haro serve --allow-write` (valida la configuración completa, escritura atómica y copia `.bak`); si la validación rechaza la propuesta, muestra el motivo. La conversación dura lo que la sesión. Sin `--assistant`, `a` avisa de que está desactivado.
-- **CLI.** `haro assist "petición" [archivos]` imprime la respuesta y el diff propuesto; con `--write` guarda (pide confirmación salvo `--yes`).
-- **Límites.** Hasta 40 mensajes y 200 KB por conversación (la web envía los 20 últimos); respuestas de hasta 32 000 tokens (si se corta, lo indica); si la respuesta trae un bloque de configuración cortado o no asignable a un archivo, se descarta y se avisa. El asistente puede equivocarse: revisa el diff y valida con `haproxy -c`. Cada petición consume tu cuota de la API de Anthropic. La versión sin servidor (WebAssembly) no incluye el asistente, para que la clave nunca esté en el navegador.
+- **It is opt-in.** Without `--assistant`, no external service is called and nothing appears in the interface (in the web UI, the mobile "Assistant" tab only explains how to enable it).
+- **What is sent.** The full configuration (with its passwords, addresses and certificates referenced by path) and the conversation are sent to the **Anthropic API** from the local process. The web UI and the TUI show a visible notice; the web UI asks for confirmation the first time it is used in each session.
+- **The key** is read by the Anthropic SDK in the local server: `ANTHROPIC_API_KEY` or an `ant auth login` profile. It never reaches the browser or the chat history. `ANTHROPIC_BASE_URL` redirects the calls (useful for tests with a fake API).
+- **Model.** `claude-opus-5-5` by default; change it with `--assistant-model` or `HARO_ASSISTANT_MODEL`.
+- **Web.** With `haro serve --assistant`, the "✦ Assistant" button opens the chat on one side (on mobile, the bottom tab). The history is stored in the browser along with the rest of the state; "New conversation" clears it. **Apply** first saves a version in the history ("Before applying assistant proposal") and replaces the text of those files as a single action that can be undone with "Undo"; if the configuration changed since the proposal was made, it asks for confirmation. **Stop** cuts the response. Saving to disk remains separate and requires `--allow-write`.
+- **TUI.** With `haro tui --assistant`, the `a` key opens a request line; the response arrives by streaming, `Esc` cancels it (or goes back to the sections), and when it finishes it shows the diff and "Apply and save? [y/N]". With `y` it saves with the same guarantees as `haro serve --allow-write` (validates the full configuration, atomic write and `.bak` copy); if validation rejects the proposal, it shows the reason. The conversation lasts as long as the session. Without `--assistant`, `a` reports that it is disabled.
+- **CLI.** `haro assist "request" [files]` prints the response and the proposed diff; with `--write` it saves (asks for confirmation unless `--yes`).
+- **Limits.** Up to 40 messages and 200 KB per conversation (the web UI sends the last 20); responses of up to 32,000 tokens (if cut off, it says so); if the response contains a configuration block that is truncated or cannot be assigned to a file, it is discarded and a warning is shown. The assistant can be wrong: review the diff and validate with `haproxy -c`. Each request consumes your Anthropic API quota. The serverless (WebAssembly) version does not include the assistant, so that the key is never in the browser.
 
-### Configuraciones en varios archivos
+### Multi-file configurations
 
-haro carga las rutas igual que `haproxy -f`: en el orden indicado y, para cada directorio, sus archivos `.cfg` no ocultos en orden lexicográfico (sin entrar en subdirectorios). El análisis trata el conjunto como una sola configuración:
+haro loads paths like `haproxy -f`: in the given order and, for each directory, its non-hidden `.cfg` files in lexicographic order (without descending into subdirectories). The analysis treats the set as a single configuration:
 
-- cada archivo empieza fuera de cualquier sección, porque una sección no puede repartirse entre archivos;
-- la herencia de `defaults`, las referencias a backends y los nombres duplicados sí cruzan archivos;
-- cada problema indica su archivo y línea (`conf.d/20-web.cfg:4`).
+- each file starts outside any section, because a section cannot be split across files;
+- `defaults` inheritance, backend references and duplicate names do cross files;
+- each problem reports its file and line (`conf.d/20-web.cfg:4`).
 
-Al guardar desde `haro serve`, se valida la configuración completa con el cambio aplicado, no solo el archivo editado. `ConfigService.PutConfig` acepta `files` (lista) para guardar varios archivos a la vez (todo o nada), necesario cuando un cambio, como renombrar un backend, toca dos archivos.
+When saving from `haro serve`, the full configuration with the change applied is validated, not just the edited file. `ConfigService.PutConfig` accepts `files` (a list) to save several files at once (all or nothing), which is needed when a change, such as renaming a backend, touches two files.
 
-`haro serve` escucha solo en `127.0.0.1:7468` y rechaza peticiones con un `Host` externo. Para guardar hace falta `--allow-write`. Antes de escribir, haro valida con `haproxy -c` si el binario está disponible; si no lo está, usa su propio detector y se niega a guardar si encuentra errores. Siempre deja una copia `.bak` de la versión anterior.
+`haro serve` listens only on `127.0.0.1:7468` and rejects requests with an external `Host`. Saving requires `--allow-write`. Before writing, haro validates with `haproxy -c` if the binary is available; if not, it uses its own detector and refuses to save if it finds errors. It always leaves a `.bak` copy of the previous version.
 
-## Arquitectura
+## Architecture
 
 ```
-core/        Núcleo en Go: parser sin pérdidas, serializador, base de
-             conocimiento, explicaciones, detector, herencia, topología, diff
-core/knowledge/knowledge.json   Estructura de la base de conocimiento (secciones, directivas…)
-core/knowledge/text.es.json     Textos en español (misma forma y claves que text.en.json)
-core/knowledge/text.en.json     Textos en inglés
-core/testdata/                  Casos .cfg con su resultado esperado (.golden.json en español,
-                                .golden.en.json en inglés); cada subdirectorio es un caso de varios archivos
-scripts/fetch-corpus.sh         Descarga configuraciones reales para tests de no-regresión
-cmd/haro/    CLI y servidor local (serve)
-proto/       Contrato del API (Connect), fuente de verdad de los tipos
-web/         Interfaz React + Vite + TypeScript, embebida en el binario
+core/        Go core: lossless parser, serializer, knowledge base,
+             explanations, detector, inheritance, topology, diff
+core/knowledge/knowledge.json   Structure of the knowledge base (sections, directives…)
+core/knowledge/text.es.json     Spanish texts (same shape and keys as text.en.json)
+core/knowledge/text.en.json     English texts
+core/testdata/                  .cfg cases with their expected output (.golden.json in English,
+                                .golden.es.json in Spanish); each subdirectory is a multi-file case
+scripts/fetch-corpus.sh         Downloads real configurations for regression tests
+cmd/haro/    CLI and local server (serve)
+proto/       API contract (Connect), source of truth for the types
+web/         React + Vite + TypeScript interface, embedded in the binary
 ```
 
-- El núcleo no depende de ninguna interfaz. Lo usan el CLI y `haro serve`, y en el futuro lo usará un módulo WASM para la web pública.
-- Las explicaciones usan un markdown mínimo (`**negrita**`, `` `código` ``) que la terminal y la web pintan a su manera.
-- `core/testdata` es la especificación del proyecto: cada `.cfg` tiene su `.golden.json` (español) y su `.golden.en.json` (inglés) con problemas, explicaciones y topología esperados.
+- The core does not depend on any interface. It is used by the CLI and `haro serve`, and by a WASM module for the web UI without a server.
+- Explanations use minimal markdown (`**bold**`, `` `code` ``) that the terminal and the web UI each render in their own way.
+- `core/testdata` is the project's specification: each `.cfg` has its `.golden.json` (English) and its `.golden.es.json` (Spanish) with the expected problems, explanations and topology.
 
-### Idioma
+### Language
 
-Las explicaciones y los mensajes del detector existen en español e inglés. `haro lint`, `haro explain`, `haro tui` y `haro mcp` aceptan `--lang es|en`; por defecto se usa `LC_ALL`, `LC_MESSAGES` o `LANG` (inglés si empiezan por `en`, español en cualquier otro caso). `haro lint --rules` y los formatos SARIF y markdown salen en ese idioma. Las herramientas del servidor MCP aceptan además un argumento `lang`. En la API, `AnalyzeRequest` y `GetKnowledgeRequest` llevan un campo `lang` (vacío = español), y en la web el idioma se elige en Ajustes. Solo cambia el texto que produce el núcleo: los mensajes de los comandos y la interfaz siguen en español.
+Explanations and detector messages exist in English and Spanish. `haro lint`, `haro explain`, `haro tui` and `haro mcp` accept `--lang en|es`; English is the default product language. `haro lint --rules` and the SARIF and markdown formats are output in that language. The MCP server tools also accept a `lang` argument. In the API, `AnalyzeRequest` and `GetKnowledgeRequest` carry a `lang` field, and in the web UI the language is chosen in Settings. Only the text produced by the core changes: command messages and the interface text follow the project's default language.
 
-## Desarrollo
+## Development
 
 ```sh
 make test     # tests
-make golden   # regenera los .golden.json tras un cambio intencionado
-make web      # compila la interfaz en web/dist (requiere Node)
-make proto    # regenera gen/ y web/src/gen desde proto/ (requiere buf)
-make build    # binario en bin/haro, con la web embebida
-make run      # serve con la configuración de ejemplo
+make golden   # regenerates the .golden.json files after an intentional change
+make web      # builds the interface into web/dist (requires Node)
+make proto    # regenerates gen/ and web/src/gen from proto/ (requires buf)
+make build    # binary in bin/haro, with the web UI embedded
+make run      # serve with the example configuration
 ```
 
-Para trabajar en la web con recarga en caliente: `go run ./cmd/haro serve` en una terminal y `cd web && npm run dev` en otra. Vite redirige `/api` al servidor local.
+To work on the web UI with hot reload: `go run ./cmd/haro serve` in one terminal and `cd web && npm run dev` in another. Vite proxies `/api` to the local server.
 
-### Editar desde código: `core.Apply`
+### Editing from code: `core.Apply`
 
-Todas las interfaces editan con operaciones (`add_section`, `rename_section`, `move_directive`…) que `core.Apply` aplica sobre una copia y devuelve como los archivos que cambiaron. Los archivos que la operación no menciona vuelven byte a byte. Se exponen en `CoreService.Apply` (`{files, ops}`); guardar sigue siendo `ConfigService.PutConfig`. Las operaciones están documentadas en `core/edit.go`.
+All interfaces edit with operations (`add_section`, `rename_section`, `move_directive`…) that `core.Apply` applies to a copy and returns as the files that changed. Files the operation does not mention come back byte for byte. They are exposed in `CoreService.Apply` (`{files, ops}`); saving remains `ConfigService.PutConfig`. The operations are documented in `core/edit.go`.
 
-### Corpus de configuraciones reales
+### Corpus of real configurations
 
 ```sh
-scripts/fetch-corpus.sh                 # descarga HariSekhon/HAProxy-configs (MIT) en core/testdata/corpus
-go test ./core -run TestCorpus -v       # reescritura sin pérdidas + cobertura de la base de conocimiento
+scripts/fetch-corpus.sh                 # downloads HariSekhon/HAProxy-configs (MIT) into core/testdata/corpus
+go test ./core -run TestCorpus -v       # lossless rewrite + knowledge base coverage
 ```
 
-El corpus no se incluye en el repo. El test se omite si no está descargado.
+The corpus is not included in the repo. The test is skipped if it has not been downloaded.
 
-### Añadir o corregir explicaciones
+### Adding or fixing explanations
 
-1. Estructura (a qué secciones y categoría pertenece una directiva…) en `core/knowledge/knowledge.json`.
-2. Texto en **los dos** `core/knowledge/text.es.json` y `text.en.json`, con las mismas claves (un test lo comprueba).
-3. Si la frase depende de los argumentos, `core/describe.go`, escrita completa en los dos idiomas (`x.t("español", "English")`, o `x.f(plantillaES, plantillaEN, ...)` si el orden de las palabras cambia).
-4. Añade o amplía un caso en `core/testdata/`.
-5. `make golden` y revisa el diff de los `.golden.json` y de los `.golden.en.json`.
+1. Structure (which sections and category a directive belongs to…) in `core/knowledge/knowledge.json`.
+2. Text in **both** `core/knowledge/text.es.json` and `text.en.json`, with the same keys (a test checks this).
+3. If the sentence depends on the arguments, `core/describe.go`, written in full in both languages (`x.t("Spanish", "English")`, or `x.f(templateES, templateEN, ...)` if the word order changes).
+4. Add or extend a case in `core/testdata/`.
+5. `make golden` and review the diff of the `.golden.json` and `.golden.es.json` files.
 
-## Hoja de ruta
+## Roadmap
 
-El plan detallado está en [`docs/PLAN.md`](docs/PLAN.md).
+The detailed plan is in [`docs/PLAN.md`](docs/PLAN.md).
 
-- [x] Núcleo en Go con casos golden
+- [x] Go core with golden cases
 - [x] CLI: `lint`, `explain`, `diff`, `serve`
-- [x] API local (Connect RPC) con guardado seguro
-- [x] Configuraciones en varios archivos y directorios
-- [x] Test opcional con corpus de configuraciones reales
-- [ ] Ampliar la base de conocimiento con el catálogo de client-native (Apache-2.0)
-- [x] Plantillas por tecnología (Proxmox, Nextcloud, PostgreSQL, Redis, Elasticsearch, Kubernetes…)
-- [x] Servidor y cliente Connect generados desde `proto/` con buf (`make proto`)
-- [x] Web: modo código (CodeMirror 6), modo visual, mapa (React Flow) y panel de problemas
-- [x] Web y TUI: asistente con IA (`--assistant`)
-- [x] Interfaz de terminal con Bubble Tea (`haro` sin argumentos)
-- [x] Operaciones de edición en el núcleo (`apply`)
-- [x] Servidor MCP (`haro mcp`)
-- [x] Asistente: contexto y propuesta en el núcleo, llamada a la API en el servidor local
-- [x] Núcleo en WebAssembly (`make wasm`, `WasmCoreClient`)
-- [ ] Web pública (repo aparte)
+- [x] Local API (Connect RPC) with safe saving
+- [x] Multi-file and multi-directory configurations
+- [x] Optional test with a corpus of real configurations
+- [ ] Extend the knowledge base with the client-native catalog (Apache-2.0)
+- [x] Per-technology templates (Proxmox, Nextcloud, PostgreSQL, Redis, Elasticsearch, Kubernetes…)
+- [x] Connect server and client generated from `proto/` with buf (`make proto`)
+- [x] Web: code mode (CodeMirror 6), visual mode, map (React Flow) and problems panel
+- [x] Web and TUI: AI assistant (`--assistant`)
+- [x] Terminal interface with Bubble Tea (`haro` with no arguments)
+- [x] Edit operations in the core (`apply`)
+- [x] MCP server (`haro mcp`)
+- [x] Assistant: context and proposal in the core, API call in the local server
+- [x] Core in WebAssembly (`make wasm`, `WasmCoreClient`)
+- [ ] Public web UI (separate repo)
 
-## Licencia y créditos
+## License and credits
 
-MIT (ver [`LICENSE`](LICENSE)). El catálogo de nombres de directivas se derivó de `haproxytech/config-parser` (Apache-2.0) y el corpus opcional de pruebas es `HariSekhon/HAProxy-configs` (MIT); detalles en [`NOTICE`](NOTICE).
+MIT (see [`LICENSE`](LICENSE)). The catalog of directive names was derived from `haproxytech/config-parser` (Apache-2.0) and the optional test corpus is `HariSekhon/HAProxy-configs` (MIT); details in [`NOTICE`](NOTICE).

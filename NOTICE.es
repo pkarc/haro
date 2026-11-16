@@ -1,0 +1,23 @@
+Versión en inglés (principal): NOTICE
+
+haro
+Copyright (c) 2026 Ivan Jaramillo. Licencia MIT (ver LICENSE).
+
+Este proyecto no está afiliado ni respaldado por HAProxy Technologies.
+HAProxy® es una marca registrada de HAProxy Technologies.
+
+Materiales de terceros
+----------------------
+
+* Catálogo de directivas. La lista de nombres de directivas de HAProxy y de las
+  secciones en las que son válidas, usada para ampliar core/knowledge/knowledge.json,
+  se derivó del catálogo de haproxytech/config-parser (Apache License 2.0,
+  Copyright 2019 HAProxy Technologies):
+  https://github.com/haproxytech/config-parser
+  Solo se usaron los nombres y las secciones; los textos de las explicaciones
+  (español e inglés) son propios de haro.
+  Licencia Apache 2.0: http://www.apache.org/licenses/LICENSE-2.0
+
+* Corpus de pruebas (opcional, no incluido en el repositorio). scripts/fetch-corpus.sh
+  descarga HariSekhon/HAProxy-configs (licencia MIT) para las pruebas de
+  no-regresión: https://github.com/HariSekhon/HAProxy-configs
