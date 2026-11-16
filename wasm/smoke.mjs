@@ -1,6 +1,6 @@
-// Prueba de humo del módulo WASM en Node: carga el .wasm con su wasm_exec.js
-// y ejercita las llamadas principales.
-//   node wasm/smoke.mjs [directorio con haro.wasm y wasm_exec.js]
+// Smoke test of the WASM module in Node: loads the .wasm with its wasm_exec.js
+// and exercises the main calls.
+//   node wasm/smoke.mjs [directory with haro.wasm and wasm_exec.js]
 import { readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import assert from 'node:assert/strict'
@@ -18,11 +18,14 @@ const call = (method, req) => JSON.parse(globalThis.haroCore.call(method, JSON.s
 const cfg = 'frontend web\n    bind *:80\n    default_backend nope\n\nbackend app\n    server a1 10.0.0.1:80 check\n'
 
 const a = call('analyze', { files: [{ path: 'a.cfg', text: cfg }], lang: 'en' }).result
-assert.ok(a.issues.some(i => i.rule === 'backend-missing'), 'analyze debe detectar backend-missing')
+assert.ok(a.issues.some(i => i.rule === 'backend-missing'), 'analyze must detect backend-missing')
 assert.match(a.issues.find(i => i.rule === 'backend-missing').message, /does not exist/)
 assert.equal(a.doc.sections.length, 2)
 
-const es = call('analyze', { text: cfg }).result
+// Default language is English; Spanish only when requested.
+const def = call('analyze', { text: cfg }).result
+assert.match(def.issues.find(i => i.rule === 'backend-missing').message, /does not exist/)
+const es = call('analyze', { text: cfg, lang: 'es' }).result
 assert.match(es.issues.find(i => i.rule === 'backend-missing').message, /no existe/)
 
 const ap = call('apply', { files: [{ path: 'a.cfg', text: cfg }], ops: [{ op: 'add_directive', section: 1, text: 'balance leastconn' }] }).result
