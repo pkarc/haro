@@ -8,8 +8,8 @@ interface LState { idx: number; kw: string; indented: boolean; sec: boolean }
 
 // Colores de los tokens: los mismos que el prototipo (clases .t-* de hlLine).
 const COLORS: Record<string, { color: string; fontStyle?: string; fontWeight?: string }> = {
-  cm: { color: '#64748b', fontStyle: 'italic' },
-  name: { color: '#f8fafc', fontWeight: '600' },
+  cm: { color: '#71717a', fontStyle: 'italic' },
+  name: { color: '#fafafa', fontWeight: '600' },
   kw: { color: '#7dd3fc' },
   kw2: { color: '#c4b5fd' },
   cond: { color: '#f472b6', fontWeight: '500' },
@@ -20,7 +20,7 @@ const COLORS: Record<string, { color: string; fontStyle?: string; fontWeight?: s
   num: { color: '#fdba74' },
   addr: { color: '#5eead4' },
   path: { color: '#a5b4fc' },
-  arg: { color: '#cbd5e1' },
+  arg: { color: '#d4d4d8' },
 }
 
 /** Lenguaje HAProxy para CodeMirror: StreamLanguage + estilo propio. */

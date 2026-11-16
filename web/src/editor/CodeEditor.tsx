@@ -12,8 +12,8 @@ import { headerType } from './syntax'
 const External = Annotation.define<boolean>()
 
 const theme = EditorView.theme({
-  '&': { height: '100%', backgroundColor: 'var(--bg)', color: 'var(--text)', fontSize: '13px' },
-  '.cm-scroller': { fontFamily: 'var(--mono)', lineHeight: '20px', overflow: 'auto' },
+  '&': { height: '100%', backgroundColor: 'var(--bg)', color: 'var(--text)', fontSize: 'var(--fs-code)' },
+  '.cm-scroller': { fontFamily: 'var(--mono)', lineHeight: '19px', overflow: 'auto' },
   '.cm-content': { padding: '12px 0 40px', caretColor: 'var(--accent)' },
   '.cm-line': { padding: '0 16px' },
   '.cm-gutters': { backgroundColor: 'var(--panel)', color: 'var(--dim)', border: 'none', borderRight: '1px solid var(--line)' },
@@ -23,7 +23,7 @@ const theme = EditorView.theme({
   '&.cm-focused': { outline: 'none' },
   '&.cm-focused .cm-cursor': { borderLeftColor: 'var(--accent)' },
   '.cm-selectionBackground, &.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground': { backgroundColor: 'rgba(94,234,212,.22)' },
-  '.cm-tooltip': { backgroundColor: 'var(--panel3)', border: '1px solid var(--line2)', color: 'var(--text)', borderRadius: '8px' },
+  '.cm-tooltip': { backgroundColor: 'var(--panel3)', border: '1px solid var(--line2)', color: 'var(--text)', borderRadius: 'var(--r)' },
   '.cm-tooltip-autocomplete > ul > li[aria-selected]': { backgroundColor: 'rgba(94,234,212,.15)', color: 'var(--text)' },
   '.cm-completionDetail': { color: 'var(--muted)', fontStyle: 'normal', marginLeft: '8px' },
   '.cm-gutter-lint': { width: '14px' },
