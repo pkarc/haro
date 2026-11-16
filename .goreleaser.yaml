@@ -25,6 +25,10 @@ archives:
     name_template: "haro_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     files: [LICENSE, README.md]
 
+# Las etiquetas con sufijo (v0.1.0-alpha, -rc1…) se publican como prerelease.
+release:
+  prerelease: auto
+
 checksum:
   name_template: checksums.txt
 
