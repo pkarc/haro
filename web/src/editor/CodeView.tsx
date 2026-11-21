@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useT } from '../i18n/react'
 import { useApp } from '../store'
 import { useAnalysisIndex } from '../store/selectors'
@@ -12,9 +12,10 @@ export function CodeView() {
   const active = useApp(s => s.active)
   const analysis = useApp(s => s.analysis)
   const knowledge = useApp(s => s.knowledge)
-  const focus = useApp(s => s.focus)
+  const focus = useApp(s => s.codeFocus)
   const setText = useApp(s => s.setText)
-  const clearFocus = useApp(s => s.clearFocus)
+  const clearFocus = useApp(s => s.clearCodeFocus)
+  const setCursor = useApp(s => s.setCursor)
   const undo = useApp(s => s.undo)
   const redo = useApp(s => s.redo)
   const index = useAnalysisIndex(analysis)
@@ -23,6 +24,15 @@ export function CodeView() {
   const focusHere = useMemo(() => focus && focus.file === active ? { line: focus.line, nonce: focus.nonce } : null, [focus, active])
   // The child editor already consumed the jump request (its effects run first).
   useEffect(() => { if (focusHere) clearFocus() }, [focusHere, clearFocus])
+  // Cursor line goes to the store (the visual view mirrors it), debounced so typing stays cheap.
+  const cursorTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  useEffect(() => () => clearTimeout(cursorTimer.current), [])
+  const onCursorLine = useCallback((l: number, user: boolean) => {
+    setLine(l)
+    clearTimeout(cursorTimer.current)
+    if (!user) { setCursor(active, l, false); return }
+    cursorTimer.current = setTimeout(() => setCursor(active, l, true), 80)
+  }, [active, setCursor])
   const file = files[active]
   if (!file) return null
   return (
@@ -38,7 +48,7 @@ export function CodeView() {
           issues={issues}
           focus={focusHere}
           onChange={t => setText(active, t, { coalesce: true })}
-          onCursorLine={setLine}
+          onCursorLine={onCursorLine}
           onUndo={undo}
           onRedo={redo}
         />

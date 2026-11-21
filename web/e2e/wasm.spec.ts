@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { editDirectiveInCode } from './helpers'
 
 // The serverless web: the core in WebAssembly inside the browser. Requires
 // `make wasm` and `npm run build:wasm` (done by `npm run test:e2e:wasm`).
@@ -14,13 +15,10 @@ test('serverless web: analyzes, edits and adds a template, without calling any s
   // No disk: there is no save-to-disk button.
   await expect(page.getByTestId('save-button')).toHaveCount(0)
 
-  // Editing in visual mode goes through apply (in WebAssembly).
+  // Visual click -> editor cursor -> typing; the analysis runs in WebAssembly.
   const first = page.getByTestId('directive').first()
   await expect(first).toBeVisible()
-  await page.getByTestId('directive').filter({ hasText: 'balance roundrobin' }).first().locator('.dir-main').click()
-  await page.getByLabel('Edit directive').fill('balance leastconn')
-  await page.getByLabel('Edit directive').press('Enter')
-  await expect(page.getByTestId('directive').filter({ hasText: 'balance leastconn' }).first()).toBeVisible()
+  await editDirectiveInCode(page, 'balance roundrobin', 'balance leastconn')
 
   // Technology template.
   await page.getByTestId('template-button').click()

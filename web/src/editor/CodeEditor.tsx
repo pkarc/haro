@@ -1,15 +1,41 @@
 import { useEffect, useRef } from 'react'
 import { acceptCompletion, autocompletion, closeBrackets } from '@codemirror/autocomplete'
 import { defaultKeymap, indentMore, indentLess } from '@codemirror/commands'
-import { forceLinting, linter, lintGutter, lintKeymap, type Diagnostic } from '@codemirror/lint'
-import { Annotation, EditorState, type Extension } from '@codemirror/state'
-import { drawSelection, EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers } from '@codemirror/view'
+import { forceLinting, linter, lintGutter, lintKeymap, setDiagnostics, type Diagnostic } from '@codemirror/lint'
+import { Annotation, EditorState, StateEffect, StateField, type Extension } from '@codemirror/state'
+import { Decoration, drawSelection, EditorView, highlightActiveLine, highlightActiveLineGutter, keymap, lineNumbers } from '@codemirror/view'
 import type { Issue, Knowledge } from '../core/types'
 import { directiveCompletion } from './completion'
 import { haproxyLanguage } from './language'
 import { headerType } from './syntax'
 
 const External = Annotation.define<boolean>()
+// Marks cursor moves made by the app (reveal from the visual view), not by the user.
+const Programmatic = Annotation.define<boolean>()
+
+// Highlight of the line the visual view sent the user to. Stored as a document
+// position so it follows edits above it, and cleared as soon as the cursor
+// leaves that line.
+const setTarget = StateEffect.define<number | null>()
+const targetLine = Decoration.line({ class: 'cm-haro-target', attributes: { 'data-haro-target': 'true', 'aria-current': 'location' } })
+const targetField = StateField.define<{ pos: number | null; deco: ReturnType<typeof Decoration.set> }>({
+  create: () => ({ pos: null, deco: Decoration.none }),
+  update(v, tr) {
+    let pos = v.pos
+    for (const e of tr.effects) if (e.is(setTarget)) pos = e.value
+    if (pos === null) return v.deco === Decoration.none ? v : { pos: null, deco: Decoration.none }
+    if (!tr.effects.some(e => e.is(setTarget))) pos = tr.changes.mapPos(pos, -1)
+    const doc = tr.state.doc
+    pos = Math.min(pos, doc.length)
+    const line = doc.lineAt(pos)
+    // The cursor moved to another line: the highlight is gone.
+    if (!tr.effects.some(e => e.is(setTarget)) && tr.selection && doc.lineAt(tr.state.selection.main.head).number !== line.number) {
+      return { pos: null, deco: Decoration.none }
+    }
+    return { pos: line.from, deco: Decoration.set([targetLine.range(line.from)]) }
+  },
+  provide: f => EditorView.decorations.from(f, v => v.deco),
+})
 
 const theme = EditorView.theme({
   '&': { height: '100%', backgroundColor: 'var(--bg)', color: 'var(--text)', fontSize: 'var(--fs-code)' },
@@ -18,6 +44,7 @@ const theme = EditorView.theme({
   '.cm-line': { padding: '0 16px' },
   '.cm-gutters': { backgroundColor: 'var(--panel)', color: 'var(--dim)', border: 'none', borderRight: '1px solid var(--line)' },
   '.cm-gutter.cm-lineNumbers .cm-gutterElement': { padding: '0 8px 0 12px', minWidth: '36px' },
+  '.cm-line.cm-haro-target': { backgroundColor: 'rgba(94,234,212,.09)', borderLeft: '3px solid var(--accent)', paddingLeft: '13px' },
   '.cm-activeLine': { backgroundColor: 'rgba(255,255,255,.03)' },
   '.cm-activeLineGutter': { backgroundColor: 'rgba(255,255,255,.04)', color: 'var(--text)' },
   '&.cm-focused': { outline: 'none' },
@@ -38,7 +65,8 @@ export interface CodeEditorProps {
   /** Line (1-based) to jump to; `nonce` tells repeated requests apart. */
   focus: { line: number; nonce: number } | null
   onChange(text: string): void
-  onCursorLine(line: number): void
+  /** `user` is false when the app moved the cursor (reveal, initial state). */
+  onCursorLine(line: number, user: boolean): void
   onUndo(): void
   onRedo(): void
 }
@@ -69,15 +97,19 @@ export function CodeEditor(props: CodeEditorProps) {
         ...lintKeymap, ...defaultKeymap,
       ]),
       theme,
+      targetField,
       EditorView.contentAttributes.of({ 'aria-label': props.label, spellcheck: 'false', autocapitalize: 'off', autocorrect: 'off' }),
       EditorView.updateListener.of(u => {
         if (u.docChanged && !u.transactions.some(t => t.annotation(External))) p().onChange(u.state.doc.toString())
-        if (u.selectionSet || u.docChanged) p().onCursorLine(u.state.doc.lineAt(u.state.selection.main.head).number)
+        if (u.selectionSet || u.docChanged) {
+          const prog = u.transactions.some(t => t.annotation(Programmatic) || t.annotation(External))
+          p().onCursorLine(u.state.doc.lineAt(u.state.selection.main.head).number, !prog)
+        }
       }),
     ]
     const v = new EditorView({ parent: host.current!, state: EditorState.create({ doc: props.value, extensions }) })
     view.current = v
-    props.onCursorLine(1)
+    props.onCursorLine(1, false)
     return () => { v.destroy(); view.current = null }
     // The editor is created once per mount (the parent remounts it when the language changes);
     // the rest arrives through refs and effects.
@@ -98,14 +130,25 @@ export function CodeEditor(props: CodeEditorProps) {
     v.dispatch({ changes: { from: a, to: ce, insert: props.value.slice(a, ne) }, annotations: External.of(true) })
   }, [props.value])
 
-  useEffect(() => { if (view.current) forceLinting(view.current) }, [props.issues])
+  // New analysis: push the diagnostics straight in (the editor can mount before the first
+  // analysis arrives, and a forced lint run alone did not pick those up).
+  useEffect(() => {
+    const v = view.current
+    if (!v) return
+    v.dispatch(setDiagnostics(v.state, props.issues.map(i => toDiagnostic(v, i)).filter((d): d is Diagnostic => d !== null)))
+    forceLinting(v)
+  }, [props.issues])
 
   useEffect(() => {
     const v = view.current
     if (!v || !props.focus) return
     const n = Math.min(Math.max(props.focus.line, 1), v.state.doc.lines)
     const l = v.state.doc.line(n)
-    v.dispatch({ selection: { anchor: l.from, head: l.to }, effects: EditorView.scrollIntoView(l.from, { y: 'center' }) })
+    v.dispatch({
+      selection: { anchor: l.from, head: l.to },
+      effects: [EditorView.scrollIntoView(l.from, { y: 'center' }), setTarget.of(l.from)],
+      annotations: Programmatic.of(true),
+    })
     v.focus()
   }, [props.focus])
 

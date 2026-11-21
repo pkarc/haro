@@ -11,6 +11,7 @@ import type { CoreClient } from './core/client'
 import type { ConfigStore } from './core/configstore'
 import { AppContext, useApp, useAppApi, useAppContext } from './store'
 import { createAppStore } from './store/store'
+import { MapPage } from './map/MapPanel'
 import { VisualView } from './visual/VisualView'
 
 export interface AppProps {
@@ -39,6 +40,8 @@ function AppShell() {
   const { header } = useAppContext()
   const ready = useApp(s => s.ready)
   const mode = useApp(s => s.mode)
+  const page = useApp(s => s.page)
+  const setPage = useApp(s => s.setPage)
   const setMode = useApp(s => s.setMode)
   const showAssistant = useApp(s => s.showAssistant)
   const canAssist = useApp(s => !!s.capabilities?.canAssist)
@@ -69,6 +72,16 @@ function AppShell() {
   if (!ready) return <div id="app"><p className="muted pad">{t('app.loading')}</p></div>
 
   const assistantVisible = mobile && showAssistant
+  // Desktop: code and visual side by side on the edit page. Mobile: one of them (`mode`).
+  let body: ReactNode
+  if (page === 'map') body = <MapPage />
+  else if (mobile) body = mode === 'code' ? <CodeView /> : <VisualView />
+  else body = (
+    <div className="split" data-testid="split">
+      <section className="split-col code-col" aria-label={t('app.code')}><CodeView /></section>
+      <section className="split-col visual-col" aria-label={t('app.visual')}><VisualView /></section>
+    </div>
+  )
   return (
     <div id="app" className={mobile ? 'mobile' : ''}>
       {header}
@@ -78,17 +91,13 @@ function AppShell() {
         {!assistantVisible && (
           <section className="pane main-pane">
             <div className="pane-head">
-              <div className="seg" role="tablist" aria-label={t('app.editMode')}>
-                <button role="tab" aria-selected={mode === 'code'} className={mode === 'code' ? 'on' : ''} onClick={() => setMode('code')}>{t('app.code')}</button>
-                <button role="tab" aria-selected={mode === 'visual'} className={mode === 'visual' ? 'on' : ''} onClick={() => setMode('visual')}>{t('app.visual')}</button>
-              </div>
               <ProblemsButton open={problems} onToggle={() => setProblems(p => !p)} />
               {canAssist && !mobile && (
                 <button className={`tbtn assist-toggle${chatOpen ? ' on' : ''}`} aria-pressed={chatOpen} data-testid="assistant-toggle" onClick={() => setChatOpen(!chatOpen)}>✦ {t('app.assistant')}</button>
               )}
             </div>
             {problems && <ProblemsPanel />}
-            <div className="pane-body">{mode === 'code' ? <CodeView /> : <VisualView />}</div>
+            <div className="pane-body">{body}</div>
           </section>
         )}
         {assistantVisible && (
@@ -102,8 +111,11 @@ function AppShell() {
       </main>
       {mobile && (
         <nav className="mobile-tabs" role="tablist" aria-label={t('app.sections')}>
-          <button role="tab" aria-selected={!showAssistant && mode === 'code'} className={!showAssistant && mode === 'code' ? 'on' : ''} onClick={() => setMode('code')}>‹/› {t('app.code')}</button>
-          <button role="tab" aria-selected={!showAssistant && mode === 'visual'} className={!showAssistant && mode === 'visual' ? 'on' : ''} onClick={() => setMode('visual')}>◫ {t('app.visual')}</button>
+          {([['code', '‹/› ', t('app.code')], ['visual', '◫ ', t('app.visual')]] as const).map(([m, ic, label]) => {
+            const on = !showAssistant && page === 'edit' && mode === m
+            return <button key={m} role="tab" aria-selected={on} className={on ? 'on' : ''} onClick={() => setMode(m)}>{ic}{label}</button>
+          })}
+          <button role="tab" aria-selected={!showAssistant && page === 'map'} className={!showAssistant && page === 'map' ? 'on' : ''} onClick={() => setPage('map')}>⌘ {t('app.map')}</button>
           <button role="tab" aria-selected={showAssistant} className={showAssistant ? 'on' : ''} onClick={() => setShowAssistant(true)}>✦ {t('app.assistant')}</button>
         </nav>
       )}

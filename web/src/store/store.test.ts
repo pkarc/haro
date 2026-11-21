@@ -504,3 +504,74 @@ describe('ServedStore', () => {
     expect(await st.load()).toBeNull()
   })
 })
+
+describe('page, focus channels and cursor', () => {
+  const memStorage = () => {
+    const mem = new Map<string, string>()
+    return { mem, storage: { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => { mem.set(k, v) }, removeItem: (k: string) => { mem.delete(k) } } }
+  }
+
+  it('defaults to the edit page, persists the map page and migrates states without page', () => {
+    const { mem, storage } = memStorage()
+    const a = createAppStore(fakeClient(), new ServedStore(fakeClient()), { storage })
+    expect(a.getState().page).toBe('edit')
+    a.getState().setPage('map')
+    a.getState().setText(0, 'x') // forces the write
+    expect(createAppStore(fakeClient(), new ServedStore(fakeClient()), { storage }).getState().page).toBe('map')
+    // an older saved state (no `page`, or garbage) falls back to «edit»
+    const saved = JSON.parse(mem.get('haro.v1')!)
+    delete saved.state.page
+    mem.set('haro.v1', JSON.stringify(saved))
+    expect(createAppStore(fakeClient(), new ServedStore(fakeClient()), { storage }).getState().page).toBe('edit')
+    saved.state.page = 'nonsense'
+    mem.set('haro.v1', JSON.stringify(saved))
+    expect(createAppStore(fakeClient(), new ServedStore(fakeClient()), { storage }).getState().page).toBe('edit')
+  })
+
+  it('goto leaves the map page and sets both focus channels; they clear independently', () => {
+    const s = mk()
+    s.getState().setPage('map')
+    s.getState().goto(0, 3)
+    const st = s.getState()
+    expect(st.page).toBe('edit')
+    expect(st.codeFocus).toMatchObject({ file: 0, line: 3 })
+    expect(st.visualFocus).toMatchObject({ file: 0, line: 3 })
+    s.getState().clearCodeFocus()
+    expect(s.getState().codeFocus).toBeNull()
+    expect(s.getState().visualFocus).not.toBeNull()
+    s.getState().clearVisualFocus()
+    expect(s.getState().visualFocus).toBeNull()
+  })
+
+  it('revealInCode switches the active file and only touches the code channel', () => {
+    const s = mk()
+    s.getState().importFiles([F('a', 'a.cfg'), F('b', 'b.cfg')])
+    s.getState().revealInCode(1, 2)
+    const st = s.getState()
+    expect(st.active).toBe(1)
+    expect(st.mode).toBe('code')
+    expect(st.codeFocus).toMatchObject({ file: 1, line: 2 })
+    expect(st.visualFocus).toBeNull()
+  })
+
+  it('setMode and setPage leave the assistant tab', () => {
+    const s = mk()
+    s.getState().setShowAssistant(true)
+    s.getState().setPage('map')
+    expect(s.getState().showAssistant).toBe(false)
+    s.getState().setShowAssistant(true)
+    s.getState().setMode('code')
+    expect(s.getState()).toMatchObject({ showAssistant: false, page: 'edit', mode: 'code' })
+  })
+
+  it('setCursor records the line and ignores repeats', () => {
+    const s = mk()
+    s.getState().setCursor(0, 4, true)
+    const first = s.getState().cursor
+    expect(first).toMatchObject({ file: 0, line: 4, user: true })
+    s.getState().setCursor(0, 4, true)
+    expect(s.getState().cursor).toBe(first)
+    s.getState().setCursor(0, 5, false)
+    expect(s.getState().cursor).toMatchObject({ line: 5, user: false })
+  })
+})

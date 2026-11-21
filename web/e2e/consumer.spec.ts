@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { editDirectiveInCode } from './helpers'
 
 // An external consumer (examples/consumer) mounts the application using only
 // the public API of src/index: its own ConfigStore, a previous screen, a header
@@ -23,9 +24,7 @@ test('the consumer mounts the app with its store, its gate, its header and its a
   await expect(page.getByTestId('consumer-action')).toBeVisible()
 
   // Editing and saving goes through the consumer's store, with the full text.
-  await page.getByTestId('directive').filter({ hasText: 'balance roundrobin' }).first().locator('.dir-main').click()
-  await page.getByLabel('Edit directive').fill('balance leastconn')
-  await page.getByLabel('Edit directive').press('Enter')
+  await editDirectiveInCode(page, 'balance roundrobin', 'balance leastconn')
   await expect(page.getByTestId('save-button')).toContainText('Save (1)')
   await page.getByTestId('save-button').click()
   await expect(page.getByRole('dialog')).toContainText('memory/demo@main')
@@ -41,9 +40,7 @@ test('a store version conflict is shown and resolved by reloading', async ({ pag
   await page.goto(BASE)
   await page.getByTestId('gate-enter').click()
   await expect(page.getByTestId('section').first()).toBeVisible()
-  await page.getByTestId('directive').filter({ hasText: 'balance roundrobin' }).first().locator('.dir-main').click()
-  await page.getByLabel('Edit directive').fill('balance source')
-  await page.getByLabel('Edit directive').press('Enter')
+  await editDirectiveInCode(page, 'balance roundrobin', 'balance source')
 
   // Somebody else changes the «repository» before saving.
   await probe(page, s => s.remoteChange('backend api\n    balance first\n    server a1 10.0.0.1:80 check\n    server a2 10.0.0.2:80 check\n'))

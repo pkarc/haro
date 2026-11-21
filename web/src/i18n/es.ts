@@ -33,10 +33,12 @@ export const es: Record<Key, string> = {
   // ---- application shell ----
   'app.loading': 'Cargando…',
   'app.core': 'Núcleo',
-  'app.editMode': 'Modo de edición',
   'app.sections': 'Secciones',
   'app.code': 'Código',
   'app.visual': 'Visual',
+  'app.pages': 'Página',
+  'app.pageEdit': 'Editar',
+  'app.map': 'Mapa',
   'app.assistant': 'Asistente',
 
   // ---- top bar ----
@@ -209,14 +211,12 @@ export const es: Record<Key, string> = {
   'section.addPlaceholder': 'Añadir directiva…',
   'section.addPlaceholderEx': 'Añadir directiva… p. ej. {example}',
   'directive.removeComment': 'Eliminar comentario',
-  'directive.edit': 'Clic para editar',
+  'directive.editInCode': 'Editar en el código',
   'directive.up': 'Subir directiva',
   'directive.upTitle': 'Subir',
   'directive.down': 'Bajar directiva',
   'directive.downTitle': 'Bajar',
   'directive.remove': 'Eliminar directiva',
-  'directive.editLabel': 'Editar directiva',
-  'directive.editHint': 'Enter guarda · Esc cancela · déjalo vacío para borrar',
 
   // ---- traffic map ----
   'map.title': 'Mapa del tráfico',

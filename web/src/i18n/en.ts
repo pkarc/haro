@@ -32,10 +32,12 @@ export const en = {
   // ---- application shell ----
   'app.loading': 'Loading…',
   'app.core': 'Core',
-  'app.editMode': 'Edit mode',
   'app.sections': 'Sections',
   'app.code': 'Code',
   'app.visual': 'Visual',
+  'app.pages': 'Page',
+  'app.pageEdit': 'Edit',
+  'app.map': 'Map',
   'app.assistant': 'Assistant',
 
   // ---- top bar ----
@@ -208,14 +210,12 @@ export const en = {
   'section.addPlaceholder': 'Add directive…',
   'section.addPlaceholderEx': 'Add directive… e.g. {example}',
   'directive.removeComment': 'Delete comment',
-  'directive.edit': 'Click to edit',
+  'directive.editInCode': 'Edit in code',
   'directive.up': 'Move directive up',
   'directive.upTitle': 'Move up',
   'directive.down': 'Move directive down',
   'directive.downTitle': 'Move down',
   'directive.remove': 'Delete directive',
-  'directive.editLabel': 'Edit directive',
-  'directive.editHint': 'Enter saves · Esc cancels · leave it empty to delete',
 
   // ---- traffic map ----
   'map.title': 'Traffic map',

@@ -16,7 +16,12 @@ const MAX_VERSIONS = 40
 export interface Version { ts: number; label: string; files: SourceFile[] }
 export interface Toast { id: number; msg: string; kind: 'info' | 'warn' | 'error'; action?: { label: string; run: () => void } }
 export interface FocusRequest { file: number; line: number; nonce: number }
+/** Mobile only: which of the two editing views is shown (desktop shows both at once). */
 export type Mode = 'code' | 'visual'
+/** Top-level page: the editing page (code + visual side by side) or the traffic map. */
+export type Page = 'edit' | 'map'
+/** Cursor of the code editor, mirrored in the visual view. `user` is false when the move was programmatic (reveal, file switch). */
+export interface CursorState { file: number; line: number; user: boolean; nonce: number }
 
 export interface UiPrefs {
   /** Collapsed sections, by `file:type:name` key. */
@@ -41,6 +46,7 @@ export interface AppState {
   capabilities: Capabilities | null
   ready: boolean
   mode: Mode
+  page: Page
   /** Mobile only: «Assistant» tab. */
   showAssistant: boolean
   /** Conversation with the assistant (saved with the rest of the state). */
@@ -52,7 +58,10 @@ export interface AppState {
   redoStack: SourceFile[][]
   versions: Version[]
   ui: UiPrefs
-  focus: FocusRequest | null
+  /** Jump requests, one channel per view so that both can be mounted at once. */
+  codeFocus: FocusRequest | null
+  visualFocus: FocusRequest | null
+  cursor: CursorState | null
   toasts: Toast[]
   /** Incremented on every change of files; used to discard stale responses. */
   rev: number
@@ -70,6 +79,7 @@ export interface AppState {
   redo(): void
   setLang(l: Lang): Promise<void>
   setMode(m: Mode): void
+  setPage(p: Page): void
   setShowAssistant(v: boolean): void
   setChatOpen(v: boolean): void
   ackChat(): void
@@ -90,8 +100,16 @@ export interface AppState {
   loadSample(): void
   toggleCollapsed(key: string): void
   setMapOpen(v: boolean): void
-  goto(file: number, line: number): void
-  clearFocus(): void
+  /** Shows a line in both views (editing page): cursor in the editor and highlighted row in the visual view. `opts.mode` picks the view on mobile, where only one is shown. */
+  goto(file: number, line: number, opts?: { mode?: Mode }): void
+  /** Puts the editor cursor on the line (switching file if needed) and focuses the editor. */
+  revealInCode(file: number, line: number): void
+  /** Scrolls the visual view to the row of the line. */
+  revealInVisual(file: number, line: number): void
+  clearCodeFocus(): void
+  clearVisualFocus(): void
+  /** Reports the editor cursor; `user` is false for programmatic moves. */
+  setCursor(file: number, line: number, user: boolean): void
   dirty(): number[]
   // Saves several files at once: the set is validated and everything or nothing is saved.
   save(indexes: number[]): Promise<SaveResult>
@@ -135,6 +153,7 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
   let requestId = 0
   let toastId = 0
   let focusNonce = 0
+  let cursorNonce = 0
   // Last text edit, to merge consecutive keystrokes into a single undo step.
   let lastTyping: { at: number; file: number } | null = null
   let applyQueue: Promise<unknown> = Promise.resolve()
@@ -214,6 +233,7 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
       capabilities: null,
       ready: false,
       mode: 'visual',
+      page: 'edit',
       showAssistant: false,
       chat: [],
       chatBusy: false,
@@ -222,7 +242,9 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
       redoStack: [],
       versions: [],
       ui: { collapsed: {}, mapOpen: true, chatOpen: false },
-      focus: null,
+      codeFocus: null,
+      visualFocus: null,
+      cursor: null,
       toasts: [],
       rev: 0,
 
@@ -341,7 +363,8 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
         if (kn && get().lang === l) set({ knowledge: kn })
       },
 
-      setMode(m) { set({ mode: m, showAssistant: false }) },
+      setMode(m) { set({ mode: m, page: 'edit', showAssistant: false }) },
+      setPage(p) { set({ page: p, showAssistant: false }) },
       setShowAssistant(v) { set({ showAssistant: v }) },
       setChatOpen(v) { set(s => ({ ui: { ...s.ui, chatOpen: v } })) },
       ackChat() { set({ chatAck: true }) },
@@ -432,9 +455,23 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
       toggleCollapsed(key) { set(s => ({ ui: { ...s.ui, collapsed: { ...s.ui.collapsed, [key]: !s.ui.collapsed[key] } } })) },
       setMapOpen(v) { set(s => ({ ui: { ...s.ui, mapOpen: v } })) },
 
-      goto(file, line) { set({ active: file, focus: { file, line, nonce: ++focusNonce } }) },
-
-      clearFocus() { set({ focus: null }) },
+      goto(file, line, opts) {
+        const n = ++focusNonce
+        set({ page: 'edit', showAssistant: false, ...(opts?.mode ? { mode: opts.mode } : {}), active: file, codeFocus: { file, line, nonce: n }, visualFocus: { file, line, nonce: n } })
+      },
+      revealInCode(file, line) {
+        set({ page: 'edit', mode: 'code', showAssistant: false, active: file, codeFocus: { file, line, nonce: ++focusNonce } })
+      },
+      revealInVisual(file, line) {
+        set({ page: 'edit', mode: 'visual', showAssistant: false, visualFocus: { file, line, nonce: ++focusNonce } })
+      },
+      clearCodeFocus() { set({ codeFocus: null }) },
+      clearVisualFocus() { set({ visualFocus: null }) },
+      setCursor(file, line, user) {
+        const c = get().cursor
+        if (c && c.file === file && c.line === line && (c.user === user || !user)) return
+        set({ cursor: { file, line, user, nonce: ++cursorNonce } })
+      },
 
       dirty() { const s = get(); return dirtyIndexes(s.files, s.disk) },
 
@@ -473,7 +510,7 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
     name: opts.storageKey ?? configStore.storageKey ?? DEFAULT_STORAGE_KEY,
     version: 1,
     storage: createJSONStorage(() => opts.storage ?? browserStorage()),
-    partialize: s => ({ lang: s.lang, chat: persistableChat(s.chat, s.lang).slice(-100), files: s.files, active: s.active, disk: s.disk, mode: s.mode, versions: s.versions, ui: s.ui }),
+    partialize: s => ({ lang: s.lang, chat: persistableChat(s.chat, s.lang).slice(-100), files: s.files, active: s.active, disk: s.disk, mode: s.mode, page: s.page, versions: s.versions, ui: s.ui }),
     // Validate what was saved: a corrupt localStorage must not break the app.
     merge: (persisted, base) => {
       let current = base
@@ -487,6 +524,8 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
         disk: Array.isArray(p.disk) ? p.disk : null,
         lang: p.lang === 'en' || p.lang === 'es' ? p.lang : current.lang,
         mode: p.mode === 'code' ? 'code' : 'visual',
+        // Older saved states have no page: default to the editing page.
+        page: p.page === 'map' ? 'map' : 'edit',
         versions: Array.isArray(p.versions) ? p.versions : [],
         ui: { ...current.ui, ...(p.ui ?? {}) },
       }

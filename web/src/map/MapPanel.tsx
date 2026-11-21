@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Background, MarkerType, ReactFlow, type Edge, type Node } from '@xyflow/react'
+import { Background, Controls, MarkerType, ReactFlow, type Edge, type Node } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import type { Analysis } from '../core/types'
 import { useT } from '../i18n/react'
@@ -18,19 +18,19 @@ const STYLE = {
   backup: { stroke: '#475569', strokeWidth: 1.4, strokeDasharray: '2 4' },
 }
 
-export function MapPanel({ analysis }: { analysis: Analysis }) {
+/** The map as a page of its own: the flow fills the area, the legend sits below. */
+export function MapPage() {
   const tr = useT()
-  const open = useApp(s => s.ui.mapOpen)
-  const setOpen = useApp(s => s.setMapOpen)
+  const analysis = useApp(s => s.analysis)
+  if (!analysis) return <div className="map-page"><p className="muted pad">{tr('visual.analyzing')}</p></div>
   const topo = analysis.topology
   const empty = !topo.entries.length && !topo.backends.length
   return (
-    <details className="map" open={open} onToggle={e => setOpen(e.currentTarget.open)} data-testid="map">
-      <summary><span>{tr('map.title')}</span><span className="muted sm">{tr('map.subtitle')}</span></summary>
-      {open && (empty
+    <div className="map-page" data-testid="map">
+      {empty
         ? <p className="muted pad">{tr('map.empty')}</p>
-        : <><MapFlow analysis={analysis} /><Legend /></>)}
-    </details>
+        : <><MapFlow analysis={analysis} /><Legend /></>}
+    </div>
   )
 }
 
@@ -51,10 +51,9 @@ function MapFlow({ analysis }: { analysis: Analysis }) {
   const tr = useT()
   const knowledge = useApp(s => s.knowledge)
   const goto = useApp(s => s.goto)
-  const setMode = useApp(s => s.setMode)
   const t = analysis.topology
 
-  const { nodes, edges, height } = useMemo(() => {
+  const { nodes, edges } = useMemo(() => {
     const placed = layoutTopology(t)
     const nodes: Node[] = placed.nodes.map(p => {
       const base = { id: p.id, type: p.kind, position: { x: p.x, y: p.y }, draggable: false, connectable: false }
@@ -91,33 +90,33 @@ function MapFlow({ analysis }: { analysis: Analysis }) {
       })
     t.backends.forEach(b => serverEdges(b.section, backendId(b.section), b.servers))
     t.entries.forEach(e => serverEdges(e.section, entryId(e.section), e.servers ?? []))
-    return { nodes, edges, height: Math.min(Math.max(placed.height + 40, 220), 560) }
+    return { nodes, edges }
   }, [t, knowledge, tr])
 
   const toSection = (section: number) => {
     const s = analysis.doc.sections[section]
     if (!s) return
-    setMode('visual')
-    goto(s.file, s.line)
+    goto(s.file, s.line, { mode: 'visual' })
   }
 
   return (
-    <div className="map-flow" style={{ height }} data-testid="map-flow">
+    <div className="map-flow" data-testid="map-flow">
       <ReactFlow
         nodes={nodes} edges={edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes}
         nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
         fitView fitViewOptions={{ padding: 0.12, maxZoom: 1 }} minZoom={0.3} proOptions={{ hideAttribution: false }}
-        colorMode="dark" panOnScroll={false} zoomOnScroll={false} preventScrolling={false}
+        colorMode="dark" panOnScroll={false} zoomOnScroll preventScrolling
         onNodeClick={(_, n) => {
           const sec = n.id.startsWith('m:') ? -1 : Number(/^[sv](\d+)/.exec(n.id)?.[1])
           if (sec >= 0) toSection(sec)
         }}
         onEdgeClick={(_, e) => {
           const d = e.data as { file?: number; line?: number } | undefined
-          if (d?.file !== undefined && d.line) { setMode('visual'); goto(d.file, d.line) }
+          if (d?.file !== undefined && d.line) goto(d.file, d.line, { mode: 'visual' })
         }}
       >
         <Background gap={24} color="#1d2330" />
+        <Controls showInteractive={false} />
       </ReactFlow>
     </div>
   )

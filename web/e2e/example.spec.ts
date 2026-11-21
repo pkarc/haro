@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { editDirectiveInCode } from './helpers'
 
 const BASE = 'http://127.0.0.1:7471/'
 const original = readFileSync(join(resolve(dirname(fileURLToPath(import.meta.url)), '..', '..'), 'core/testdata/example.cfg'), 'utf8')
@@ -20,10 +21,8 @@ test.beforeEach(async ({ page }) => {
   await expect(page.getByTestId('section').first()).toBeVisible()
 })
 
-test('loads the example: sections, map and problems', async ({ page }) => {
+test('loads the example: sections and problems', async ({ page }) => {
   await expect(page.getByTestId('section')).toHaveCount(8)
-  await expect(page.getByTestId('map-entry')).toHaveCount(3)
-  await expect(page.getByTestId('map-backend')).toHaveCount(3)
   await expect(page.getByTestId('problems-button')).toContainText('1 suggestion')
   await page.getByTestId('problems-button').click()
   await expect(page.getByTestId('problem')).toHaveCount(1)
@@ -34,7 +33,6 @@ test('loads the example: sections, map and problems', async ({ page }) => {
 
 test('the code shows the problem as a diagnostic and the line explanation', async ({ page }) => {
   // CodeMirror only renders the visible lines: jump to the problem with «Go» in the panel.
-  await page.getByRole('tab', { name: 'Code' }).click()
   await page.getByTestId('problems-button').click()
   await page.getByTestId('problem').getByRole('button', { name: 'Go' }).click()
   await expect(page.locator('.cm-editor')).toBeVisible()
@@ -46,19 +44,105 @@ test('the code shows the problem as a diagnostic and the line explanation', asyn
   await expect(page.getByTestId('code-status')).toContainText('/stats')
 })
 
-test('map: clicking a node goes to its section', async ({ page }) => {
-  await page.getByTestId('map-backend').filter({ hasText: 'static_servers' }).click()
-  const sec = page.getByTestId('section').filter({ hasText: 'static_servers' }).first()
-  await expect(sec).toHaveClass(/./)
-  await expect(page.locator('.flash')).toHaveCount(1)
+test('desktop: code and visual are visible side by side, with no Code/Visual tabs', async ({ page }) => {
+  const code = page.getByTestId('code-editor'), visual = page.getByTestId('visual-view')
+  await expect(code).toBeVisible()
+  await expect(visual).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Code', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('tab', { name: 'Visual', exact: true })).toHaveCount(0)
+  const a = (await code.boundingBox())!, b = (await visual.boundingBox())!
+  expect(a.x + a.width).toBeLessThanOrEqual(b.x + 1)
+  expect(Math.abs(a.width - b.width)).toBeLessThan(a.width * 0.2)
+  expect(a.height).toBeGreaterThan(300)
+  // the page switch has the active page marked
+  const tabs = page.getByRole('tablist', { name: 'Page' })
+  await expect(tabs.getByRole('tab', { name: 'Edit' })).toHaveAttribute('aria-selected', 'true')
+  await expect(tabs.getByRole('tab', { name: 'Map' })).toHaveAttribute('aria-selected', 'false')
 })
 
-test('editing in visual mode changes the text minimally', async ({ page }) => {
-  // 1) change a directive
-  await page.getByTestId('directive').filter({ hasText: 'maxconn 4096' }).first().locator('.dir-main').click()
-  await page.getByLabel('Edit directive').fill('maxconn 8192')
-  await page.getByLabel('Edit directive').press('Enter')
+test('map page: nodes, and a click on a node goes back to the edit page at that section', async ({ page }) => {
+  const tabs = page.getByRole('tablist', { name: 'Page' })
+  await tabs.getByRole('tab', { name: 'Map' }).click()
+  await expect(tabs.getByRole('tab', { name: 'Map' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByTestId('map-entry')).toHaveCount(3)
+  await expect(page.getByTestId('map-backend')).toHaveCount(3)
+  // the editing views are gone while the map is shown, and the flow fills the area
+  await expect(page.getByTestId('visual-view')).toHaveCount(0)
+  const flow = (await page.getByTestId('map-flow').boundingBox())!
+  expect(flow.height).toBeGreaterThan(400)
+  expect(flow.width).toBeGreaterThan(900)
+
+  await page.getByTestId('map-backend').filter({ hasText: 'static_servers' }).click()
+  await expect(tabs.getByRole('tab', { name: 'Edit' })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByTestId('map')).toHaveCount(0)
+  await expect(page.getByTestId('visual-view')).toBeVisible()
+  await expect(page.locator('.flash')).toHaveCount(1)
+  await expect(page.locator('.flash')).toContainText('static_servers')
+  // the editor cursor is on the section header
+  await expect(page.locator('.cm-line.cm-haro-target')).toContainText('backend static_servers')
+})
+
+test('visual click on a directive puts the cursor in the editor, highlights the line and typing there updates the visual', async ({ page }) => {
+  const row = page.getByTestId('directive').filter({ hasText: 'maxconn 4096' }).first()
+  await row.locator('.dir-main').click()
+  const target = page.locator('.cm-line.cm-haro-target')
+  await expect(target).toHaveCount(1)
+  await expect(target).toContainText('maxconn 4096')
+  await expect(target).toHaveAttribute('aria-current', 'location')
+  await expect(page.locator('.cm-activeLine')).toContainText('maxconn 4096')
+  await expect(page.locator('.cm-content')).toBeFocused()
+  // the editor status explains the same line
+  await expect(page.getByTestId('code-status')).toContainText('maxconn')
+  // no inline edit form any more
+  await expect(page.getByLabel('Edit directive')).toHaveCount(0)
+
+  await page.keyboard.type('    maxconn 8192')
   await expect(page.getByTestId('directive').filter({ hasText: 'maxconn 8192' })).toHaveCount(1)
+  await expect(page.getByTestId('directive').filter({ hasText: 'maxconn 4096' })).toHaveCount(0)
+  // the row under the cursor stays marked after the analysis arrives
+  await expect(page.locator('.row.current')).toContainText('maxconn 8192')
+
+  // moving the cursor to another line clears the highlight
+  await page.keyboard.press('ArrowDown')
+  await expect(target).toHaveCount(0)
+})
+
+test('the «Edit in code» button and the keyboard do the same as a click', async ({ page }) => {
+  const row = page.getByTestId('directive').filter({ hasText: 'maxconn 4096' }).first()
+  await row.getByRole('button', { name: 'Edit in code' }).click()
+  await expect(page.locator('.cm-line.cm-haro-target')).toContainText('maxconn 4096')
+  // Enter on a focused row, for another directive
+  const other = page.getByTestId('directive').filter({ hasText: 'daemon' }).first()
+  await other.locator('.dir-main').focus()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.cm-line.cm-haro-target')).toContainText('daemon')
+  await expect(page.locator('.cm-line.cm-haro-target')).toHaveCount(1)
+})
+
+test('cursor to visual: the row and section under the editor cursor are marked', async ({ page }) => {
+  // CodeMirror only renders the visible lines: go to the end of the file first.
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('Control+End')
+  await page.getByTestId('code-editor').locator('.cm-line', { hasText: 'stats uri' }).click()
+  const cur = page.locator('.row.current')
+  await expect(cur).toHaveCount(1)
+  await expect(cur).toContainText('/stats')
+  await expect(cur).toHaveAttribute('aria-current', 'location')
+  await expect(page.locator('.sec.current')).toHaveCount(1)
+  await expect(page.locator('.sec.current')).toContainText('stats')
+  // moving the cursor moves the mark
+  await page.keyboard.press('ArrowUp')
+  await expect(page.locator('.row.current')).toHaveCount(1)
+  await expect(page.locator('.row.current')).not.toContainText('/stats')
+  // the visual view scrolls to a row that was out of view (a line near the top of the file)
+  await page.getByTestId('code-editor').locator('.cm-line', { hasText: 'maxconn 4096' }).click()
+  await expect(page.locator('.row.current')).toContainText('maxconn 4096')
+  await expect(page.locator('.row.current')).toBeInViewport()
+})
+
+test('editing in visual and code changes the text minimally', async ({ page }) => {
+  // 1) change a directive (click the row, type in the editor)
+  await editDirectiveInCode(page, 'maxconn 4096', 'maxconn 8192')
   // 2) add a server
   await page.getByLabel('Add directive to backend web_servers').fill('server web3 10.0.0.13:8080 check')
   await page.getByLabel('Add directive to backend web_servers').press('Enter')
@@ -69,7 +153,6 @@ test('editing in visual mode changes the text minimally', async ({ page }) => {
   await page.getByRole('dialog').getByRole('button', { name: 'OK', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Rename backend api_v2' })).toBeVisible()
 
-  await page.getByRole('tab', { name: 'Code' }).click()
   await expect(page.locator('.cm-content')).toContainText('maxconn 8192')
   const text = await fullText(page)
   const expected = original.split('\n')
@@ -80,10 +163,7 @@ test('editing in visual mode changes the text minimally', async ({ page }) => {
 })
 
 test('undo and redo from the buttons and with Ctrl+Z', async ({ page }) => {
-  await page.getByTestId('directive').filter({ hasText: 'maxconn 4096' }).first().locator('.dir-main').click()
-  await page.getByLabel('Edit directive').fill('maxconn 1')
-  await page.getByLabel('Edit directive').press('Enter')
-  await expect(page.getByTestId('directive').filter({ hasText: 'maxconn 1' })).toHaveCount(1)
+  await editDirectiveInCode(page, 'maxconn 4096', 'maxconn 1')
   await page.getByRole('button', { name: 'Undo' }).click()
   await expect(page.getByTestId('directive').filter({ hasText: 'maxconn 4096' })).toHaveCount(1)
   await page.getByRole('button', { name: 'Redo' }).click()
@@ -115,7 +195,8 @@ test('language: switching to Spanish changes the interface and re-analyzes with 
   await dialog.getByRole('button', { name: 'Cerrar', exact: true }).first().click()
   // Interface...
   await expect(page.getByRole('button', { name: 'Exportar' })).toBeVisible()
-  await expect(page.getByRole('tab', { name: 'Código' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Editar' })).toBeVisible()
+  await expect(page.getByRole('tab', { name: 'Mapa' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Export', exact: true })).toHaveCount(0)
   // ...and the texts produced by the core (explanations, detector messages, knowledge).
   await expect(maxconn).toContainText('Máximo de conexiones simultáneas')

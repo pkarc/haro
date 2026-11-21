@@ -5,7 +5,7 @@ import { useT } from '../i18n/react'
 import { useApp } from '../store'
 import { lineKey, SEVERITY_KEY, type AnalysisIndex } from '../store/selectors'
 import { DirectiveRow } from './DirectiveRow'
-import { opAddDirective, opMoveDirective, opMoveSection, opRemoveDirective, opRemoveSection, opRenameSection, opUpdateDirective, sectionKey } from './ops'
+import { opAddDirective, opMoveDirective, opMoveSection, opRemoveDirective, opRemoveSection, opRenameSection, sectionKey } from './ops'
 
 interface Props {
   section: Section
@@ -16,14 +16,18 @@ interface Props {
   knowledge: Knowledge
   showFile: boolean
   fileLabel: string
+  /** The editor cursor is inside this section. */
+  current: boolean
+  /** Cursor line when it is in this section's file, to mark the matching row. */
+  cursorLine: number | null
 }
 
-export function SectionCard({ section: s, index: si, total, analysis, idx, knowledge, showFile, fileLabel }: Props) {
+export function SectionCard({ section: s, index: si, total, analysis, idx, knowledge, showFile, fileLabel, current, cursorLine }: Props) {
   const t = useT()
   const applyOps = useApp(a => a.applyOps)
   const collapsed = useApp(a => !!a.ui.collapsed[sectionKey(s)])
   const toggle = useApp(a => a.toggleCollapsed)
-  const [editing, setEditing] = useState<number | null>(null)
+  const revealInCode = useApp(a => a.revealInCode)
   const [adding, setAdding] = useState('')
 
   const info = knowledge.sections[s.type]
@@ -42,17 +46,9 @@ export function SectionCard({ section: s, index: si, total, analysis, idx, knowl
   const remove = async () => {
     if (await confirmBox(t('section.removeConfirm', { type: s.type, name: s.name ? ` “${s.name}”` : '', n: nDirs }), t('common.delete'), true)) await applyOps([opRemoveSection(si)])
   }
-  const save = async (li: number, text: string) => {
-    const trimmed = text.trim()
-    const cur = s.lines[li]?.text ?? ''
-    if (trimmed === cur) { setEditing(null); return }
-    const ok = await applyOps([trimmed === '' ? opRemoveDirective(si, li) : opUpdateDirective(si, li, trimmed)])
-    if (ok) setEditing(null)
-  }
-
   return (
     <article
-      className={`sec ${collapsed ? 'collapsed' : ''} ${headIssues.some(i => i.severity === 'error') ? 'has-error' : ''}`}
+      className={`sec ${collapsed ? 'collapsed' : ''} ${current ? 'current' : ''} ${headIssues.some(i => i.severity === 'error') ? 'has-error' : ''}`}
       style={{ '--c': info?.color } as React.CSSProperties}
       data-testid="section" data-section={si} data-file={s.file} data-line={s.line}
     >
@@ -88,12 +84,10 @@ export function SectionCard({ section: s, index: si, total, analysis, idx, knowl
               explanation={idx.explanations.get(lineKey(l.file, l.line))}
               issues={idx.issues.get(lineKey(l.file, l.line)) ?? []}
               categories={knowledge.categories}
-              editing={editing === li}
+              current={cursorLine !== null && l.line === cursorLine}
               canUp={n > 0}
               canDown={n < items.length - 1}
-              onEdit={() => setEditing(li)}
-              onCancel={() => setEditing(null)}
-              onSave={t => save(li, t)}
+              onReveal={() => revealInCode(l.file, l.line)}
               onMove={d => applyOps([opMoveDirective(si, li, d)])}
               onRemove={() => applyOps([opRemoveDirective(si, li)])}
             />

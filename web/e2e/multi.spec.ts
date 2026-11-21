@@ -1,28 +1,18 @@
 import { expect, test } from '@playwright/test'
+import { editDirectiveInCode as editDirective } from './helpers'
 
 const BASE = 'http://127.0.0.1:7472'
-
-// Edits the given directive (in visual mode).
-async function editDirective(page: import('@playwright/test').Page, from: string, to: string) {
-  const row = page.getByTestId('directive').filter({ hasText: from }).first()
-  await row.locator('.dir-main').click()
-  await page.getByLabel('Edit directive').fill(to)
-  await page.getByLabel('Edit directive').press('Enter')
-  await expect(page.getByTestId('directive').filter({ hasText: to }).first()).toBeVisible()
-}
 
 test.describe.configure({ mode: 'serial' })
 
 test('several files: tabs, edit and save', async ({ page, request }) => {
   await page.goto(BASE + '/')
   await expect(page.getByTestId('section').first()).toBeVisible()
-  await page.getByRole('tab', { name: 'Code' }).click()
   await expect(page.getByRole('tab', { name: /10-global\.cfg/ })).toBeVisible()
   await expect(page.getByRole('tab', { name: /20-web\.cfg/ })).toBeVisible()
   await expect(page.getByRole('tab', { name: /30-api\.cfg/ })).toBeVisible()
   await page.getByRole('tab', { name: /20-web\.cfg/ }).click()
   await expect(page.locator('.cm-content')).toContainText('frontend web')
-  await page.getByRole('tab', { name: 'Visual' }).click()
 
   await editDirective(page, 'maxconn 4096', 'maxconn 2048')
   await page.getByTestId('save-button').click()
