@@ -100,6 +100,45 @@ func (a *anthropicStreamer) Stream(ctx context.Context, system string, msgs []co
 	return res, nil
 }
 
+// completer is an optional capability of a streamer: one non-streaming call
+// with a small output limit and no thinking (used by ProposeDirectives).
+type completer interface {
+	Complete(ctx context.Context, system, user string, maxTokens int64) (string, assistResult, error)
+}
+
+func (a *anthropicStreamer) Complete(ctx context.Context, system, user string, maxTokens int64) (string, assistResult, error) {
+	msg, err := a.client.Messages.New(ctx, anthropic.MessageNewParams{
+		Model:     anthropic.Model(a.model),
+		MaxTokens: maxTokens,
+		System:    []anthropic.TextBlockParam{{Text: system, CacheControl: anthropic.NewCacheControlEphemeralParam()}},
+		Messages:  []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock(user))},
+	})
+	if err != nil {
+		return "", assistResult{}, assistError(err)
+	}
+	var text strings.Builder
+	for _, b := range msg.Content {
+		if b.Type == "text" {
+			text.WriteString(b.Text)
+		}
+	}
+	return text.String(), assistResult{StopReason: string(msg.StopReason), InputTokens: msg.Usage.InputTokens, OutputTokens: msg.Usage.OutputTokens}, nil
+}
+
+// complete runs a single non-streaming call on any streamer: natively if it
+// implements completer, otherwise accumulating the stream (tests, fakes).
+func complete(ctx context.Context, st streamer, system, user string, maxTokens int64) (string, assistResult, error) {
+	if c, ok := st.(completer); ok {
+		return c.Complete(ctx, system, user, maxTokens)
+	}
+	var text strings.Builder
+	res, err := st.Stream(ctx, system, []core.AssistMessage{{Role: "user", Content: user}}, func(t string) error {
+		text.WriteString(t)
+		return nil
+	})
+	return text.String(), res, err
+}
+
 // assistError translates SDK errors into useful messages for the user.
 func assistError(err error) error {
 	var apierr *anthropic.Error

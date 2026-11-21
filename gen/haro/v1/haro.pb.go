@@ -3322,6 +3322,222 @@ func (x *AssistDone) GetOutputTokens() int32 {
 	return 0
 }
 
+type ProposeDirectivesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Files         []*SourceFile          `protobuf:"bytes,1,rep,name=files,proto3" json:"files,omitempty"`
+	Section       int32                  `protobuf:"varint,2,opt,name=section,proto3" json:"section,omitempty"`        // index in the unified view of sections (same as the edit ops)
+	Instruction   string                 `protobuf:"bytes,3,opt,name=instruction,proto3" json:"instruction,omitempty"` // natural-language description, required
+	Lang          string                 `protobuf:"bytes,4,opt,name=lang,proto3" json:"lang,omitempty"`               // "es" | "en"; empty = English
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProposeDirectivesRequest) Reset() {
+	*x = ProposeDirectivesRequest{}
+	mi := &file_haro_v1_haro_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProposeDirectivesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProposeDirectivesRequest) ProtoMessage() {}
+
+func (x *ProposeDirectivesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_haro_v1_haro_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProposeDirectivesRequest.ProtoReflect.Descriptor instead.
+func (*ProposeDirectivesRequest) Descriptor() ([]byte, []int) {
+	return file_haro_v1_haro_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *ProposeDirectivesRequest) GetFiles() []*SourceFile {
+	if x != nil {
+		return x.Files
+	}
+	return nil
+}
+
+func (x *ProposeDirectivesRequest) GetSection() int32 {
+	if x != nil {
+		return x.Section
+	}
+	return 0
+}
+
+func (x *ProposeDirectivesRequest) GetInstruction() string {
+	if x != nil {
+		return x.Instruction
+	}
+	return ""
+}
+
+func (x *ProposeDirectivesRequest) GetLang() string {
+	if x != nil {
+		return x.Lang
+	}
+	return ""
+}
+
+type ProposedDirective struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Text        string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`               // one directive line, no indentation, ready for add_directive
+	Explanation string                 `protobuf:"bytes,2,opt,name=explanation,proto3" json:"explanation,omitempty"` // short, in the requested language, minimal markdown
+	// NEW problems the directive introduces in the section (detector run after
+	// applying it in memory on the unmodified section).
+	IssuesAfter []*Issue `protobuf:"bytes,3,rep,name=issues_after,json=issuesAfter,proto3" json:"issues_after,omitempty"`
+	Known       bool     `protobuf:"varint,4,opt,name=known,proto3" json:"known,omitempty"` // the keyword exists in the knowledge base
+	// Suggested insertion position (line index within the section, as the `at`
+	// of add_directive), relative to the unmodified section; -1 = at the end.
+	At            int32 `protobuf:"varint,5,opt,name=at,proto3" json:"at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProposedDirective) Reset() {
+	*x = ProposedDirective{}
+	mi := &file_haro_v1_haro_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProposedDirective) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProposedDirective) ProtoMessage() {}
+
+func (x *ProposedDirective) ProtoReflect() protoreflect.Message {
+	mi := &file_haro_v1_haro_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProposedDirective.ProtoReflect.Descriptor instead.
+func (*ProposedDirective) Descriptor() ([]byte, []int) {
+	return file_haro_v1_haro_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *ProposedDirective) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *ProposedDirective) GetExplanation() string {
+	if x != nil {
+		return x.Explanation
+	}
+	return ""
+}
+
+func (x *ProposedDirective) GetIssuesAfter() []*Issue {
+	if x != nil {
+		return x.IssuesAfter
+	}
+	return nil
+}
+
+func (x *ProposedDirective) GetKnown() bool {
+	if x != nil {
+		return x.Known
+	}
+	return false
+}
+
+func (x *ProposedDirective) GetAt() int32 {
+	if x != nil {
+		return x.At
+	}
+	return 0
+}
+
+type ProposeDirectivesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Directives    []*ProposedDirective   `protobuf:"bytes,1,rep,name=directives,proto3" json:"directives,omitempty"` // empty if there is nothing valid to propose
+	Note          string                 `protobuf:"bytes,2,opt,name=note,proto3" json:"note,omitempty"`             // model warning, ambiguity or discarded items; optional
+	InputTokens   int32                  `protobuf:"varint,3,opt,name=input_tokens,json=inputTokens,proto3" json:"input_tokens,omitempty"`
+	OutputTokens  int32                  `protobuf:"varint,4,opt,name=output_tokens,json=outputTokens,proto3" json:"output_tokens,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ProposeDirectivesResponse) Reset() {
+	*x = ProposeDirectivesResponse{}
+	mi := &file_haro_v1_haro_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ProposeDirectivesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ProposeDirectivesResponse) ProtoMessage() {}
+
+func (x *ProposeDirectivesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_haro_v1_haro_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ProposeDirectivesResponse.ProtoReflect.Descriptor instead.
+func (*ProposeDirectivesResponse) Descriptor() ([]byte, []int) {
+	return file_haro_v1_haro_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *ProposeDirectivesResponse) GetDirectives() []*ProposedDirective {
+	if x != nil {
+		return x.Directives
+	}
+	return nil
+}
+
+func (x *ProposeDirectivesResponse) GetNote() string {
+	if x != nil {
+		return x.Note
+	}
+	return ""
+}
+
+func (x *ProposeDirectivesResponse) GetInputTokens() int32 {
+	if x != nil {
+		return x.InputTokens
+	}
+	return 0
+}
+
+func (x *ProposeDirectivesResponse) GetOutputTokens() int32 {
+	if x != nil {
+		return x.OutputTokens
+	}
+	return 0
+}
+
 var File_haro_v1_haro_proto protoreflect.FileDescriptor
 
 const file_haro_v1_haro_proto_rawDesc = "" +
@@ -3602,6 +3818,24 @@ const file_haro_v1_haro_proto_rawDesc = "" +
 	"stopReason\x12)\n" +
 	"\x10refusal_category\x18\x02 \x01(\tR\x0frefusalCategory\x12!\n" +
 	"\finput_tokens\x18\x03 \x01(\x05R\vinputTokens\x12#\n" +
+	"\routput_tokens\x18\x04 \x01(\x05R\foutputTokens\"\x95\x01\n" +
+	"\x18ProposeDirectivesRequest\x12)\n" +
+	"\x05files\x18\x01 \x03(\v2\x13.haro.v1.SourceFileR\x05files\x12\x18\n" +
+	"\asection\x18\x02 \x01(\x05R\asection\x12 \n" +
+	"\vinstruction\x18\x03 \x01(\tR\vinstruction\x12\x12\n" +
+	"\x04lang\x18\x04 \x01(\tR\x04lang\"\xa2\x01\n" +
+	"\x11ProposedDirective\x12\x12\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\x12 \n" +
+	"\vexplanation\x18\x02 \x01(\tR\vexplanation\x121\n" +
+	"\fissues_after\x18\x03 \x03(\v2\x0e.haro.v1.IssueR\vissuesAfter\x12\x14\n" +
+	"\x05known\x18\x04 \x01(\bR\x05known\x12\x0e\n" +
+	"\x02at\x18\x05 \x01(\x05R\x02at\"\xb3\x01\n" +
+	"\x19ProposeDirectivesResponse\x12:\n" +
+	"\n" +
+	"directives\x18\x01 \x03(\v2\x1a.haro.v1.ProposedDirectiveR\n" +
+	"directives\x12\x12\n" +
+	"\x04note\x18\x02 \x01(\tR\x04note\x12!\n" +
+	"\finput_tokens\x18\x03 \x01(\x05R\vinputTokens\x12#\n" +
 	"\routput_tokens\x18\x04 \x01(\x05R\foutputTokens2\xcc\x03\n" +
 	"\vCoreService\x125\n" +
 	"\aAnalyze\x12\x17.haro.v1.AnalyzeRequest\x1a\x11.haro.v1.Analysis\x123\n" +
@@ -3610,9 +3844,10 @@ const file_haro_v1_haro_proto_rawDesc = "" +
 	"\fGetKnowledge\x12\x1c.haro.v1.GetKnowledgeRequest\x1a\x12.haro.v1.Knowledge\x124\n" +
 	"\x05Check\x12\x15.haro.v1.CheckRequest\x1a\x14.haro.v1.CheckResult\x12N\n" +
 	"\rListTemplates\x12\x1d.haro.v1.ListTemplatesRequest\x1a\x1e.haro.v1.ListTemplatesResponse\x12Q\n" +
-	"\x0eRenderTemplate\x12\x1e.haro.v1.RenderTemplateRequest\x1a\x1f.haro.v1.RenderTemplateResponse2I\n" +
+	"\x0eRenderTemplate\x12\x1e.haro.v1.RenderTemplateRequest\x1a\x1f.haro.v1.RenderTemplateResponse2\xa5\x01\n" +
 	"\rAssistService\x128\n" +
-	"\x06Assist\x12\x16.haro.v1.AssistRequest\x1a\x14.haro.v1.AssistEvent0\x012\xdb\x01\n" +
+	"\x06Assist\x12\x16.haro.v1.AssistRequest\x1a\x14.haro.v1.AssistEvent0\x01\x12Z\n" +
+	"\x11ProposeDirectives\x12!.haro.v1.ProposeDirectivesRequest\x1a\".haro.v1.ProposeDirectivesResponse2\xdb\x01\n" +
 	"\rConfigService\x12I\n" +
 	"\x0fGetCapabilities\x12\x1f.haro.v1.GetCapabilitiesRequest\x1a\x15.haro.v1.Capabilities\x12;\n" +
 	"\tGetConfig\x12\x19.haro.v1.GetConfigRequest\x1a\x13.haro.v1.ConfigFile\x12B\n" +
@@ -3630,64 +3865,67 @@ func file_haro_v1_haro_proto_rawDescGZIP() []byte {
 	return file_haro_v1_haro_proto_rawDescData
 }
 
-var file_haro_v1_haro_proto_msgTypes = make([]protoimpl.MessageInfo, 55)
+var file_haro_v1_haro_proto_msgTypes = make([]protoimpl.MessageInfo, 58)
 var file_haro_v1_haro_proto_goTypes = []any{
-	(*AnalyzeRequest)(nil),         // 0: haro.v1.AnalyzeRequest
-	(*SourceFile)(nil),             // 1: haro.v1.SourceFile
-	(*Analysis)(nil),               // 2: haro.v1.Analysis
-	(*Doc)(nil),                    // 3: haro.v1.Doc
-	(*Section)(nil),                // 4: haro.v1.Section
-	(*Line)(nil),                   // 5: haro.v1.Line
-	(*Issue)(nil),                  // 6: haro.v1.Issue
-	(*Explanation)(nil),            // 7: haro.v1.Explanation
-	(*LineExplanation)(nil),        // 8: haro.v1.LineExplanation
-	(*Effective)(nil),              // 9: haro.v1.Effective
-	(*Topology)(nil),               // 10: haro.v1.Topology
-	(*Bind)(nil),                   // 11: haro.v1.Bind
-	(*ServerNode)(nil),             // 12: haro.v1.ServerNode
-	(*EntryNode)(nil),              // 13: haro.v1.EntryNode
-	(*BackendNode)(nil),            // 14: haro.v1.BackendNode
-	(*Edge)(nil),                   // 15: haro.v1.Edge
-	(*Op)(nil),                     // 16: haro.v1.Op
-	(*ApplyRequest)(nil),           // 17: haro.v1.ApplyRequest
-	(*FileChange)(nil),             // 18: haro.v1.FileChange
-	(*ApplyResponse)(nil),          // 19: haro.v1.ApplyResponse
-	(*GetKnowledgeRequest)(nil),    // 20: haro.v1.GetKnowledgeRequest
-	(*SectionInfo)(nil),            // 21: haro.v1.SectionInfo
-	(*DirectiveInfo)(nil),          // 22: haro.v1.DirectiveInfo
-	(*SectionTemplate)(nil),        // 23: haro.v1.SectionTemplate
-	(*Knowledge)(nil),              // 24: haro.v1.Knowledge
-	(*DiffRequest)(nil),            // 25: haro.v1.DiffRequest
-	(*DiffOp)(nil),                 // 26: haro.v1.DiffOp
-	(*DiffResponse)(nil),           // 27: haro.v1.DiffResponse
-	(*CheckRequest)(nil),           // 28: haro.v1.CheckRequest
-	(*CheckResult)(nil),            // 29: haro.v1.CheckResult
-	(*GetCapabilitiesRequest)(nil), // 30: haro.v1.GetCapabilitiesRequest
-	(*Capabilities)(nil),           // 31: haro.v1.Capabilities
-	(*GetConfigRequest)(nil),       // 32: haro.v1.GetConfigRequest
-	(*ConfigFile)(nil),             // 33: haro.v1.ConfigFile
-	(*PutConfigRequest)(nil),       // 34: haro.v1.PutConfigRequest
-	(*SavedFile)(nil),              // 35: haro.v1.SavedFile
-	(*PutConfigResponse)(nil),      // 36: haro.v1.PutConfigResponse
-	(*ListTemplatesRequest)(nil),   // 37: haro.v1.ListTemplatesRequest
-	(*TemplateParam)(nil),          // 38: haro.v1.TemplateParam
-	(*TechTemplate)(nil),           // 39: haro.v1.TechTemplate
-	(*ListTemplatesResponse)(nil),  // 40: haro.v1.ListTemplatesResponse
-	(*RenderTemplateRequest)(nil),  // 41: haro.v1.RenderTemplateRequest
-	(*RenderTemplateResponse)(nil), // 42: haro.v1.RenderTemplateResponse
-	(*AssistMessage)(nil),          // 43: haro.v1.AssistMessage
-	(*AssistRequest)(nil),          // 44: haro.v1.AssistRequest
-	(*AssistEvent)(nil),            // 45: haro.v1.AssistEvent
-	(*Proposal)(nil),               // 46: haro.v1.Proposal
-	(*AssistDone)(nil),             // 47: haro.v1.AssistDone
-	nil,                            // 48: haro.v1.Effective.TimeoutsEntry
-	nil,                            // 49: haro.v1.Knowledge.CategoriesEntry
-	nil,                            // 50: haro.v1.Knowledge.SectionsEntry
-	nil,                            // 51: haro.v1.Knowledge.DirectivesEntry
-	nil,                            // 52: haro.v1.Knowledge.RulesEntry
-	nil,                            // 53: haro.v1.Knowledge.TemplatesEntry
-	nil,                            // 54: haro.v1.RenderTemplateRequest.ParamsEntry
-	(*structpb.Value)(nil),         // 55: google.protobuf.Value
+	(*AnalyzeRequest)(nil),            // 0: haro.v1.AnalyzeRequest
+	(*SourceFile)(nil),                // 1: haro.v1.SourceFile
+	(*Analysis)(nil),                  // 2: haro.v1.Analysis
+	(*Doc)(nil),                       // 3: haro.v1.Doc
+	(*Section)(nil),                   // 4: haro.v1.Section
+	(*Line)(nil),                      // 5: haro.v1.Line
+	(*Issue)(nil),                     // 6: haro.v1.Issue
+	(*Explanation)(nil),               // 7: haro.v1.Explanation
+	(*LineExplanation)(nil),           // 8: haro.v1.LineExplanation
+	(*Effective)(nil),                 // 9: haro.v1.Effective
+	(*Topology)(nil),                  // 10: haro.v1.Topology
+	(*Bind)(nil),                      // 11: haro.v1.Bind
+	(*ServerNode)(nil),                // 12: haro.v1.ServerNode
+	(*EntryNode)(nil),                 // 13: haro.v1.EntryNode
+	(*BackendNode)(nil),               // 14: haro.v1.BackendNode
+	(*Edge)(nil),                      // 15: haro.v1.Edge
+	(*Op)(nil),                        // 16: haro.v1.Op
+	(*ApplyRequest)(nil),              // 17: haro.v1.ApplyRequest
+	(*FileChange)(nil),                // 18: haro.v1.FileChange
+	(*ApplyResponse)(nil),             // 19: haro.v1.ApplyResponse
+	(*GetKnowledgeRequest)(nil),       // 20: haro.v1.GetKnowledgeRequest
+	(*SectionInfo)(nil),               // 21: haro.v1.SectionInfo
+	(*DirectiveInfo)(nil),             // 22: haro.v1.DirectiveInfo
+	(*SectionTemplate)(nil),           // 23: haro.v1.SectionTemplate
+	(*Knowledge)(nil),                 // 24: haro.v1.Knowledge
+	(*DiffRequest)(nil),               // 25: haro.v1.DiffRequest
+	(*DiffOp)(nil),                    // 26: haro.v1.DiffOp
+	(*DiffResponse)(nil),              // 27: haro.v1.DiffResponse
+	(*CheckRequest)(nil),              // 28: haro.v1.CheckRequest
+	(*CheckResult)(nil),               // 29: haro.v1.CheckResult
+	(*GetCapabilitiesRequest)(nil),    // 30: haro.v1.GetCapabilitiesRequest
+	(*Capabilities)(nil),              // 31: haro.v1.Capabilities
+	(*GetConfigRequest)(nil),          // 32: haro.v1.GetConfigRequest
+	(*ConfigFile)(nil),                // 33: haro.v1.ConfigFile
+	(*PutConfigRequest)(nil),          // 34: haro.v1.PutConfigRequest
+	(*SavedFile)(nil),                 // 35: haro.v1.SavedFile
+	(*PutConfigResponse)(nil),         // 36: haro.v1.PutConfigResponse
+	(*ListTemplatesRequest)(nil),      // 37: haro.v1.ListTemplatesRequest
+	(*TemplateParam)(nil),             // 38: haro.v1.TemplateParam
+	(*TechTemplate)(nil),              // 39: haro.v1.TechTemplate
+	(*ListTemplatesResponse)(nil),     // 40: haro.v1.ListTemplatesResponse
+	(*RenderTemplateRequest)(nil),     // 41: haro.v1.RenderTemplateRequest
+	(*RenderTemplateResponse)(nil),    // 42: haro.v1.RenderTemplateResponse
+	(*AssistMessage)(nil),             // 43: haro.v1.AssistMessage
+	(*AssistRequest)(nil),             // 44: haro.v1.AssistRequest
+	(*AssistEvent)(nil),               // 45: haro.v1.AssistEvent
+	(*Proposal)(nil),                  // 46: haro.v1.Proposal
+	(*AssistDone)(nil),                // 47: haro.v1.AssistDone
+	(*ProposeDirectivesRequest)(nil),  // 48: haro.v1.ProposeDirectivesRequest
+	(*ProposedDirective)(nil),         // 49: haro.v1.ProposedDirective
+	(*ProposeDirectivesResponse)(nil), // 50: haro.v1.ProposeDirectivesResponse
+	nil,                               // 51: haro.v1.Effective.TimeoutsEntry
+	nil,                               // 52: haro.v1.Knowledge.CategoriesEntry
+	nil,                               // 53: haro.v1.Knowledge.SectionsEntry
+	nil,                               // 54: haro.v1.Knowledge.DirectivesEntry
+	nil,                               // 55: haro.v1.Knowledge.RulesEntry
+	nil,                               // 56: haro.v1.Knowledge.TemplatesEntry
+	nil,                               // 57: haro.v1.RenderTemplateRequest.ParamsEntry
+	(*structpb.Value)(nil),            // 58: google.protobuf.Value
 }
 var file_haro_v1_haro_proto_depIdxs = []int32{
 	1,  // 0: haro.v1.AnalyzeRequest.files:type_name -> haro.v1.SourceFile
@@ -3700,7 +3938,7 @@ var file_haro_v1_haro_proto_depIdxs = []int32{
 	4,  // 7: haro.v1.Doc.sections:type_name -> haro.v1.Section
 	5,  // 8: haro.v1.Section.lines:type_name -> haro.v1.Line
 	7,  // 9: haro.v1.LineExplanation.explanation:type_name -> haro.v1.Explanation
-	48, // 10: haro.v1.Effective.timeouts:type_name -> haro.v1.Effective.TimeoutsEntry
+	51, // 10: haro.v1.Effective.timeouts:type_name -> haro.v1.Effective.TimeoutsEntry
 	13, // 11: haro.v1.Topology.entries:type_name -> haro.v1.EntryNode
 	14, // 12: haro.v1.Topology.backends:type_name -> haro.v1.BackendNode
 	15, // 13: haro.v1.Topology.edges:type_name -> haro.v1.Edge
@@ -3711,11 +3949,11 @@ var file_haro_v1_haro_proto_depIdxs = []int32{
 	16, // 18: haro.v1.ApplyRequest.ops:type_name -> haro.v1.Op
 	1,  // 19: haro.v1.ApplyResponse.files:type_name -> haro.v1.SourceFile
 	18, // 20: haro.v1.ApplyResponse.changes:type_name -> haro.v1.FileChange
-	49, // 21: haro.v1.Knowledge.categories:type_name -> haro.v1.Knowledge.CategoriesEntry
-	50, // 22: haro.v1.Knowledge.sections:type_name -> haro.v1.Knowledge.SectionsEntry
-	51, // 23: haro.v1.Knowledge.directives:type_name -> haro.v1.Knowledge.DirectivesEntry
-	52, // 24: haro.v1.Knowledge.rules:type_name -> haro.v1.Knowledge.RulesEntry
-	53, // 25: haro.v1.Knowledge.templates:type_name -> haro.v1.Knowledge.TemplatesEntry
+	52, // 21: haro.v1.Knowledge.categories:type_name -> haro.v1.Knowledge.CategoriesEntry
+	53, // 22: haro.v1.Knowledge.sections:type_name -> haro.v1.Knowledge.SectionsEntry
+	54, // 23: haro.v1.Knowledge.directives:type_name -> haro.v1.Knowledge.DirectivesEntry
+	55, // 24: haro.v1.Knowledge.rules:type_name -> haro.v1.Knowledge.RulesEntry
+	56, // 25: haro.v1.Knowledge.templates:type_name -> haro.v1.Knowledge.TemplatesEntry
 	26, // 26: haro.v1.DiffResponse.ops:type_name -> haro.v1.DiffOp
 	1,  // 27: haro.v1.CheckRequest.files:type_name -> haro.v1.SourceFile
 	1,  // 28: haro.v1.ConfigFile.files:type_name -> haro.v1.SourceFile
@@ -3723,10 +3961,10 @@ var file_haro_v1_haro_proto_depIdxs = []int32{
 	29, // 30: haro.v1.PutConfigResponse.check:type_name -> haro.v1.CheckResult
 	35, // 31: haro.v1.PutConfigResponse.files:type_name -> haro.v1.SavedFile
 	6,  // 32: haro.v1.PutConfigResponse.issue:type_name -> haro.v1.Issue
-	55, // 33: haro.v1.TemplateParam.default_value:type_name -> google.protobuf.Value
+	58, // 33: haro.v1.TemplateParam.default_value:type_name -> google.protobuf.Value
 	38, // 34: haro.v1.TechTemplate.params:type_name -> haro.v1.TemplateParam
 	39, // 35: haro.v1.ListTemplatesResponse.templates:type_name -> haro.v1.TechTemplate
-	54, // 36: haro.v1.RenderTemplateRequest.params:type_name -> haro.v1.RenderTemplateRequest.ParamsEntry
+	57, // 36: haro.v1.RenderTemplateRequest.params:type_name -> haro.v1.RenderTemplateRequest.ParamsEntry
 	1,  // 37: haro.v1.RenderTemplateRequest.files:type_name -> haro.v1.SourceFile
 	16, // 38: haro.v1.RenderTemplateResponse.ops:type_name -> haro.v1.Op
 	1,  // 39: haro.v1.RenderTemplateResponse.files:type_name -> haro.v1.SourceFile
@@ -3737,37 +3975,42 @@ var file_haro_v1_haro_proto_depIdxs = []int32{
 	47, // 44: haro.v1.AssistEvent.done:type_name -> haro.v1.AssistDone
 	18, // 45: haro.v1.Proposal.changes:type_name -> haro.v1.FileChange
 	6,  // 46: haro.v1.Proposal.issues_after:type_name -> haro.v1.Issue
-	21, // 47: haro.v1.Knowledge.SectionsEntry.value:type_name -> haro.v1.SectionInfo
-	22, // 48: haro.v1.Knowledge.DirectivesEntry.value:type_name -> haro.v1.DirectiveInfo
-	23, // 49: haro.v1.Knowledge.TemplatesEntry.value:type_name -> haro.v1.SectionTemplate
-	55, // 50: haro.v1.RenderTemplateRequest.ParamsEntry.value:type_name -> google.protobuf.Value
-	0,  // 51: haro.v1.CoreService.Analyze:input_type -> haro.v1.AnalyzeRequest
-	25, // 52: haro.v1.CoreService.Diff:input_type -> haro.v1.DiffRequest
-	17, // 53: haro.v1.CoreService.Apply:input_type -> haro.v1.ApplyRequest
-	20, // 54: haro.v1.CoreService.GetKnowledge:input_type -> haro.v1.GetKnowledgeRequest
-	28, // 55: haro.v1.CoreService.Check:input_type -> haro.v1.CheckRequest
-	37, // 56: haro.v1.CoreService.ListTemplates:input_type -> haro.v1.ListTemplatesRequest
-	41, // 57: haro.v1.CoreService.RenderTemplate:input_type -> haro.v1.RenderTemplateRequest
-	44, // 58: haro.v1.AssistService.Assist:input_type -> haro.v1.AssistRequest
-	30, // 59: haro.v1.ConfigService.GetCapabilities:input_type -> haro.v1.GetCapabilitiesRequest
-	32, // 60: haro.v1.ConfigService.GetConfig:input_type -> haro.v1.GetConfigRequest
-	34, // 61: haro.v1.ConfigService.PutConfig:input_type -> haro.v1.PutConfigRequest
-	2,  // 62: haro.v1.CoreService.Analyze:output_type -> haro.v1.Analysis
-	27, // 63: haro.v1.CoreService.Diff:output_type -> haro.v1.DiffResponse
-	19, // 64: haro.v1.CoreService.Apply:output_type -> haro.v1.ApplyResponse
-	24, // 65: haro.v1.CoreService.GetKnowledge:output_type -> haro.v1.Knowledge
-	29, // 66: haro.v1.CoreService.Check:output_type -> haro.v1.CheckResult
-	40, // 67: haro.v1.CoreService.ListTemplates:output_type -> haro.v1.ListTemplatesResponse
-	42, // 68: haro.v1.CoreService.RenderTemplate:output_type -> haro.v1.RenderTemplateResponse
-	45, // 69: haro.v1.AssistService.Assist:output_type -> haro.v1.AssistEvent
-	31, // 70: haro.v1.ConfigService.GetCapabilities:output_type -> haro.v1.Capabilities
-	33, // 71: haro.v1.ConfigService.GetConfig:output_type -> haro.v1.ConfigFile
-	36, // 72: haro.v1.ConfigService.PutConfig:output_type -> haro.v1.PutConfigResponse
-	62, // [62:73] is the sub-list for method output_type
-	51, // [51:62] is the sub-list for method input_type
-	51, // [51:51] is the sub-list for extension type_name
-	51, // [51:51] is the sub-list for extension extendee
-	0,  // [0:51] is the sub-list for field type_name
+	1,  // 47: haro.v1.ProposeDirectivesRequest.files:type_name -> haro.v1.SourceFile
+	6,  // 48: haro.v1.ProposedDirective.issues_after:type_name -> haro.v1.Issue
+	49, // 49: haro.v1.ProposeDirectivesResponse.directives:type_name -> haro.v1.ProposedDirective
+	21, // 50: haro.v1.Knowledge.SectionsEntry.value:type_name -> haro.v1.SectionInfo
+	22, // 51: haro.v1.Knowledge.DirectivesEntry.value:type_name -> haro.v1.DirectiveInfo
+	23, // 52: haro.v1.Knowledge.TemplatesEntry.value:type_name -> haro.v1.SectionTemplate
+	58, // 53: haro.v1.RenderTemplateRequest.ParamsEntry.value:type_name -> google.protobuf.Value
+	0,  // 54: haro.v1.CoreService.Analyze:input_type -> haro.v1.AnalyzeRequest
+	25, // 55: haro.v1.CoreService.Diff:input_type -> haro.v1.DiffRequest
+	17, // 56: haro.v1.CoreService.Apply:input_type -> haro.v1.ApplyRequest
+	20, // 57: haro.v1.CoreService.GetKnowledge:input_type -> haro.v1.GetKnowledgeRequest
+	28, // 58: haro.v1.CoreService.Check:input_type -> haro.v1.CheckRequest
+	37, // 59: haro.v1.CoreService.ListTemplates:input_type -> haro.v1.ListTemplatesRequest
+	41, // 60: haro.v1.CoreService.RenderTemplate:input_type -> haro.v1.RenderTemplateRequest
+	44, // 61: haro.v1.AssistService.Assist:input_type -> haro.v1.AssistRequest
+	48, // 62: haro.v1.AssistService.ProposeDirectives:input_type -> haro.v1.ProposeDirectivesRequest
+	30, // 63: haro.v1.ConfigService.GetCapabilities:input_type -> haro.v1.GetCapabilitiesRequest
+	32, // 64: haro.v1.ConfigService.GetConfig:input_type -> haro.v1.GetConfigRequest
+	34, // 65: haro.v1.ConfigService.PutConfig:input_type -> haro.v1.PutConfigRequest
+	2,  // 66: haro.v1.CoreService.Analyze:output_type -> haro.v1.Analysis
+	27, // 67: haro.v1.CoreService.Diff:output_type -> haro.v1.DiffResponse
+	19, // 68: haro.v1.CoreService.Apply:output_type -> haro.v1.ApplyResponse
+	24, // 69: haro.v1.CoreService.GetKnowledge:output_type -> haro.v1.Knowledge
+	29, // 70: haro.v1.CoreService.Check:output_type -> haro.v1.CheckResult
+	40, // 71: haro.v1.CoreService.ListTemplates:output_type -> haro.v1.ListTemplatesResponse
+	42, // 72: haro.v1.CoreService.RenderTemplate:output_type -> haro.v1.RenderTemplateResponse
+	45, // 73: haro.v1.AssistService.Assist:output_type -> haro.v1.AssistEvent
+	50, // 74: haro.v1.AssistService.ProposeDirectives:output_type -> haro.v1.ProposeDirectivesResponse
+	31, // 75: haro.v1.ConfigService.GetCapabilities:output_type -> haro.v1.Capabilities
+	33, // 76: haro.v1.ConfigService.GetConfig:output_type -> haro.v1.ConfigFile
+	36, // 77: haro.v1.ConfigService.PutConfig:output_type -> haro.v1.PutConfigResponse
+	66, // [66:78] is the sub-list for method output_type
+	54, // [54:66] is the sub-list for method input_type
+	54, // [54:54] is the sub-list for extension type_name
+	54, // [54:54] is the sub-list for extension extendee
+	0,  // [0:54] is the sub-list for field type_name
 }
 
 func init() { file_haro_v1_haro_proto_init() }
@@ -3787,7 +4030,7 @@ func file_haro_v1_haro_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_haro_v1_haro_proto_rawDesc), len(file_haro_v1_haro_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   55,
+			NumMessages:   58,
 			NumExtensions: 0,
 			NumServices:   3,
 		},

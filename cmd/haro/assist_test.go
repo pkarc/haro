@@ -404,3 +404,59 @@ func TestFinishAssistCLIWriteValidatesAndBacksUp(t *testing.T) {
 		t.Errorf("refusal: %v", err)
 	}
 }
+
+// ---------- ProposeDirectives ----------
+
+func proposeReq(section int32, instruction string) *connect.Request[harov1.ProposeDirectivesRequest] {
+	return connect.NewRequest(&harov1.ProposeDirectivesRequest{
+		Files:   []*harov1.SourceFile{{Path: "haproxy.cfg", Text: assistCfgText}},
+		Section: section, Instruction: instruction, Lang: "en",
+	})
+}
+
+func TestProposeDirectivesRPC(t *testing.T) {
+	f := &fakeStreamer{reply: "```json\n{\"directives\":[{\"text\":\"timeout server 30s\",\"explanation\":\"**x**\"},{\"text\":\"mode http\"},{\"text\":\"default_backend ghost\"}],\"note\":\"hi\"}\n```", result: assistResult{InputTokens: 7, OutputTokens: 3}}
+	cl, _ := assistClient(t, &server{assist: f})
+	resp, err := cl.ProposeDirectives(context.Background(), proposeReq(1, "add a server timeout"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := resp.Msg
+	if len(m.Directives) != 3 || m.Directives[0].Text != "timeout server 30s" || !m.Directives[0].Known || m.Directives[0].At != -1 || m.Note == "" {
+		t.Fatalf("%+v", m)
+	}
+	if len(m.Directives[2].IssuesAfter) == 0 {
+		t.Error("default_backend ghost must report new issues")
+	}
+	if len(f.msgs) != 1 || !strings.Contains(f.msgs[0].Content, "<haro_context>") || !strings.HasSuffix(f.msgs[0].Content, "add a server timeout") || !strings.Contains(f.system, "STRICT") {
+		t.Errorf("request: %q / %q", f.system, f.msgs)
+	}
+}
+
+func TestProposeDirectivesRPCErrors(t *testing.T) {
+	cl, _ := assistClient(t, &server{}) // no --assistant
+	if _, err := cl.ProposeDirectives(context.Background(), proposeReq(0, "x")); connect.CodeOf(err) != connect.CodeUnimplemented {
+		t.Errorf("without --assistant must be Unimplemented: %v", err)
+	}
+	cl, _ = assistClient(t, &server{assist: &fakeStreamer{reply: "BAD output"}})
+	for name, req := range map[string]*connect.Request[harov1.ProposeDirectivesRequest]{
+		"bad section": proposeReq(9, "x"),
+		"negative":    proposeReq(-1, "x"),
+		"empty":       proposeReq(0, "   "),
+		"too long":    proposeReq(0, strings.Repeat("a", core.MaxProposeInstruction+1)),
+	} {
+		if _, err := cl.ProposeDirectives(context.Background(), req); connect.CodeOf(err) != connect.CodeInvalidArgument {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	// Unparseable output: not an error, no directives and a note.
+	resp, err := cl.ProposeDirectives(context.Background(), proposeReq(0, "x"))
+	if err != nil || len(resp.Msg.Directives) != 0 || resp.Msg.Note == "" {
+		t.Errorf("bad output: %v %+v", err, resp)
+	}
+	// A model failure is a readable error.
+	cl, _ = assistClient(t, &server{assist: &fakeStreamer{err: errors.New("credentials rejected")}})
+	if _, err := cl.ProposeDirectives(context.Background(), proposeReq(0, "x")); connect.CodeOf(err) != connect.CodeUnavailable || !strings.Contains(err.Error(), "credentials rejected") {
+		t.Errorf("model failure: %v", err)
+	}
+}

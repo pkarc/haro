@@ -40,6 +40,10 @@ service AssistService {
   // Chats about the configuration. The response is streamed: chunks of text,
   // and at the end the extracted configuration proposal and the closing event.
   rpc Assist(AssistRequest) returns (stream AssistEvent);
+  // Unary: turns a natural-language description into proposed directives for
+  // ONE section (reduced context: the section, its defaults and the names it
+  // can reference). Nothing is applied; the client applies them with add_directive.
+  rpc ProposeDirectives(ProposeDirectivesRequest) returns (ProposeDirectivesResponse);
 }
 
 service ConfigService {
@@ -411,6 +415,32 @@ message Proposal {
 message AssistDone {
   string stop_reason = 1;       // end_turn | max_tokens | refusal …
   string refusal_category = 2;  // si stop_reason == refusal
+  int32 input_tokens = 3;
+  int32 output_tokens = 4;
+}
+
+message ProposeDirectivesRequest {
+  repeated SourceFile files = 1;
+  int32 section = 2;      // index in the unified view of sections (same as the edit ops)
+  string instruction = 3; // natural-language description, required
+  string lang = 4;        // "es" | "en"; empty = English
+}
+
+message ProposedDirective {
+  string text = 1;        // one directive line, no indentation, ready for add_directive
+  string explanation = 2; // short, in the requested language, minimal markdown
+  // NEW problems the directive introduces in the section (detector run after
+  // applying it in memory on the unmodified section).
+  repeated Issue issues_after = 3;
+  bool known = 4;         // the keyword exists in the knowledge base
+  // Suggested insertion position (line index within the section, as the `at`
+  // of add_directive), relative to the unmodified section; -1 = at the end.
+  int32 at = 5;
+}
+
+message ProposeDirectivesResponse {
+  repeated ProposedDirective directives = 1; // empty if there is nothing valid to propose
+  string note = 2;                           // model warning, ambiguity or discarded items; optional
   int32 input_tokens = 3;
   int32 output_tokens = 4;
 }

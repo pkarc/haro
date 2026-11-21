@@ -64,6 +64,9 @@ const (
 	CoreServiceRenderTemplateProcedure = "/haro.v1.CoreService/RenderTemplate"
 	// AssistServiceAssistProcedure is the fully-qualified name of the AssistService's Assist RPC.
 	AssistServiceAssistProcedure = "/haro.v1.AssistService/Assist"
+	// AssistServiceProposeDirectivesProcedure is the fully-qualified name of the AssistService's
+	// ProposeDirectives RPC.
+	AssistServiceProposeDirectivesProcedure = "/haro.v1.AssistService/ProposeDirectives"
 	// ConfigServiceGetCapabilitiesProcedure is the fully-qualified name of the ConfigService's
 	// GetCapabilities RPC.
 	ConfigServiceGetCapabilitiesProcedure = "/haro.v1.ConfigService/GetCapabilities"
@@ -324,6 +327,10 @@ type AssistServiceClient interface {
 	// Chats about the configuration. The response is streamed: chunks of text,
 	// and at the end the extracted configuration proposal and the closing event.
 	Assist(context.Context, *connect.Request[v1.AssistRequest]) (*connect.ServerStreamForClient[v1.AssistEvent], error)
+	// Unary: turns a natural-language description into proposed directives for
+	// ONE section (reduced context: the section, its defaults and the names it
+	// can reference). Nothing is applied; the client applies them with add_directive.
+	ProposeDirectives(context.Context, *connect.Request[v1.ProposeDirectivesRequest]) (*connect.Response[v1.ProposeDirectivesResponse], error)
 }
 
 // NewAssistServiceClient constructs a client for the haro.v1.AssistService service. By default, it
@@ -343,12 +350,19 @@ func NewAssistServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(assistServiceMethods.ByName("Assist")),
 			connect.WithClientOptions(opts...),
 		),
+		proposeDirectives: connect.NewClient[v1.ProposeDirectivesRequest, v1.ProposeDirectivesResponse](
+			httpClient,
+			baseURL+AssistServiceProposeDirectivesProcedure,
+			connect.WithSchema(assistServiceMethods.ByName("ProposeDirectives")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // assistServiceClient implements AssistServiceClient.
 type assistServiceClient struct {
-	assist *connect.Client[v1.AssistRequest, v1.AssistEvent]
+	assist            *connect.Client[v1.AssistRequest, v1.AssistEvent]
+	proposeDirectives *connect.Client[v1.ProposeDirectivesRequest, v1.ProposeDirectivesResponse]
 }
 
 // Assist calls haro.v1.AssistService.Assist.
@@ -356,11 +370,20 @@ func (c *assistServiceClient) Assist(ctx context.Context, req *connect.Request[v
 	return c.assist.CallServerStream(ctx, req)
 }
 
+// ProposeDirectives calls haro.v1.AssistService.ProposeDirectives.
+func (c *assistServiceClient) ProposeDirectives(ctx context.Context, req *connect.Request[v1.ProposeDirectivesRequest]) (*connect.Response[v1.ProposeDirectivesResponse], error) {
+	return c.proposeDirectives.CallUnary(ctx, req)
+}
+
 // AssistServiceHandler is an implementation of the haro.v1.AssistService service.
 type AssistServiceHandler interface {
 	// Chats about the configuration. The response is streamed: chunks of text,
 	// and at the end the extracted configuration proposal and the closing event.
 	Assist(context.Context, *connect.Request[v1.AssistRequest], *connect.ServerStream[v1.AssistEvent]) error
+	// Unary: turns a natural-language description into proposed directives for
+	// ONE section (reduced context: the section, its defaults and the names it
+	// can reference). Nothing is applied; the client applies them with add_directive.
+	ProposeDirectives(context.Context, *connect.Request[v1.ProposeDirectivesRequest]) (*connect.Response[v1.ProposeDirectivesResponse], error)
 }
 
 // NewAssistServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -376,10 +399,18 @@ func NewAssistServiceHandler(svc AssistServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(assistServiceMethods.ByName("Assist")),
 		connect.WithHandlerOptions(opts...),
 	)
+	assistServiceProposeDirectivesHandler := connect.NewUnaryHandler(
+		AssistServiceProposeDirectivesProcedure,
+		svc.ProposeDirectives,
+		connect.WithSchema(assistServiceMethods.ByName("ProposeDirectives")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/haro.v1.AssistService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AssistServiceAssistProcedure:
 			assistServiceAssistHandler.ServeHTTP(w, r)
+		case AssistServiceProposeDirectivesProcedure:
+			assistServiceProposeDirectivesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -391,6 +422,10 @@ type UnimplementedAssistServiceHandler struct{}
 
 func (UnimplementedAssistServiceHandler) Assist(context.Context, *connect.Request[v1.AssistRequest], *connect.ServerStream[v1.AssistEvent]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("haro.v1.AssistService.Assist is not implemented"))
+}
+
+func (UnimplementedAssistServiceHandler) ProposeDirectives(context.Context, *connect.Request[v1.ProposeDirectivesRequest]) (*connect.Response[v1.ProposeDirectivesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("haro.v1.AssistService.ProposeDirectives is not implemented"))
 }
 
 // ConfigServiceClient is a client for the haro.v1.ConfigService service.
