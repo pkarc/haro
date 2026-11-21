@@ -89,7 +89,7 @@ Estado de cada fase de [`PLAN.es.md`](PLAN.es.md): qué se hizo, qué huecos (ga
 **Hecho:**
 - **Plantillas por tecnología:** 11 (Proxmox, Home Assistant, Nextcloud, Jellyfin, Gitea, Grafana, Vaultwarden, Elasticsearch, PostgreSQL, Redis, Kubernetes) en el núcleo, API, CLI, MCP y web; validadas con `haproxy -c -dW` (2.8 y LTS).
 - **WASM:** `make wasm` (6,2 MB; 1,6 MB gzip) y `make wasm-tiny` (TinyGo, 1,8 MB; 620 KB gzip); `WasmCoreClient`; la web funciona sin servidor con `VITE_CORE=wasm` y un e2e comprueba que no hace ninguna llamada a la API.
-- **Asistente:** contexto y extracción de propuesta en el núcleo; `AssistService` en streaming; `haro assist`; chat en la web con tarjeta de propuesta (diff, aplicar con versión previa, deshacer); panel en la TUI. `AssistService.ProposeDirectives` unario (descripción en lenguaje natural a directivas propuestas para una sección, contexto reducido, `core/propose.go`). Opt-in con `--assistant`; la clave nunca llega al navegador.
+- **Asistente:** contexto y extracción de propuesta en el núcleo; `AssistService` en streaming; `haro assist`; chat en la web con tarjeta de propuesta (diff, aplicar con versión previa, deshacer); panel en la TUI. `AssistService.ProposeDirectives` unario (descripción en lenguaje natural a directivas propuestas para una sección, contexto reducido, `core/propose.go`). En la web, el campo de descripción de cada sección muestra el resultado como filas propuestas transitorias (aprobar/rechazar, aprobar todas en un lote; si la sección cambió se recalcula `at`). Opt-in con `--assistant`; la clave nunca llega al navegador.
 
 | Gap | Solución |
 |---|---|

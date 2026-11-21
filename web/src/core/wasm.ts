@@ -3,7 +3,7 @@ import { ValueSchema } from '@bufbuild/protobuf/wkt'
 import { AnalysisSchema, ApplyResponseSchema, DiffResponseSchema, KnowledgeSchema, ListTemplatesResponseSchema, RenderTemplateResponseSchema } from '../gen/haro/v1/haro_pb'
 import { tr } from '../i18n'
 import type { CoreClient } from './client'
-import type { Analysis, ApplyResult, AssistEvent, AssistRequest, Capabilities, CheckResult, DiffOp, Knowledge, Lang, Op, ParamValue, PutResult, RenderResult, SourceFile, TechTemplate } from './types'
+import type { Analysis, ApplyResult, AssistEvent, AssistRequest, Capabilities, CheckResult, DiffOp, Knowledge, Lang, Op, ParamValue, ProposeDirectivesResult, PutResult, RenderResult, SourceFile, TechTemplate } from './types'
 
 // WasmCoreClient: the same Go core compiled to WebAssembly (see wasm/ and
 // `make wasm`). For the serverless public web: the configuration never leaves
@@ -81,6 +81,10 @@ export class WasmCoreClient implements CoreClient {
 
   // The assistant needs the local server (the API key must never be in the browser).
   async *assist(_req: AssistRequest, _signal?: AbortSignal): AsyncGenerator<AssistEvent> {
+    throw new Error(tr('wasm.noAssistant'))
+  }
+
+  async proposeDirectives(): Promise<ProposeDirectivesResult> {
     throw new Error(tr('wasm.noAssistant'))
   }
 

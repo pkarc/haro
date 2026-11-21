@@ -43,7 +43,7 @@ export function DirectiveRow(p: Props) {
   const cat = ex?.explanation.category ?? 'misc'
   const known = ex?.explanation.known ?? false
   return (
-    <div className={`dir row ${issues.length ? 'sev-' + worstSeverity(issues) : ''} ${known ? '' : 'unknown'}${cur}`} data-file={l.file} data-line={l.line} data-testid="directive" {...curAttr}>
+    <div className={`dir row ${issues.length ? 'sev-' + worstSeverity(issues) : ''} ${known ? '' : 'unknown'}${cur}`} data-file={l.file} data-line={l.line} data-testid="directive" data-raw={l.text} {...curAttr}>
       <div className="dir-main" role="button" tabIndex={0} title={t('directive.editInCode')} onClick={p.onReveal} onKeyDown={keys}>
         <div className="dir-code">
           <span className={`cat cat-${cat}`}>{p.categories[cat] ?? cat}</span>

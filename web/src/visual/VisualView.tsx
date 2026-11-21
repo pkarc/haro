@@ -5,7 +5,7 @@ import { templateBox } from '../templates/TemplateDialog'
 import { useApp } from '../store'
 import { fileLabels } from '../store/files'
 import { useAnalysisIndex } from '../store/selectors'
-import { opAddSection, sectionKey } from './ops'
+import { opAddSection, uniqueSectionKeys } from './ops'
 import { SectionCard } from './SectionCard'
 
 export function VisualView() {
@@ -78,8 +78,7 @@ export function VisualView() {
   const addable = Object.keys(knowledge.templates).filter(k => k in knowledge.sections)
   const types = [...new Set(sections.map(s => s.type))]
   // Key that is stable when line numbering changes (keeps focus and local state).
-  const seen = new Map<string, number>()
-  const keys = sections.map(s => { const k = sectionKey(s), n = seen.get(k) ?? 0; seen.set(k, n + 1); return `${k}#${n}` })
+  const keys = uniqueSectionKeys(sections)
   const pre = analysis.doc.pre.filter(l => l.kind !== 'blank')
 
   const add = async (type: string) => {
@@ -115,7 +114,7 @@ export function VisualView() {
       {sections.map((s, si) => (
         <SectionCard
           key={keys[si]}
-          section={s} index={si} total={sections.length} analysis={analysis} idx={idx} knowledge={knowledge}
+          section={s} skey={keys[si]} index={si} total={sections.length} analysis={analysis} idx={idx} knowledge={knowledge}
           showFile={files.length > 1} fileLabel={labels[s.file] ?? ''}
           current={si === currentSection} cursorLine={cursor && cursor.file === s.file ? cursor.line : null}
         />

@@ -89,7 +89,7 @@ Status of each phase of [`PLAN.md`](PLAN.md): what was done, which gaps were fou
 **Done:**
 - **Technology templates:** 11 (Proxmox, Home Assistant, Nextcloud, Jellyfin, Gitea, Grafana, Vaultwarden, Elasticsearch, PostgreSQL, Redis, Kubernetes) in the core, API, CLI, MCP and web; validated with `haproxy -c -dW` (2.8 and LTS).
 - **WASM:** `make wasm` (6.2 MB; 1.6 MB gzip) and `make wasm-tiny` (TinyGo, 1.8 MB; 620 KB gzip); `WasmCoreClient`; the web works without a server with `VITE_CORE=wasm` and an e2e test checks that it makes no API calls.
-- **Assistant:** context and proposal extraction in the core; streaming `AssistService`; `haro assist`; chat in the web with a proposal card (diff, apply with a prior version, undo); panel in the TUI. Unary `AssistService.ProposeDirectives` (natural-language description to proposed directives for one section, reduced context, `core/propose.go`). Opt-in with `--assistant`; the key never reaches the browser.
+- **Assistant:** context and proposal extraction in the core; streaming `AssistService`; `haro assist`; chat in the web with a proposal card (diff, apply with a prior version, undo); panel in the TUI. Unary `AssistService.ProposeDirectives` (natural-language description to proposed directives for one section, reduced context, `core/propose.go`). In the web, each section's description field shows the result as transient proposed rows (approve/reject, batched approve-all; a stale section recalculates `at`). Opt-in with `--assistant`; the key never reaches the browser.
 
 | Gap | Solution |
 |---|---|

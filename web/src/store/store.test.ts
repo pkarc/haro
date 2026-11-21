@@ -25,6 +25,7 @@ function fakeClient(over: Partial<CoreClient> = {}): CoreClient {
     templates: async () => [],
     renderTemplate: async files => ({ ops: [], files, changes: [] }),
     assist: async function* () { /* sin asistente */ },
+    proposeDirectives: async () => ({ directives: [], note: '', inputTokens: 0, outputTokens: 0 }),
     ...over,
   }
 }
@@ -573,5 +574,206 @@ describe('page, focus channels and cursor', () => {
     expect(s.getState().cursor).toBe(first)
     s.getState().setCursor(0, 5, false)
     expect(s.getState().cursor).toMatchObject({ line: 5, user: false })
+  })
+})
+
+// A tiny stand-in for the core: sections are lines that start in column 0, their
+// directives the indented lines; apply understands add_directive (and nothing else).
+describe('directive proposals', () => {
+  type PD = import('../core/types').ProposedDirective
+  const sectionsOf = (files: SourceFile[]) => {
+    const out: import('../core/types').Section[] = []
+    files.forEach((f, fi) => f.text.split('\n').forEach((raw, ln) => {
+      if (raw && !/^\s/.test(raw)) {
+        const [type, name = ''] = raw.split(' ')
+        out.push({ file: fi, type, name, line: ln + 1, indent: '', text: raw, tokens: [], comment: '', lines: [] })
+      } else if (raw.trim() && out.length) {
+        const sec = out[out.length - 1]
+        sec.lines.push({ file: sec.file, kind: 'directive', line: ln + 1, indent: '    ', text: raw.trim(), keyword: raw.trim().split(' ')[0], args: [], comment: '' })
+      }
+    }))
+    return out
+  }
+  const fake = (propose: (req: import('../core/types').ProposeDirectivesRequest, signal?: AbortSignal) => Promise<{ directives: PD[]; note?: string }>) => {
+    const reqs: import('../core/types').ProposeDirectivesRequest[] = []
+    const client = fakeClient({
+      analyze: async files => ({ ...emptyAnalysis(files[0].text), doc: { pre: [], files: files.map(f => f.path), sections: sectionsOf(files) } }),
+      apply: async (files, ops) => {
+        const lines = files[0].text.split('\n')
+        for (const op of ops) {
+          if (op.op !== 'add_directive') throw new Error('unsupported')
+          const sec = sectionsOf(files)[op.section ?? 0]
+          if (!sec) throw new Error('no such section')
+          const start = sec.line // header is line `sec.line` (1-based) = index sec.line-1; body starts at sec.line
+          const body = lines.slice(start).findIndex(l => l && !/^\s/.test(l))
+          const len = body < 0 ? lines.length - start : body
+          const at = op.at ?? len
+          lines.splice(start + at, 0, '    ' + op.text)
+        }
+        return { files, changes: [{ file: 0, path: files[0].path, text: lines.join('\n') }] }
+      },
+      proposeDirectives: async (req, signal) => { reqs.push(req); const r = await propose(req, signal); return { note: '', inputTokens: 1, outputTokens: 1, ...r } },
+    })
+    return { client, reqs }
+  }
+  const pd = (text: string, at = -1, extra: Partial<PD> = {}): PD => ({ text, explanation: `Explains ${text}`, issuesAfter: [], known: true, at, ...extra })
+  const KEY = '0:backend:app#0'
+  const CFG = 'backend app\n    balance roundrobin\n    server a 1.1.1.1:80\nfrontend web\n    bind :80'
+  const setup = (propose: Parameters<typeof fake>[0]) => {
+    const { client, reqs } = fake(propose)
+    const s = mk(client)
+    s.setState({ files: [F(CFG)] })
+    return { s, reqs }
+  }
+  const texts = (s: ReturnType<typeof mk>) => s.getState().files[0].text.split('\n')
+
+  it('proposes with the current files, the section index and the language, and keeps it transient', async () => {
+    const { s, reqs } = setup(async () => ({ directives: [pd('timeout server 30s', 2), pd('retries 3')], note: 'hello' }))
+    await s.getState().proposeForSection(KEY, '  slow clients  ')
+    expect(reqs).toEqual([{ files: [F(CFG)], section: 0, instruction: 'slow clients', lang: 'en' }])
+    const g = s.getState().proposals[KEY]
+    expect(g).toMatchObject({ status: 'ready', instruction: 'slow clients', note: 'hello' })
+    if (g.status !== 'ready') throw new Error()
+    expect(g.items.map(i => [i.text, i.at, i.known])).toEqual([['timeout server 30s', 2, true], ['retries 3', -1, true]])
+    expect(new Set(g.items.map(i => i.id)).size).toBe(2)
+    expect(s.getState().undoStack).toHaveLength(0)
+    expect(s.getState().files[0].text).toBe(CFG) // nothing applied
+  })
+
+  it('shows the pending state, with the instruction, while it waits', async () => {
+    let release!: () => void
+    const gate = new Promise<void>(r => { release = r })
+    const { s } = setup(async () => { await gate; return { directives: [] } })
+    const p = s.getState().proposeForSection(KEY, 'something')
+    await vi.waitFor(() => expect(s.getState().proposals[KEY]).toEqual({ status: 'pending', instruction: 'something' }))
+    release()
+    await p
+    expect(s.getState().proposals[KEY]).toMatchObject({ status: 'ready', items: [] })
+  })
+
+  it('keeps the message of a failed request and retrying works', async () => {
+    let n = 0
+    const { s } = setup(async () => { if (++n === 1) throw new Error('credentials rejected'); return { directives: [pd('retries 3')] } })
+    await s.getState().proposeForSection(KEY, 'x')
+    expect(s.getState().proposals[KEY]).toEqual({ status: 'error', instruction: 'x', message: 'credentials rejected' })
+    await s.getState().proposeForSection(KEY, 'x')
+    expect(s.getState().proposals[KEY].status).toBe('ready')
+  })
+
+  it('cancelling aborts the request and the late answer is ignored', async () => {
+    let aborted = false
+    const { s, reqs } = setup((_r, signal) => new Promise((_, rej) => signal?.addEventListener('abort', () => { aborted = true; rej(new Error('aborted')) })))
+    const p = s.getState().proposeForSection(KEY, 'x')
+    await vi.waitFor(() => expect(reqs).toHaveLength(1))
+    s.getState().cancelProposal(KEY)
+    await p
+    expect(aborted).toBe(true)
+    expect(s.getState().proposals[KEY]).toBeUndefined()
+  })
+
+  it('approving applies add_directive at the suggested line, removes the proposal and can be undone', async () => {
+    const { s } = setup(async () => ({ directives: [pd('option httplog', 1)] }))
+    await s.getState().proposeForSection(KEY, 'x')
+    const id = (s.getState().proposals[KEY] as { items: { id: number }[] }).items[0].id
+    expect(await s.getState().approveProposal(KEY, id)).toBe(true)
+    expect(texts(s)).toEqual(['backend app', '    balance roundrobin', '    option httplog', '    server a 1.1.1.1:80', 'frontend web', '    bind :80'])
+    expect(s.getState().proposals[KEY]).toBeUndefined()
+    expect(s.getState().undoStack).toHaveLength(1)
+    expect(s.getState().approved).toMatchObject({ key: KEY, texts: ['option httplog'] })
+    expect(s.getState().toasts.at(-1)).toMatchObject({ msg: '1 directive added', kind: 'info' })
+    s.getState().toasts.at(-1)!.action!.run()
+    expect(s.getState().files[0].text).toBe(CFG)
+  })
+
+  it('without a suggested position (-1) the directive goes at the end of the section', async () => {
+    const { s } = setup(async () => ({ directives: [pd('retries 3', -1)] }))
+    await s.getState().proposeForSection(KEY, 'x')
+    await s.getState().approveProposal(KEY, (s.getState().proposals[KEY] as { items: { id: number }[] }).items[0].id)
+    expect(texts(s).slice(0, 4)).toEqual(['backend app', '    balance roundrobin', '    server a 1.1.1.1:80', '    retries 3'])
+  })
+
+  it('approving one keeps the others pointing to the right line', async () => {
+    const { s } = setup(async () => ({ directives: [pd('option httplog', 1), pd('timeout server 30s', 2)] }))
+    await s.getState().proposeForSection(KEY, 'x')
+    const items = (s.getState().proposals[KEY] as { items: { id: number; at: number }[] }).items
+    await s.getState().approveProposal(KEY, items[0].id)
+    const left = s.getState().proposals[KEY] as { items: { text: string; at: number }[] }
+    expect(left.items.map(i => [i.text, i.at])).toEqual([['timeout server 30s', 3]])
+    await s.getState().approveProposal(KEY, items[1].id)
+    expect(texts(s).slice(0, 5)).toEqual(['backend app', '    balance roundrobin', '    option httplog', '    server a 1.1.1.1:80', '    timeout server 30s'])
+    expect(s.getState().proposals[KEY]).toBeUndefined()
+  })
+
+  it('approve all sends the ops from the highest position to the lowest, ends first, in one undo step', async () => {
+    const batches: string[][] = []
+    const { client } = fake(async () => ({ directives: [pd('A', 1), pd('B', 2), pd('C', -1), pd('D', 1)] }))
+    const orig = client.apply.bind(client)
+    client.apply = async (files, ops) => { batches.push(ops.map(o => `${o.text}@${o.at ?? 'end'}`)); return orig(files, ops) }
+    const s = mk(client)
+    s.setState({ files: [F(CFG)] })
+    await s.getState().proposeForSection(KEY, 'x')
+    expect(await s.getState().approveAll(KEY)).toBe(true)
+    expect(batches).toEqual([['C@end', 'B@2', 'D@1', 'A@1']])
+    expect(s.getState().undoStack).toHaveLength(1)
+    // A ends up before D, as proposed
+    expect(texts(s).slice(0, 7)).toEqual(['backend app', '    balance roundrobin', '    A', '    D', '    server a 1.1.1.1:80', '    B', '    C'])
+    expect(s.getState().proposals[KEY]).toBeUndefined()
+    expect(s.getState().toasts.at(-1)!.msg).toBe('4 directives added')
+  })
+
+  it('reject removes one, reject all removes the group', async () => {
+    const { s } = setup(async () => ({ directives: [pd('A'), pd('B')] }))
+    await s.getState().proposeForSection(KEY, 'x')
+    const items = (s.getState().proposals[KEY] as { items: { id: number }[] }).items
+    s.getState().rejectProposal(KEY, items[0].id)
+    expect((s.getState().proposals[KEY] as { items: unknown[] }).items).toHaveLength(1)
+    s.getState().rejectProposal(KEY, items[1].id)
+    expect(s.getState().proposals[KEY]).toBeUndefined()
+    await s.getState().proposeForSection(KEY, 'x')
+    s.getState().rejectAll(KEY)
+    expect(s.getState().proposals).toEqual({})
+    expect(s.getState().files[0].text).toBe(CFG)
+  })
+
+  it('if the section no longer exists it warns and discards the proposals', async () => {
+    const { s } = setup(async () => ({ directives: [pd('A')] }))
+    await s.getState().proposeForSection(KEY, 'x')
+    const id = (s.getState().proposals[KEY] as { items: { id: number }[] }).items[0].id
+    s.setState({ files: [F('frontend web\n    bind :80')], rev: s.getState().rev + 1 })
+    expect(await s.getState().approveProposal(KEY, id)).toBe(false)
+    expect(s.getState().proposals[KEY]).toBeUndefined()
+    expect(s.getState().toasts.at(-1)).toMatchObject({ kind: 'warn' })
+    expect(s.getState().toasts.at(-1)!.msg).toContain('no longer exists')
+  })
+
+  it('proposals of sections that disappear after an analysis are dropped', async () => {
+    const { s } = setup(async () => ({ directives: [pd('A')] }))
+    await s.getState().proposeForSection(KEY, 'x')
+    s.getState().setText(0, 'frontend web\n    bind :80')
+    await vi.advanceTimersByTimeAsync(400)
+    expect(s.getState().proposals).toEqual({})
+  })
+
+  it('when the section changed since proposing, the position is recalculated (after the same keyword, else the end) and the user is warned', async () => {
+    const { s } = setup(async () => ({ directives: [pd('server b 2.2.2.2:80', 1), pd('retries 3', 1)] }))
+    await s.getState().proposeForSection(KEY, 'x')
+    // the user adds two lines at the top of the section: the suggested index 1 no longer fits
+    s.getState().setText(0, CFG.replace('backend app\n', 'backend app\n    mode http\n    option httplog\n'))
+    const items = (s.getState().proposals[KEY] as { items: { id: number }[] }).items
+    expect(await s.getState().approveAll(KEY)).toBe(true)
+    expect(s.getState().toasts.some(t => t.kind === 'warn' && t.msg.includes('recalculated'))).toBe(true)
+    // server b after server a; retries at the end
+    expect(texts(s).slice(0, 7)).toEqual(['backend app', '    mode http', '    option httplog', '    balance roundrobin', '    server a 1.1.1.1:80', '    server b 2.2.2.2:80', '    retries 3'])
+    expect(items).toHaveLength(2)
+  })
+
+  it('a failing apply keeps the proposals', async () => {
+    const { client } = fake(async () => ({ directives: [pd('A')] }))
+    client.apply = async () => { throw new Error('boom') }
+    const s = mk(client)
+    s.setState({ files: [F(CFG)] })
+    await s.getState().proposeForSection(KEY, 'x')
+    expect(await s.getState().approveAll(KEY)).toBe(false)
+    expect(s.getState().proposals[KEY].status).toBe('ready')
   })
 })

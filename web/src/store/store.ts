@@ -6,7 +6,9 @@ import { makeT, setActiveLang, type T } from '../i18n'
 import { browserLang, type Analysis, type Capabilities, type Knowledge, type Lang, type Op, type SourceFile } from '../core/types'
 import { applyProposalToFiles, buildMessages, persistableChat, sanitizeChat, snapshotFor, type ChatMessage } from './chat'
 import { applyChanges, dirtyIndexes, sameFiles } from './files'
+import { batchOrder, effectiveAt, sectionHash, shiftAt, toItems, type Proposals } from './proposals'
 import { sampleFiles } from './sample'
+import { opAddDirective, uniqueSectionKeys } from '../visual/ops'
 
 export const ANALYZE_DELAY_MS = 200
 export const COALESCE_MS = 1200
@@ -31,6 +33,9 @@ export interface UiPrefs {
   chatOpen: boolean
 }
 
+/** Last directives applied from proposals, so the section can highlight their new rows. */
+export interface ApprovedMark { key: string; texts: string[]; nonce: number }
+
 export interface AppState {
   files: SourceFile[]
   active: number
@@ -54,6 +59,9 @@ export interface AppState {
   chatBusy: boolean
   /** The user already confirmed in this session that the configuration is sent to Anthropic (not saved). */
   chatAck: boolean
+  /** Transient (never saved, outside undo): directives proposed by the assistant, by unique section key. */
+  proposals: Proposals
+  approved: ApprovedMark | null
   undoStack: SourceFile[][]
   redoStack: SourceFile[][]
   versions: Version[]
@@ -93,6 +101,19 @@ export interface AppState {
   /** Applies the proposal of message `mi` (saves a version first; a single undo step). */
   applyProposal(mi: number): boolean
   discardProposal(mi: number): void
+  /**
+   * Asks the assistant for directives for one section from a description. The proposals
+   * stay in `proposals[key]`; nothing changes in the files until they are approved.
+   */
+  proposeForSection(key: string, instruction: string): Promise<void>
+  /** Cancels a pending request and clears its result or error. */
+  cancelProposal(key: string): void
+  /** Applies one proposed directive (a single undo step) and turns it into a normal row. */
+  approveProposal(key: string, id: number): Promise<boolean>
+  /** Applies all the proposed directives of the section in one batch (a single undo step). */
+  approveAll(key: string): Promise<boolean>
+  rejectProposal(key: string, id: number): void
+  rejectAll(key: string): void
   saveVersion(label: string): void
   restoreVersion(i: number): void
   deleteVersion(i: number): void
@@ -160,6 +181,10 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
   // Conversation in progress: the epoch invalidates the writes of a response when another conversation starts.
   let chatEpoch = 0
   let chatCtl: AbortController | null = null
+  // Requests for proposed directives in flight, by section key.
+  const proposeCtl = new Map<string, AbortController>()
+  let proposalId = 0
+  let approvedNonce = 0
   const delay = opts.analyzeDelay ?? ANALYZE_DELAY_MS
   const initialLang = browserLang()
 
@@ -221,6 +246,61 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
       }
     }
 
+    // Finds a section by its unique key in a fresh analysis of the current files.
+    const locate = async (key: string) => {
+      let { files, analysis, analysisRev, rev } = get()
+      if (!analysis || analysisRev !== rev) analysis = await client.analyze(files, get().lang)
+      const index = uniqueSectionKeys(analysis.doc.sections).indexOf(key)
+      return { files, index, section: index >= 0 ? analysis.doc.sections[index] : null }
+    }
+    const dropProposal = (key: string) => {
+      proposeCtl.get(key)?.abort()
+      proposeCtl.delete(key)
+      set(s => {
+        if (!(key in s.proposals)) return {}
+        const { [key]: _gone, ...rest } = s.proposals
+        return { proposals: rest }
+      })
+    }
+    // Applies proposed items in one batch against the current state of the section.
+    const approve = async (key: string, ids: number[] | null): Promise<boolean> => {
+      const g = get().proposals[key]
+      if (!g || g.status !== 'ready') return false
+      const chosen = ids ? g.items.filter(i => ids.includes(i.id)) : g.items
+      if (!chosen.length) return false
+      try {
+        const loc = await locate(key)
+        if (!loc.section) {
+          dropProposal(key)
+          get().toast(t()('propose.sectionGone'), 'warn')
+          return false
+        }
+        const changed = sectionHash(loc.section) !== g.hash
+        if (changed) get().toast(t()('propose.changedWarn'), 'warn')
+        const placed = chosen.map(i => ({ i, at: effectiveAt(i, loc.section!, changed) }))
+        const ok = await get().applyOps(batchOrder(placed).map(e => opAddDirective(loc.index, e.i.text, e.at)))
+        if (!ok) return false
+        const applied = placed.map(e => e.at)
+        // The rest keep their meaning: shift positions and rebase the fingerprint (only if the section was still the one proposed on).
+        let hash = g.hash
+        if (!changed) {
+          try { const again = await locate(key); if (again.section) hash = sectionHash(again.section) } catch { /* keeps the old one: shows as stale */ }
+        }
+        const cur = get().proposals[key]
+        if (cur?.status === 'ready') {
+          const left = cur.items.filter(i => !chosen.some(c => c.id === i.id)).map(i => ({ ...i, at: shiftAt(i.at, applied) }))
+          if (left.length) set(s => ({ proposals: { ...s.proposals, [key]: { ...cur, items: left, hash } } }))
+          else dropProposal(key)
+        }
+        set({ approved: { key, texts: chosen.map(i => i.text), nonce: ++approvedNonce } })
+        get().toast(t().n('propose.added', chosen.length), 'info', { label: t()('common.undo'), run: () => get().undo() })
+        return true
+      } catch (e) {
+        get().toast(t()('state.applyFailed', { msg: (e as Error).message }), 'warn')
+        return false
+      }
+    }
+
     return {
       files: sampleFiles(browserLang()),
       active: 0,
@@ -238,6 +318,8 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
       chat: [],
       chatBusy: false,
       chatAck: false,
+      proposals: {},
+      approved: null,
       undoStack: [],
       redoStack: [],
       versions: [],
@@ -410,6 +492,46 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
 
       discardProposal(mi) { set(st => ({ chat: setProposalStatus(st.chat, mi, 'discarded') })) },
 
+      async proposeForSection(key, instruction) {
+        const text = instruction.trim()
+        if (!text) return
+        proposeCtl.get(key)?.abort()
+        const ctl = new AbortController()
+        proposeCtl.set(key, ctl)
+        set(s => ({ proposals: { ...s.proposals, [key]: { status: 'pending', instruction: text } } }))
+        const setResult = (p: Proposals[string]) => {
+          if (ctl.signal.aborted || proposeCtl.get(key) !== ctl) return
+          proposeCtl.delete(key)
+          set(s => ({ proposals: { ...s.proposals, [key]: p } }))
+        }
+        try {
+          const loc = await locate(key)
+          if (ctl.signal.aborted) return
+          if (!loc.section) {
+            dropProposal(key)
+            get().toast(t()('propose.sectionGone'), 'warn')
+            return
+          }
+          const res = await client.proposeDirectives({ files: loc.files, section: loc.index, instruction: text, lang: get().lang }, ctl.signal)
+          setResult({ status: 'ready', instruction: text, items: toItems(res.directives ?? [], () => ++proposalId), note: res.note ?? '', hash: sectionHash(loc.section) })
+        } catch (e) {
+          setResult({ status: 'error', instruction: text, message: (e as Error).message || t()('state.unknownError') })
+        }
+      },
+
+      cancelProposal(key) { dropProposal(key) },
+      approveProposal(key, id) { return approve(key, [id]) },
+      approveAll(key) { return approve(key, null) },
+
+      rejectProposal(key, id) {
+        const g = get().proposals[key]
+        if (g?.status !== 'ready') return
+        const items = g.items.filter(i => i.id !== id)
+        if (items.length) set(s => ({ proposals: { ...s.proposals, [key]: { ...g, items } } }))
+        else dropProposal(key)
+      },
+      rejectAll(key) { dropProposal(key) },
+
       saveVersion(label) {
         const s = get()
         if (s.versions[0] && sameFiles(s.versions[0].files, s.files)) return
@@ -498,7 +620,13 @@ export function createAppStore(client: CoreClient, configStore: ConfigStore, opt
           const id = ++requestId
           const { files, rev } = get()
           client.analyze(files, get().lang).then(
-            a => { if (id === requestId) set({ analysis: a, analysisError: '', analysisRev: rev }) },
+            a => {
+              if (id !== requestId) return
+              set({ analysis: a, analysisError: '', analysisRev: rev })
+              // Proposals of sections that no longer exist (deleted, renamed) are dropped.
+              const keys = new Set(uniqueSectionKeys(a.doc.sections))
+              Object.keys(get().proposals).filter(k => !keys.has(k)).forEach(dropProposal)
+            },
             e => { if (id === requestId) set({ analysisError: (e as Error).message }) },
           )
         }

@@ -106,7 +106,7 @@ function AppShell() {
           </section>
         )}
         {canAssist && !mobile && chatOpen && (
-          <section className="pane assistant-pane side" data-testid="assistant-pane" aria-label={t('app.assistant')}><ChatPanel /></section>
+          <section className="pane assistant-pane side" data-testid="assistant-pane" aria-label={t('app.assistant')}><ChatPanel onClose={() => setChatOpen(false)} /></section>
         )}
       </main>
       {mobile && (

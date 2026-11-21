@@ -102,7 +102,8 @@ function Bubble({ m, mi, last }: { m: ChatMessage; mi: number; last: boolean }) 
   )
 }
 
-export function ChatPanel() {
+/** `onClose` shows a close button (the panel overlays the page on narrower desktops). */
+export function ChatPanel({ onClose }: { onClose?: () => void } = {}) {
   const t = useT()
   const chat = useApp(s => s.chat)
   const busy = useApp(s => s.chatBusy)
@@ -144,7 +145,10 @@ export function ChatPanel() {
     <div className="chat" data-testid="chat-panel">
       <div className="chat-head">
         <b>✦ {t('assistant.title')}</b>
-        <button className="btn sm" onClick={() => void clear()} disabled={!chat.length}>{t('chat.newChat')}</button>
+        <span className="chat-head-act">
+          <button className="btn sm" onClick={() => void clear()} disabled={!chat.length}>{t('chat.newChat')}</button>
+          {onClose && <button className="icon chat-close" aria-label={t('assistant.close')} title={t('assistant.close')} onClick={onClose}>✕</button>}
+        </span>
       </div>
       <div className="chat-log" ref={log} data-testid="chat-log" onScroll={e => { const el = e.currentTarget; stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80 }}>
         {chat.length === 0

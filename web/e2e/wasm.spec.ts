@@ -35,3 +35,10 @@ test('serverless web: analyzes, edits and adds a template, without calling any s
   expect(requests.filter(p => p.startsWith('/haro.v1.'))).toEqual([])
   expect(requests.some(p => p.endsWith('haro.wasm'))).toBe(true)
 })
+
+test('serverless web: no assistant, so the plain directive input stays and there is no description field', async ({ page }) => {
+  await page.goto(BASE)
+  await expect(page.getByTestId('section').first()).toBeVisible()
+  await expect(page.getByLabel(/^Add directive to /).first()).toBeVisible()
+  await expect(page.getByLabel(/Describe the directive to add/)).toHaveCount(0)
+})

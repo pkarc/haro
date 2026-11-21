@@ -3,7 +3,7 @@ import { ValueSchema } from '@bufbuild/protobuf/wkt'
 import { Code, ConnectError, createClient } from '@connectrpc/connect'
 import { createConnectTransport } from '@connectrpc/connect-web'
 import { AssistService, ConfigService, CoreService } from '../gen/haro/v1/haro_pb'
-import type { Analysis, ApplyResult, AssistDone, AssistEvent, AssistProposal, AssistRequest, Capabilities, CheckResult, DiffOp, Knowledge, Lang, Op, ParamValue, PutResult, RenderResult, SourceFile, TechTemplate } from './types'
+import type { Analysis, ApplyResult, AssistDone, AssistEvent, AssistProposal, AssistRequest, Capabilities, CheckResult, DiffOp, Knowledge, Lang, Op, ParamValue, ProposeDirectivesRequest, ProposeDirectivesResult, PutResult, RenderResult, SourceFile, TechTemplate } from './types'
 
 // The UI does not know which core it talks to:
 //  - ConnectCoreClient: the local `haro serve` (native Go), with the client
@@ -37,6 +37,11 @@ export interface CoreClient {
    * the request. Errors are Errors carrying the server's message.
    */
   assist(req: AssistRequest, signal?: AbortSignal): AsyncIterable<AssistEvent>
+  /**
+   * Turns a description into directives for ONE section (unary, same availability
+   * as assist). Nothing is applied. Errors carry the server's message.
+   */
+  proposeDirectives(req: ProposeDirectivesRequest, signal?: AbortSignal): Promise<ProposeDirectivesResult>
 }
 
 // RPC errors arrive as an Error with the server's message (without the
@@ -77,6 +82,10 @@ export class ConnectCoreClient implements CoreClient {
         }
       }
     } catch (e) { fail(e) }
+  }
+
+  async proposeDirectives(req: ProposeDirectivesRequest, signal?: AbortSignal) {
+    return plain<ProposeDirectivesResult>(await rpc(this.assistant.proposeDirectives(req, { signal })))
   }
 
   async capabilities() { return plain<Capabilities>(await rpc(this.config.getCapabilities({}))) }

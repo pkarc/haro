@@ -99,6 +99,11 @@ export interface AssistRequest { files: SourceFile[]; messages: AssistMessage[];
 /** Assistant proposal: the full text of each file that changes and the problems of the resulting configuration. */
 export interface AssistProposal { changes: FileChange[]; issuesAfter: Issue[]; unmatched: number; truncated: boolean }
 export interface AssistDone { stopReason: string; refusalCategory: string; inputTokens: number; outputTokens: number }
+/** Request for directives of ONE section from a natural-language description. */
+export interface ProposeDirectivesRequest { files: SourceFile[]; section: number; instruction: string; lang: Lang }
+/** A directive proposed by the assistant; `at` is a line index within the unmodified section (-1 = at the end). */
+export interface ProposedDirective { text: string; explanation: string; issuesAfter: Issue[]; known: boolean; at: number }
+export interface ProposeDirectivesResult { directives: ProposedDirective[]; note: string; inputTokens: number; outputTokens: number }
 /** Assistant stream events: text chunks, the proposal (if any) and the end. */
 export type AssistEvent =
   | { type: 'text'; text: string }
