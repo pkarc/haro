@@ -366,7 +366,7 @@ label.btn{cursor:pointer}
 
 /* Directives proposed by the assistant: not part of the configuration until approved. */
 .add-dir.assist{align-items:flex-end}
-.add-dir textarea{flex:1;min-width:0;resize:none;overflow-y:auto;max-height:96px;padding:6px 10px;border-radius:var(--r-xs);border:1px dashed var(--line2);background:transparent;font:var(--fs)/1.5 var(--sans);outline:none}
+.add-dir textarea{flex:1;min-width:0;min-height:34px;box-sizing:border-box;resize:none;overflow-y:auto;max-height:96px;padding:6px 10px;border-radius:var(--r-xs);border:1px dashed var(--line2);background:transparent;font:var(--fs)/1.5 var(--sans);outline:none}
 .add-dir textarea:focus{border-color:var(--accent)}
 .add-dir textarea:disabled{opacity:.5}
 .add-dir.assist .btn{height:34px}

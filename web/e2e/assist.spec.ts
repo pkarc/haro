@@ -299,7 +299,15 @@ test('«Write the directive manually» switches to the plain input with autocomp
   await plain.press('Enter')
   await expect(sec.getByTestId('directive').filter({ hasText: 'web3' })).toHaveCount(1)
   await sec.getByRole('button', { name: 'Describe it to the assistant instead' }).click()
-  await expect(page.getByLabel('Describe the directive to add to backend web_servers')).toBeVisible()
+  const box = page.getByLabel('Describe the directive to add to backend web_servers')
+  await expect(box).toBeVisible()
+  // the description field has the same height as the plain input after switching back
+  const h = async (l: typeof box) => Math.round((await l.boundingBox())!.height)
+  expect(await h(box)).toBe(34)
+  await box.fill('one\ntwo\nthree')
+  expect(await h(box)).toBeGreaterThan(34)
+  await box.fill('')
+  expect(await h(box)).toBe(34)
 })
 
 test('Shift+Enter makes a new line instead of sending', async ({ page }) => {

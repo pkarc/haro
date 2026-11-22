@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Analysis, Knowledge, Section } from '../core/types'
 import { ensureAssistAck } from '../assistant/ack'
 import { confirmBox, promptBox } from '../components/dialogs'
@@ -72,12 +72,14 @@ export function SectionCard({ section: s, skey, index: si, total, analysis, idx,
   const proposedAt = (at: number) => rowPosition(stale || at > s.lines.length ? -1 : at, rowLines)
   const nProposed = proposed.length
 
-  const grow = (el: HTMLTextAreaElement | null) => {
+  // Fit the textarea to its text. It remounts when switching back from the manual
+  // input and may be hidden (collapsed section, scrollHeight 0), so it also runs then.
+  useLayoutEffect(() => {
+    const el = area.current
     if (!el) return
     el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 96)}px`
-  }
-  useEffect(() => grow(area.current), [desc])
+    el.style.height = el.scrollHeight > 0 ? `${Math.min(el.scrollHeight, 96)}px` : ''
+  }, [desc, manual, canAssist, collapsed])
 
   const ask = async () => {
     const text = desc.trim()
