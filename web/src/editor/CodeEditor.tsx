@@ -13,26 +13,15 @@ const External = Annotation.define<boolean>()
 // Marks cursor moves made by the app (reveal from the visual view), not by the user.
 const Programmatic = Annotation.define<boolean>()
 
-// Highlight of the line the visual view sent the user to. Stored as a document
-// position so it follows edits above it, and cleared as soon as the cursor
-// leaves that line.
-const setTarget = StateEffect.define<number | null>()
-const targetLine = Decoration.line({ class: 'cm-haro-target', attributes: { 'data-haro-target': 'true', 'aria-current': 'location' } })
-const targetField = StateField.define<{ pos: number | null; deco: ReturnType<typeof Decoration.set> }>({
-  create: () => ({ pos: null, deco: Decoration.none }),
+// Marks the line under the cursor and keeps marking it wherever the cursor goes
+// (a stronger cue than the plain active line; the visual view mirrors it).
+const currentLine = Decoration.line({ class: 'cm-haro-target', attributes: { 'data-haro-target': 'true', 'aria-current': 'location' } })
+const targetField = StateField.define<{ from: number; deco: ReturnType<typeof Decoration.set> }>({
+  create: s => { const from = s.doc.lineAt(s.selection.main.head).from; return { from, deco: Decoration.set([currentLine.range(from)]) } },
   update(v, tr) {
-    let pos = v.pos
-    for (const e of tr.effects) if (e.is(setTarget)) pos = e.value
-    if (pos === null) return v.deco === Decoration.none ? v : { pos: null, deco: Decoration.none }
-    if (!tr.effects.some(e => e.is(setTarget))) pos = tr.changes.mapPos(pos, -1)
-    const doc = tr.state.doc
-    pos = Math.min(pos, doc.length)
-    const line = doc.lineAt(pos)
-    // The cursor moved to another line: the highlight is gone.
-    if (!tr.effects.some(e => e.is(setTarget)) && tr.selection && doc.lineAt(tr.state.selection.main.head).number !== line.number) {
-      return { pos: null, deco: Decoration.none }
-    }
-    return { pos: line.from, deco: Decoration.set([targetLine.range(line.from)]) }
+    if (!tr.docChanged && !tr.selection) return v
+    const from = tr.state.doc.lineAt(tr.state.selection.main.head).from
+    return from === v.from && !tr.docChanged ? v : { from, deco: Decoration.set([currentLine.range(from)]) }
   },
   provide: f => EditorView.decorations.from(f, v => v.deco),
 })
@@ -81,7 +70,7 @@ export function CodeEditor(props: CodeEditorProps) {
     const p = () => latest.current
     const kn = props.knowledge
     const extensions: Extension[] = [
-      lineNumbers(), highlightActiveLine(), highlightActiveLineGutter(), drawSelection(), closeBrackets(),
+      lineNumbers(), highlightActiveLineGutter(), drawSelection(), closeBrackets(),
       EditorState.tabSize.of(4),
       haproxyLanguage(kn),
       autocompletion({ override: [directiveCompletion(kn)], icons: false }),
@@ -146,7 +135,7 @@ export function CodeEditor(props: CodeEditorProps) {
     const l = v.state.doc.line(n)
     v.dispatch({
       selection: { anchor: l.from, head: l.to },
-      effects: [EditorView.scrollIntoView(l.from, { y: 'center' }), setTarget.of(l.from)],
+      effects: [EditorView.scrollIntoView(l.from, { y: 'center' })],
       annotations: Programmatic.of(true),
     })
     v.focus()

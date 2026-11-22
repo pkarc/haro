@@ -5,7 +5,7 @@ import { templateBox } from '../templates/TemplateDialog'
 import { useApp } from '../store'
 import { fileLabels } from '../store/files'
 import { useAnalysisIndex } from '../store/selectors'
-import { opAddSection, uniqueSectionKeys } from './ops'
+import { opAddSection, uniqueSectionKeys, sectionKey } from './ops'
 import { SectionCard } from './SectionCard'
 
 export function VisualView() {
@@ -57,19 +57,23 @@ export function VisualView() {
   // When our own smooth scroll started: while it runs, the row rect is not a reliable visibility test.
   const autoScrollAt = useRef(0)
   useEffect(() => { if (cursor?.user) pending.current = cursor.nonce }, [cursor])
+  const collapsedMap = useApp(s => s.ui.collapsed)
   useEffect(() => {
     const host = root.current
     if (!pending.current || !host || !analysis) return
+    // The cursor moved into a collapsed section: open it so the directive is visible.
+    const cs = currentSection >= 0 ? analysis.doc.sections[currentSection] : undefined
+    if (cs && collapsedMap[sectionKey(cs)]) { toggleCollapsed(sectionKey(cs)); return }
     const row = host.querySelector<HTMLElement>('.row.current')
     if (!row) { if (!stale) pending.current = 0; return }
     pending.current = 0
-    if (!row.offsetParent) return // inside a collapsed section
+    if (!row.offsetParent) return
     const a = row.getBoundingClientRect(), b = host.getBoundingClientRect()
     if (a.top < b.top || a.bottom > b.bottom || Date.now() - autoScrollAt.current < 900) {
       autoScrollAt.current = Date.now()
       row.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }
-  }, [cursor, analysis, stale])
+  }, [cursor, analysis, stale, currentSection, collapsedMap, toggleCollapsed])
 
   if (!analysis || !knowledge) return <div className="visual-view"><p className="muted pad">{t('visual.analyzing')}</p></div>
 

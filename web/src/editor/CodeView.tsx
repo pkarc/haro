@@ -5,6 +5,7 @@ import { useAnalysisIndex } from '../store/selectors'
 import { CodeEditor } from './CodeEditor'
 import { CodeStatus } from './CodeStatus'
 import { FileTabs } from './FileTabs'
+import { useMediaQuery } from '../components/useMediaQuery'
 
 export function CodeView() {
   const t = useT()
@@ -19,6 +20,8 @@ export function CodeView() {
   const undo = useApp(s => s.undo)
   const redo = useApp(s => s.redo)
   const index = useAnalysisIndex(analysis)
+  // On desktop the visual view sits beside the code and already explains the current directive.
+  const mobile = useMediaQuery('(max-width: 899px)')
   const [line, setLine] = useState(1)
   const issues = useMemo(() => analysis?.issues.filter(i => i.file === active) ?? [], [analysis, active])
   const focusHere = useMemo(() => focus && focus.file === active ? { line: focus.line, nonce: focus.nonce } : null, [focus, active])
@@ -53,7 +56,7 @@ export function CodeView() {
           onRedo={redo}
         />
       </div>
-      <CodeStatus analysis={analysis} index={index} knowledge={knowledge} file={active} line={line} />
+      {mobile && <CodeStatus analysis={analysis} index={index} knowledge={knowledge} file={active} line={line} />}
     </div>
   )
 }

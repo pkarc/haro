@@ -38,10 +38,12 @@ test('the code shows the problem as a diagnostic and the line explanation', asyn
   await expect(page.locator('.cm-editor')).toBeVisible()
   await expect(page.locator('.cm-lint-marker').first()).toBeVisible()
   await page.locator('.cm-line', { hasText: 'stats auth' }).click()
-  await expect(page.getByTestId('code-status')).toContainText('Suggestion')
-  await expect(page.getByTestId('code-status')).toContainText('stats')
+  // the visual view (beside the code) marks and explains the line; there is no status bar on desktop
+  await expect(page.locator('.row.current')).toContainText('stats auth')
+  await expect(page.locator('.row.current .iss')).toContainText('Suggestion')
   await page.getByTestId('code-editor').locator('.cm-line', { hasText: 'stats uri' }).click()
-  await expect(page.getByTestId('code-status')).toContainText('/stats')
+  await expect(page.locator('.row.current')).toContainText('stats uri')
+  await expect(page.getByTestId('code-status')).toHaveCount(0)
 })
 
 test('desktop: code and visual are visible side by side, with no Code/Visual tabs', async ({ page }) => {
@@ -89,10 +91,7 @@ test('visual click on a directive puts the cursor in the editor, highlights the 
   await expect(target).toHaveCount(1)
   await expect(target).toContainText('maxconn 4096')
   await expect(target).toHaveAttribute('aria-current', 'location')
-  await expect(page.locator('.cm-activeLine')).toContainText('maxconn 4096')
   await expect(page.locator('.cm-content')).toBeFocused()
-  // the editor status explains the same line
-  await expect(page.getByTestId('code-status')).toContainText('maxconn')
   // no inline edit form any more
   await expect(page.getByLabel('Edit directive')).toHaveCount(0)
 
@@ -102,9 +101,10 @@ test('visual click on a directive puts the cursor in the editor, highlights the 
   // the row under the cursor stays marked after the analysis arrives
   await expect(page.locator('.row.current')).toContainText('maxconn 8192')
 
-  // moving the cursor to another line clears the highlight
+  // moving the cursor keeps one marked line: the new one
   await page.keyboard.press('ArrowDown')
-  await expect(target).toHaveCount(0)
+  await expect(target).toHaveCount(1)
+  await expect(target).not.toContainText('maxconn 8192')
 })
 
 test('the «Edit in code» button and the keyboard do the same as a click', async ({ page }) => {
@@ -270,4 +270,18 @@ test('adding Nextcloud from a technology template changes the text minimally', a
   await page.getByRole('button', { name: 'Undo' }).first().click()
   await expect(page.getByTestId('section')).toHaveCount(8)
   expect(await fullText(page)).toBe(original)
+})
+
+test('bidirectional: moving the cursor into a collapsed section opens it and shows the directive', async ({ page }) => {
+  await page.locator('.cm-content').click()
+  await page.keyboard.press('Control+Home')
+  // collapse the global section from the visual view
+  const sec = page.locator('.sec', { hasText: 'Global settings' }).first()
+  await sec.getByRole('button', { name: /Collapse/ }).click()
+  await expect(sec).toHaveClass(/collapsed/)
+  // move the cursor (keyboard) onto a directive of that section
+  await page.locator('.cm-line', { hasText: 'maxconn 4096' }).click()
+  await expect(sec).not.toHaveClass(/collapsed/)
+  await expect(page.locator('.row.current')).toContainText('maxconn 4096')
+  await expect(page.locator('.row.current')).toBeVisible()
 })

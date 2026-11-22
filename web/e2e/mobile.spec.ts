@@ -27,6 +27,8 @@ test('mobile: bottom tabs Code / Visual / Map / Assistant', async ({ page }) => 
   await page.getByTestId('directive').filter({ hasText: 'maxconn 4096' }).first().locator('.dir-main').click()
   await expect(tabs.getByRole('tab', { name: /Code/ })).toHaveAttribute('aria-selected', 'true')
   await expect(page.locator('.cm-line.cm-haro-target')).toContainText('maxconn 4096')
+  // the status bar stays on mobile, where the visual view is not beside the code
+  await expect(page.getByTestId('code-status')).toContainText('maxconn')
 
   await tabs.getByRole('tab', { name: /Assistant/ }).click()
   await expect(page.getByTestId('assistant-disabled')).toContainText('haro serve --assistant')
