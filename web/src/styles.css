@@ -8,6 +8,14 @@
   --fs-2xs:10px;--fs-xs:11px;--fs-sm:12px;--fs:13px;--fs-md:14px;--fs-code:12.5px;
 }
 *{box-sizing:border-box}
+
+/* Scrollbars: thin, square and neutral; the thumb lights up on hover */
+*{scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--line2);border:2px solid transparent;background-clip:padding-box;border-radius:var(--r-xs)}
+::-webkit-scrollbar-thumb:hover{background:var(--dim);border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-corner{background:transparent}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13px/1.5 var(--sans);-webkit-font-smoothing:antialiased}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
 button:disabled{opacity:.35;cursor:default}
